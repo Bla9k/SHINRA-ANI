@@ -100,8 +100,8 @@ export async function getAnimeEpisodes(animeMalId: number): Promise<ConsumetEpis
         }
         // Log the specific error message
         console.error('[getAnimeEpisodes] Fetch Error Message:', error.message);
-        // Log the full error object structure if helpful
-        console.error('[getAnimeEpisodes] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        // Log the full error object structure if helpful (can be very verbose)
+        // console.error('[getAnimeEpisodes] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         // Return empty array on any fetch error
         return [];
     }
@@ -158,7 +158,7 @@ export async function getAnimeStreamingLink(episodeId: string): Promise<Consumet
         }
         // Log the specific error message
         console.error('[getAnimeStreamingLink] Fetch Error Message:', error.message);
-        console.error('[getAnimeStreamingLink] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        // console.error('[getAnimeStreamingLink] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error))); // Too verbose usually
         // Re-throw the original error or a more specific one
         throw new Error(`Failed to fetch streaming data from Consumet: ${error.message || 'Unknown fetch error'}`);
     }
