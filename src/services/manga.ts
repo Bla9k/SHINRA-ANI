@@ -1,3 +1,4 @@
+
 /**
  * Represents a Manga based on AniList data structure.
  */
@@ -134,9 +135,9 @@ export async function getMangas(
     id: id || undefined, // Include id in variables if provided
   };
 
-
+  let response: Response | undefined;
   try {
-    const response = await fetch(ANILIST_API_URL, {
+    response = await fetch(ANILIST_API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -156,7 +157,7 @@ export async function getMangas(
         const errorBody = await response.text();
         console.error('AniList API response not OK:', response.status, response.statusText);
         console.error('AniList Error Body:', errorBody);
-        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
+        console.error('AniList Request Variables:', variables); // Log raw variables on error
         throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
      }
 
@@ -164,7 +165,7 @@ export async function getMangas(
 
      if (jsonResponse.errors) {
         console.error('AniList API errors:', jsonResponse.errors);
-        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
+        console.error('AniList Request Variables:', variables); // Log raw variables on error
        throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
      }
 
@@ -179,12 +180,21 @@ export async function getMangas(
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables));
+    console.error('Failed to fetch manga from AniList. Variables:', variables); // Log raw variables
+     // Log the response status if available
+    if(response) {
+        console.error('Response Status:', response.status, response.statusText);
+    }
     // Attempt to log more detailed error information
-    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('Fetch Error Details:', error); // Log the raw error object
+    if (error instanceof Error) {
+        console.error('Error Name:', error.name);
+        console.error('Error Message:', error.message);
+        console.error('Error Stack:', error.stack);
+    }
 
     // Re-throw the error to be handled by the calling component
-    throw new Error(`Failed to fetch manga data from AniList: ${error.message || JSON.stringify(error)}`);
+    throw new Error(`Failed to fetch manga data from AniList: ${error.message || 'Unknown fetch error'}`);
   }
 }
 
