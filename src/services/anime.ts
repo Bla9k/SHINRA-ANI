@@ -65,8 +65,9 @@ export interface Anime {
      type: 'anime';
 }
 
-// AniList API endpoint
+// AniList API endpoint (kept for structure, but key won't work here)
 const ANILIST_API_URL = 'https://graphql.anilist.co';
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY; // Read key from environment
 
 // GraphQL query to fetch anime details including banner and trailer
 const ANIME_QUERY = `
@@ -128,6 +129,7 @@ const mapAniListDataToAnime = (media: any): Anime => {
 
 /**
  * Asynchronously retrieves anime from AniList with optional filters or by ID.
+ * Includes RapidAPI key in headers as requested, though likely incompatible with AniList.
  *
  * @param genre The genre to filter animes on.
  * @param releaseYear The release year to filter animes on (filtering done post-fetch).
@@ -152,14 +154,28 @@ export async function getAnimes(
     id: id || undefined, // Include id in variables if provided
   };
 
+  const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+  };
+
+  // Add RapidAPI key header if it exists
+  if (RAPIDAPI_KEY) {
+      headers['X-RapidAPI-Key'] = RAPIDAPI_KEY;
+      // Note: You might also need 'X-RapidAPI-Host' depending on the actual RapidAPI endpoint
+      // headers['X-RapidAPI-Host'] = 'your-rapidapi-host.com';
+  } else {
+      console.warn("RAPIDAPI_KEY environment variable not set.");
+      // Optionally throw an error or proceed without the key depending on requirements
+      // throw new Error("RAPIDAPI_KEY environment variable is required.");
+  }
+
+
   let response: Response | undefined;
   try {
     response = await fetch(ANILIST_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: headers, // Use updated headers
       body: JSON.stringify({
         query: ANIME_QUERY,
         variables: variables,
@@ -174,7 +190,7 @@ export async function getAnimes(
       const errorBody = await response.text();
       console.error('AniList API response not OK:', response.status, response.statusText);
       console.error('AniList Error Body:', errorBody);
-      console.error('AniList Request Variables:', variables); // Log raw variables on error
+      console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
       throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
     }
 
@@ -182,7 +198,7 @@ export async function getAnimes(
 
     if (jsonResponse.errors) {
       console.error('AniList API errors:', jsonResponse.errors);
-      console.error('AniList Request Variables:', variables); // Log raw variables on error
+      console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
       throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
     }
 
@@ -205,19 +221,18 @@ export async function getAnimes(
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch anime from AniList. Variables:', variables); // Log raw variables
+    console.error('Failed to fetch anime from AniList. Variables:', JSON.stringify(variables)); // Log stringified variables
     // Log the response status if available
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
     // Attempt to log more detailed error information
-    console.error('Fetch Error Details:', error); // Log the raw error object
+    // Avoid stringifying the raw error object directly as it might be complex/circular
+    console.error('Fetch Error Message:', error.message);
     if (error instanceof Error) {
         console.error('Error Name:', error.name);
-        console.error('Error Message:', error.message);
         console.error('Error Stack:', error.stack);
     }
-
 
     // Re-throw the error to be handled by the calling component
     // This allows the UI to show a specific error message

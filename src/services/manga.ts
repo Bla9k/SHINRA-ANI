@@ -57,8 +57,9 @@ export interface Manga {
      type: 'manga';
 }
 
-// AniList API endpoint
+// AniList API endpoint (kept for structure, but key won't work here)
 const ANILIST_API_URL = 'https://graphql.anilist.co';
+const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY; // Read key from environment
 
 // GraphQL query to fetch manga details including banner
 const MANGA_QUERY = `
@@ -112,6 +113,7 @@ const mapAniListDataToManga = (media: any): Manga => {
 
 /**
  * Asynchronously retrieves manga from AniList with optional filters or by ID.
+ * Includes RapidAPI key in headers as requested, though likely incompatible with AniList.
  *
  * @param genre The genre to filter mangas on.
  * @param status The status to filter mangas on (e.g., RELEASING, FINISHED).
@@ -135,14 +137,27 @@ export async function getMangas(
     id: id || undefined, // Include id in variables if provided
   };
 
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+  };
+
+  // Add RapidAPI key header if it exists
+  if (RAPIDAPI_KEY) {
+      headers['X-RapidAPI-Key'] = RAPIDAPI_KEY;
+      // Note: You might also need 'X-RapidAPI-Host' depending on the actual RapidAPI endpoint
+      // headers['X-RapidAPI-Host'] = 'your-rapidapi-host.com';
+  } else {
+       console.warn("RAPIDAPI_KEY environment variable not set.");
+      // Optionally throw an error or proceed without the key depending on requirements
+      // throw new Error("RAPIDAPI_KEY environment variable is required.");
+  }
+
   let response: Response | undefined;
   try {
     response = await fetch(ANILIST_API_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
+      headers: headers, // Use updated headers
       body: JSON.stringify({
         query: MANGA_QUERY,
         variables: variables,
@@ -186,10 +201,10 @@ export async function getMangas(
         console.error('Response Status:', response.status, response.statusText);
     }
     // Attempt to log more detailed error information
-    console.error('Fetch Error Details:', error); // Log the raw error object
+    // Avoid stringifying the raw error object directly as it might be complex/circular
+    console.error('Fetch Error Message:', error.message);
     if (error instanceof Error) {
         console.error('Error Name:', error.name);
-        console.error('Error Message:', error.message);
         console.error('Error Stack:', error.stack);
     }
 
