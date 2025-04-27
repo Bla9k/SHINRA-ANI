@@ -105,7 +105,7 @@ export default function TopBar({
          <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
             <path d="M50 0L61.226 30.9017H95.1056L69.9398 50L81.1658 80.9017H50L18.8342 80.9017L30.0602 50L4.89435 30.9017H38.774L50 0Z" fill="currentColor"/>
          </svg>
-        <span className="font-bold text-lg hidden sm:inline">AniManga</span>
+        <span className="font-bold text-lg hidden sm:inline">Shinra-Ani</span> {/* Updated App Name */}
       </Link>
 
        {/* Search Input Area (Desktop) */}

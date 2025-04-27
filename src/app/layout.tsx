@@ -12,7 +12,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: 'AniManga Stream', // Updated App Name
+  title: 'Shinra-Ani', // Updated App Name
   description: 'Ultimate Anime & Manga Platform with Nami AI Integration', // Updated description
 };
 
@@ -23,6 +23,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
+      {/* Removed space before body */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased',
