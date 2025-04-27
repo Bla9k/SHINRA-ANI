@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -83,7 +84,8 @@ const ToastClose = React.forwardRef<
     toast-close=""
     {...props}
   >
-    <X className="h-4 w-4" />
+    {/* Removed X icon */}
+    <span className="sr-only">Close</span>
   </ToastPrimitives.Close>
 ))
 ToastClose.displayName = ToastPrimitives.Close.displayName
