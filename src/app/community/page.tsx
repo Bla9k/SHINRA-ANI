@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -108,6 +108,9 @@ const mapToFavoriteItem = (item: Anime | Manga): FavoriteItem | null => {
         id: item.mal_id,
         type: 'episodes' in item ? 'anime' : 'manga',
         imageUrl: item.images?.jpg?.large_image_url ?? item.images?.jpg?.image_url ?? null,
+        // Ensure Jikan specific fields are mapped if needed by the card
+        score: item.score ?? undefined,
+        year: item.year ?? undefined,
     };
 };
 
@@ -232,15 +235,15 @@ const FavoriteItemCard = ({ item }: { item: FavoriteItem }) => {
                     </CardHeader>
                      <CardContent className="p-2 flex flex-col flex-grow">
                          <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-auto pt-1 border-t border-border/50">
-                             {(item as Anime).score && (
+                             {item.score !== null && item.score !== undefined && (
                                 <span className="flex items-center gap-0.5" title="Score">
-                                    <Star size={10} className="text-yellow-400" /> {((item as Anime).score ?? 0).toFixed(1)}
+                                    <Star size={10} className="text-yellow-400" /> {item.score.toFixed(1)}
                                 </span>
                              )}
-                             {(item as Anime).year && (
+                             {item.year && (
                                 <span className="flex items-center gap-0.5" title="Year">
                                     {/* Placeholder for year/status */}
-                                    {(item as Anime).year}
+                                    {item.year}
                                 </span>
                              )}
                               <span className="text-primary text-[10px] font-medium group-hover:underline">Details</span>
@@ -277,64 +280,33 @@ export default function CommunityPage() {
     const [errorFavorites, setErrorFavorites] = useState<string | null>(null);
     const { toast } = useToast();
 
-    // Fetch community favorites (simulate with trending/popular data for now)
-    useEffect(() => {
-        const fetchFavorites = async () => {
-            setLoadingFavorites(true);
-            setErrorFavorites(null);
-            try {
-                // Fetch popular anime and manga as a proxy for community favorites
-                const [animeResponse, mangaResponse] = await Promise.all([
-                    getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'score', 10), // Fetch top 10 scored anime
-                    getMangas(undefined, undefined, undefined, undefined, 1, 'score', 10) // Fetch top 10 scored manga
-                ]);
-
-                const mappedAnime = (animeResponse.animes || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
-                const mappedManga = (mangaResponse.mangas || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
-
-                // Combine and shuffle slightly for variety (or implement real voting logic)
-                const combined = [...mappedAnime, ...mappedManga].sort(() => 0.5 - Math.random());
-
-                setCommunityFavorites(combined.slice(0, 10)); // Take top 10 mixed
-            } catch (err) {
-                console.error("Error fetching community favorites data:", err);
-                setErrorFavorites("Could not load community favorites.");
-            } finally {
-                setLoadingFavorites(false);
-            }
-        };
-
-        fetchFavorites();
-        // Optional: Set interval to refetch favorites periodically
-        // const intervalId = setInterval(fetchFavorites, 10000); // Fetch every 10 seconds
-        // return () => clearInterval(intervalId); // Cleanup interval on unmount
-    }, []);
-
-     // Helper to render a horizontally scrolling section (from homepage)
+    // Define renderHorizontalSection helper function
     const renderHorizontalSection = (
         title: string,
         icon: React.ElementType,
-        items: FavoriteItem[] | undefined,
+        items: FavoriteItem[], // Adjusted type to FavoriteItem[]
         isLoading: boolean,
         viewAllLink?: string,
         itemComponent: React.FC<{ item: FavoriteItem }> = FavoriteItemCard, // Default to FavoriteItemCard
-        skeletonComponent: React.FC = SkeletonFavoriteCard, // Default skeleton
-        error: string | null = null // Add error prop
+        skeletonComponent: React.FC = SkeletonFavoriteCard // Default skeleton
     ) => {
-        const displayItems = Array.isArray(items) ? items : [];
+        // Ensure items is an array before mapping
+        const validItems = Array.isArray(items) ? items : [];
 
         return (
             <section className="mb-8 md:mb-12">
+                {/* Section Title */}
                 <div className="flex items-center justify-between mb-3 md:mb-4 px-4 md:px-6 lg:px-8">
                     <h2 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
                         {React.createElement(icon, { className: "text-primary w-5 h-5 md:w-6 md:h-6" })} {title}
                     </h2>
-                    {viewAllLink && displayItems.length > 0 && (
+                    {viewAllLink && validItems.length > 0 && (
                         <Button variant="link" size="sm" asChild className="text-xs md:text-sm">
                             <Link href={viewAllLink}>View All <ArrowRight size={14} className="ml-1" /></Link>
                         </Button>
                     )}
                 </div>
+                 {/* Scrollable Container */}
                  <div className="relative">
                   <div className={cn(
                       "flex space-x-3 md:space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent",
@@ -342,18 +314,68 @@ export default function CommunityPage() {
                       "snap-x snap-mandatory",
                       "pr-4 md:pr-6 lg:pr-8"
                       )}>
-                     {isLoading && displayItems.length === 0
-                        ? Array.from({ length: 6 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` }))
-                        : displayItems.length > 0
-                            ? displayItems.map((item, index) => React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item }))
-                            : error
-                                ? <p className="text-center text-destructive italic px-4 py-5">{error}</p>
-                                : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
+                    {isLoading && validItems.length === 0
+                        ? Array.from({ length: 5 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` }))
+                        : validItems.length > 0
+                            ? validItems.map((item, index) => React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item }))
+                            : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
                   </div>
                 </div>
+                 {errorFavorites && (
+                     <p className="text-destructive text-xs px-4 md:px-6 lg:px-8 mt-1">{errorFavorites}</p>
+                 )}
             </section>
         );
     };
+
+
+    // Fetch community favorites (simulate with trending/popular data for now)
+    const fetchFavorites = useCallback(async () => {
+        console.log("Fetching community favorites..."); // Log when fetch starts
+        setLoadingFavorites(true);
+        setErrorFavorites(null);
+        try {
+            // Fetch popular anime and manga as a proxy for community favorites
+            const [animeResponse, mangaResponse] = await Promise.all([
+                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'score', 10), // Fetch top 10 scored anime
+                getMangas(undefined, undefined, undefined, undefined, 1, 'score', 10) // Fetch top 10 scored manga
+            ]);
+
+            const mappedAnime = (animeResponse.animes || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
+            const mappedManga = (mangaResponse.mangas || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
+
+            // Combine and shuffle slightly for variety (or implement real voting logic)
+            const combined = [...mappedAnime, ...mappedManga].sort(() => 0.5 - Math.random());
+
+            setCommunityFavorites(combined.slice(0, 10)); // Take top 10 mixed
+             console.log("Successfully fetched and updated favorites:", combined.slice(0, 10));
+        } catch (err) {
+            const errorMsg = err instanceof Error ? err.message : "An unknown error occurred";
+            console.error("Error fetching community favorites data:", err);
+            setErrorFavorites(`Could not load community favorites: ${errorMsg}`);
+             toast({
+                title: "Error Loading Favorites",
+                description: errorMsg,
+                variant: "destructive",
+            });
+        } finally {
+            setLoadingFavorites(false);
+             console.log("Finished fetching favorites."); // Log when fetch ends
+        }
+    }, [toast]); // Add toast to dependency array
+
+
+    useEffect(() => {
+        fetchFavorites(); // Fetch initially on mount
+
+        // Set interval to refetch favorites every 2 minutes (120000 ms)
+        const intervalId = setInterval(fetchFavorites, 120000);
+
+        // Cleanup interval on component unmount
+        return () => clearInterval(intervalId);
+    }, [fetchFavorites]); // Use fetchFavorites in dependency array
+
+
 
   return (
     // Use ScrollArea for the entire page content to manage scrolling
@@ -405,8 +427,7 @@ export default function CommunityPage() {
                loadingFavorites,
                undefined, // Optional link to a dedicated favorites page
                FavoriteItemCard,
-               SkeletonFavoriteCard,
-               errorFavorites // Pass error state
+               SkeletonFavoriteCard
            )}
 
            {/* Section 2: Top Interactions */}
