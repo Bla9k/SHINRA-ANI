@@ -157,7 +157,7 @@ export async function getMangas(
         const errorBody = await response.text();
         console.error('AniList API response not OK:', response.status, response.statusText);
         console.error('AniList Error Body:', errorBody);
-        console.error('AniList Request Variables:', variables); // Log raw variables on error
+        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
         throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
      }
 
@@ -165,7 +165,7 @@ export async function getMangas(
 
      if (jsonResponse.errors) {
         console.error('AniList API errors:', jsonResponse.errors);
-        console.error('AniList Request Variables:', variables); // Log raw variables on error
+        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
        throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
      }
 
@@ -180,7 +180,7 @@ export async function getMangas(
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch manga from AniList. Variables:', variables); // Log raw variables
+    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables)); // Log stringified variables
      // Log the response status if available
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
