@@ -130,7 +130,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 3000; // Increased delay to 3 seconds
+const JIKAN_DELAY = 4000; // Increased delay to 4 seconds
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -276,7 +276,14 @@ export async function getAnimes(
           parsedError = JSON.parse(errorBody);
           console.error('[getAnimes] Parsed Jikan Error:', parsedError);
       } catch {}
-      throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
+      // Instead of throwing, return an empty response
+        return {
+            animes: [],
+            hasNextPage: false,
+            currentPage: page,
+            lastPage: page, // Assume current page is last on error
+        };
+      // throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
     }
 
     const jsonResponse: JikanAnimeListResponse = await response.json();
@@ -317,7 +324,14 @@ export async function getAnimes(
     }
     // Log detailed fetch error
     console.error('[getAnimes] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-    throw new Error(`Failed to fetch anime data from Jikan: ${error.message || 'Unknown fetch error'}`);
+     // Return empty response on fetch error
+     return {
+         animes: [],
+         hasNextPage: false,
+         currentPage: page,
+         lastPage: page,
+     };
+    // throw new Error(`Failed to fetch anime data from Jikan: ${error.message || 'Unknown fetch error'}`);
   }
 }
 
@@ -364,7 +378,9 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
                 parsedError = JSON.parse(errorBody);
                 console.error('[getAnimeById] Parsed Jikan Error:', parsedError);
             } catch {}
-            throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
+             // Return null on failure
+             return null;
+            // throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
         }
 
         const jsonResponse: JikanSingleAnimeResponse = await response.json();
