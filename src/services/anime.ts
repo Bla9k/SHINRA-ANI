@@ -202,13 +202,14 @@ export async function getAnimes(
     return animes;
 
   } catch (error: any) {
-    // Log the specific error and the stringified request variables
+    // Log the specific error and the request variables
     console.error('Failed to fetch anime from AniList. Variables:', JSON.stringify(variables));
-    console.error('Fetch Error:', error);
+    // Attempt to log more detailed error information
+    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
     // Re-throw the error to be handled by the calling component
     // This allows the UI to show a specific error message
-    throw new Error(`Failed to fetch anime data from AniList: ${error.message || error}`);
+    throw new Error(`Failed to fetch anime data from AniList: ${error.message || JSON.stringify(error)}`);
   }
 }
 

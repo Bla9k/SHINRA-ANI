@@ -178,12 +178,13 @@ export async function getMangas(
     return mangas;
 
   } catch (error: any) {
-    // Log the specific error and the stringified request variables
+    // Log the specific error and the request variables
     console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables));
-    console.error('Fetch Error:', error);
+    // Attempt to log more detailed error information
+    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
 
     // Re-throw the error to be handled by the calling component
-    throw new Error(`Failed to fetch manga data from AniList: ${error.message || error}`);
+    throw new Error(`Failed to fetch manga data from AniList: ${error.message || JSON.stringify(error)}`);
   }
 }
 
