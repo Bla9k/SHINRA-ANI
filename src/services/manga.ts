@@ -117,14 +117,19 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 1000; // Increased delay to 1 second
+const JIKAN_DELAY = 1500; // Increased delay again to 1.5 seconds
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
 // Helper function to map Jikan API response to our Manga interface
-const mapJikanDataToManga = (jikanData: any): Manga => {
+const mapJikanDataToManga = (jikanData: any): Manga | null => {
+   // Basic validation to ensure essential fields exist
+   if (!jikanData || typeof jikanData.mal_id !== 'number' || !jikanData.title) {
+      console.warn("Skipping invalid Jikan manga data:", jikanData);
+      return null; // Return null if essential data is missing
+  }
   return {
     mal_id: jikanData.mal_id,
     title: jikanData.title_english || jikanData.title || 'Untitled',
@@ -187,9 +192,10 @@ export async function getMangas(
   const headers: HeadersInit = { 'Accept': 'application/json' };
   let response: Response | undefined;
 
+  console.log(`Attempting to fetch Jikan Manga URL: ${url} with delay ${JIKAN_DELAY}ms`);
+  await delay(JIKAN_DELAY); // Wait before making the API call
+
   try {
-    await delay(JIKAN_DELAY); // Wait before making the API call
-    // console.log("Fetching Jikan Manga URL:", url);
     response = await fetch(url, {
       method: 'GET',
       headers: headers,
@@ -231,13 +237,17 @@ export async function getMangas(
               mangas: [],
               hasNextPage: false,
               currentPage: page,
-              lastPage: page, // Assume this is the last page if data is missing
+              lastPage: jsonResponse.pagination?.last_visible_page ?? page, // Use pagination if available
           };
     }
 
     const pagination = jsonResponse.pagination;
-    // Map only if data exists and is an array
-    const mangas = jsonResponse.data.map(mapJikanDataToManga);
+    // Map only if data exists and is an array, filter out nulls
+    const mangas = jsonResponse.data
+                        .map(mapJikanDataToManga)
+                        .filter((manga): manga is Manga => manga !== null);
+
+     console.log(`Successfully fetched ${mangas.length} manga for URL: ${url}`);
 
     return {
         mangas: mangas,
@@ -272,9 +282,10 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
     const headers: HeadersInit = { 'Accept': 'application/json' };
     let response: Response | undefined;
 
+    console.log(`Attempting to fetch Jikan Manga by ID: ${url} with delay ${JIKAN_DELAY}ms`);
+    await delay(JIKAN_DELAY); // Wait before making the API call
+
     try {
-        await delay(JIKAN_DELAY); // Wait before making the API call
-        // console.log("Fetching Jikan Manga by ID:", url);
         response = await fetch(url, {
             method: 'GET',
             headers: headers,
@@ -282,7 +293,7 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
         });
 
         if (response.status === 404) {
-            console.warn(`Manga with MAL ID ${mal_id} not found (404).`);
+            console.warn(`Jikan: Manga with MAL ID ${mal_id} not found (404).`);
             return null; // Not found is not necessarily an error
         }
 
@@ -308,7 +319,15 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
               return null; // Return null instead of throwing
          }
 
-        return mapJikanDataToManga(jsonResponse.data);
+        const mappedManga = mapJikanDataToManga(jsonResponse.data);
+
+        if (mappedManga) {
+             console.log(`Successfully fetched manga ID ${mal_id}: ${mappedManga.title}`);
+        } else {
+             console.warn(`Failed to map Jikan data for manga ID ${mal_id}.`);
+        }
+
+        return mappedManga;
     } catch (error: any) {
         console.error(`Failed to fetch manga with MAL ID ${mal_id} from Jikan. URL: ${url}`);
         if(response) {

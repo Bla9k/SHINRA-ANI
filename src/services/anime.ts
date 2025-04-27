@@ -121,14 +121,19 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 800; // Further increased delay (was 600ms)
+const JIKAN_DELAY = 1500; // Increased delay again to 1.5 seconds
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
 // Helper function to map Jikan API response to our Anime interface
-const mapJikanDataToAnime = (jikanData: any): Anime => {
+const mapJikanDataToAnime = (jikanData: any): Anime | null => {
+  // Basic validation to ensure essential fields exist
+  if (!jikanData || typeof jikanData.mal_id !== 'number' || !jikanData.title) {
+      console.warn("Skipping invalid Jikan anime data:", jikanData);
+      return null; // Return null if essential data is missing
+  }
   return {
     mal_id: jikanData.mal_id,
     title: jikanData.title_english || jikanData.title || 'Untitled', // Prioritize English title
@@ -205,9 +210,10 @@ export async function getAnimes(
   };
 
   let response: Response | undefined;
+  console.log(`Attempting to fetch Jikan URL: ${url} with delay ${JIKAN_DELAY}ms`);
+  await delay(JIKAN_DELAY); // Wait before making the API call
+
   try {
-    await delay(JIKAN_DELAY); // Wait before making the API call
-    // console.log("Fetching Jikan URL:", url); // Log the URL being fetched
     response = await fetch(url, {
       method: 'GET', // Jikan uses GET
       headers: headers,
@@ -226,15 +232,25 @@ export async function getAnimes(
     const jsonResponse: JikanAnimeListResponse = await response.json();
 
     // Basic check for errors in the response structure (Jikan might not have a dedicated errors field like GraphQL)
-    if (!jsonResponse.data) {
-         console.error('Jikan API error: Response missing data field.');
-         console.error('Jikan Response:', JSON.stringify(jsonResponse));
-         console.error('Jikan Request URL:', url);
-         throw new Error('Jikan API response missing data field.');
+    if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+         console.warn('Jikan API error: Response OK but missing or invalid "data" field.');
+         console.warn('Jikan Response:', JSON.stringify(jsonResponse));
+         console.warn('Jikan Request URL:', url);
+         // Return empty results if data is missing/invalid
+         return {
+             animes: [],
+             hasNextPage: false,
+             currentPage: page,
+             lastPage: jsonResponse.pagination?.last_visible_page ?? page,
+         };
     }
 
     const pagination = jsonResponse.pagination;
-    const animes = jsonResponse.data.map(mapJikanDataToAnime);
+    const animes = jsonResponse.data
+                        .map(mapJikanDataToAnime)
+                        .filter((anime): anime is Anime => anime !== null); // Filter out null results from mapping
+
+    console.log(`Successfully fetched ${animes.length} anime for URL: ${url}`);
 
     return {
         animes: animes,
@@ -244,7 +260,7 @@ export async function getAnimes(
     };
 
   } catch (error: any) {
-    console.error('Failed to fetch anime from Jikan. URL:', url);
+    console.error(`Failed to fetch anime from Jikan. URL: ${url}`);
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
@@ -265,9 +281,10 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
   const headers: HeadersInit = { 'Accept': 'application/json' };
   let response: Response | undefined;
 
+    console.log(`Attempting to fetch Jikan Anime by ID: ${url} with delay ${JIKAN_DELAY}ms`);
+    await delay(JIKAN_DELAY); // Wait before making the API call
+
     try {
-        await delay(JIKAN_DELAY); // Wait before making the API call
-        // console.log("Fetching Jikan Anime by ID:", url);
         response = await fetch(url, {
             method: 'GET',
             headers: headers,
@@ -275,6 +292,7 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
         });
 
         if (response.status === 404) {
+            console.warn(`Jikan: Anime with MAL ID ${mal_id} not found (404).`);
             return null; // Not found
         }
 
@@ -289,16 +307,23 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
         const jsonResponse: JikanSingleAnimeResponse = await response.json();
 
         if (!jsonResponse.data) {
-             console.error('Jikan API error: Response missing data field.');
-             console.error('Jikan Response:', JSON.stringify(jsonResponse));
-             console.error('Jikan Request URL:', url);
-             throw new Error('Jikan API response missing data field.');
+             console.warn('Jikan API error: Response OK but missing data field for single anime.');
+             console.warn('Jikan Response:', JSON.stringify(jsonResponse));
+             console.warn('Jikan Request URL:', url);
+             return null; // Return null if data is missing
         }
 
+        const mappedAnime = mapJikanDataToAnime(jsonResponse.data);
 
-        return mapJikanDataToAnime(jsonResponse.data);
+        if (mappedAnime) {
+             console.log(`Successfully fetched anime ID ${mal_id}: ${mappedAnime.title}`);
+        } else {
+             console.warn(`Failed to map Jikan data for anime ID ${mal_id}.`);
+        }
+
+        return mappedAnime;
     } catch (error: any) {
-        console.error(`Failed to fetch anime with MAL ID ${mal_id} from Jikan. URL:`, url);
+        console.error(`Failed to fetch anime with MAL ID ${mal_id} from Jikan. URL: ${url}`);
         if(response) {
             console.error('Response Status:', response.status, response.statusText);
         }

@@ -15,13 +15,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 
 // Define types for combined recommendations (can be Anime or Manga from Jikan)
-type RecommendationItem = (Anime | Manga) & {
-  id: number; // Use mal_id from Jikan
-  title: string;
+// Ensure required fields for the card are present
+type RecommendationItem = (Partial<Anime> | Partial<Manga>) & {
+  id: number; // Use mal_id from Jikan, ensuring it's present
+  title: string; // Ensure title is present
   type: 'anime' | 'manga';
   imageUrl?: string | null; // Use derived imageUrl
   description?: string | null; // Use synopsis
+  score?: number | null; // Add score
+  // Add any other fields required by ItemCard
 };
+
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -31,28 +35,39 @@ async function fetchDetailsByTitleWithDelay(
     titles: string[],
     fetchFunction: (genre?: string | number, year?: number, minScore?: number, search?: string, status?: string, page?: number, sort?: string) => Promise<AnimeResponse | MangaResponse>,
     itemType: 'anime' | 'manga',
-    delayMs = 600 // Increased delay for Jikan (was 400ms)
+    delayMs = 1200 // Increased delay further for Jikan (was 600ms, then 800ms)
 ): Promise<RecommendationItem[]> {
     const results: RecommendationItem[] = [];
     // Ensure unique titles before fetching to avoid redundant calls
-    const uniqueTitles = Array.from(new Set(titles));
+    const uniqueTitles = Array.from(new Set(titles.filter(t => t))); // Filter out empty/null titles
 
     for (const title of uniqueTitles) {
         try {
             // Fetch page 1, limit handled by service, sort by relevance (default for search)
+            console.log(`Fetching ${itemType} details for: "${title}"`);
             const response = await fetchFunction(undefined, undefined, undefined, title, undefined, 1);
             let firstMatch: Anime | Manga | null = null;
-            if ('animes' in response && response.animes?.length > 0) { // Add null check
+
+            if ('animes' in response && response.animes?.length > 0) {
                 firstMatch = response.animes[0];
-            } else if ('mangas' in response && response.mangas?.length > 0) { // Add null check
+            } else if ('mangas' in response && response.mangas?.length > 0) {
                 firstMatch = response.mangas[0];
             }
 
-            if (firstMatch) {
-                // Ensure id is mapped correctly from mal_id
-                results.push({ ...firstMatch, id: firstMatch.mal_id, type: itemType, description: firstMatch.synopsis });
+            if (firstMatch && firstMatch.mal_id && firstMatch.title) {
+                // Ensure id is mapped correctly from mal_id and core fields exist
+                results.push({
+                    ...firstMatch,
+                    id: firstMatch.mal_id,
+                    type: itemType,
+                    description: firstMatch.synopsis, // Map synopsis to description
+                    // Ensure score is included if present
+                    score: firstMatch.score ?? null,
+                    // Ensure imageUrl is included
+                    imageUrl: firstMatch.imageUrl ?? null,
+                });
             } else {
-                 console.warn(`Could not fetch details for ${itemType} "${title}" from Jikan (no match found).`);
+                 console.warn(`Could not fetch valid details for ${itemType} "${title}" from Jikan (no match or missing critical fields).`);
             }
         } catch (err) {
             // Log the error but don't throw, allow the loop to continue
@@ -76,7 +91,11 @@ export default function Home() {
   const [errorTrending, setErrorTrending] = useState<string | null>(null);
 
   useEffect(() => {
+    let isMounted = true; // Flag to prevent state updates on unmounted component
+
     const fetchInitialData = async () => {
+      if (!isMounted) return;
+
       setLoadingRecommendations(true);
       setLoadingTrending(true);
       setErrorRecommendations(null);
@@ -85,109 +104,142 @@ export default function Home() {
       setTrendingAnime([]);
       setTrendingManga([]);
 
+      let aiOutput: AIDrivenHomepageOutput | null = null;
+      let combinedRecommendedResults: RecommendationItem[] = [];
+
       try {
         // TODO: Replace with actual user data
         const userProfile = "Loves action and fantasy anime, recently watched Attack on Titan. Enjoys ongoing manga series.";
         const currentMood = "Excited";
 
         // --- 1. Fetch AI Recommendation Titles ---
-        let aiOutput: AIDrivenHomepageOutput | null = null;
         try {
+             console.log("Fetching AI recommendations...");
              aiOutput = await aiDrivenHomepage({ userProfile, currentMood });
-             setRecommendations(aiOutput);
+             if (isMounted) setRecommendations(aiOutput);
+             console.log("AI Recommendations:", aiOutput);
         } catch (aiError: any) {
             console.error("Failed to fetch AI recommendations:", aiError);
-            setErrorRecommendations(aiError.message || "Nami couldn't generate recommendations right now.");
+            if (isMounted) setErrorRecommendations(aiError.message || "Nami couldn't generate recommendations right now.");
             // Continue to fetch trending even if AI fails
         }
 
         // --- 2. Fetch Details for AI Recommendations (Sequentially with Delays) ---
-        // Check if aiOutput and its recommendation arrays are valid before proceeding
         if (aiOutput && (aiOutput.animeRecommendations?.length > 0 || aiOutput.mangaRecommendations?.length > 0)) {
              const animeTitles = aiOutput.animeRecommendations || [];
              const mangaTitles = aiOutput.mangaRecommendations || [];
 
             try {
-                 // Fetch details
+                 console.log("Fetching details for AI recommended anime...");
                  const animeResults = await fetchDetailsByTitleWithDelay(animeTitles, getAnimes, 'anime');
-                 await delay(500); // Optional extra delay between fetching anime and manga details
+                 if (!isMounted) return; // Check mount status after async operation
+
+                 console.log("Fetching details for AI recommended manga...");
+                 await delay(1000); // Add delay between fetching anime and manga details
                  const mangaResults = await fetchDetailsByTitleWithDelay(mangaTitles, getMangas, 'manga');
+                 if (!isMounted) return; // Check mount status
 
                  // Combine results
-                 const combinedResults: RecommendationItem[] = [...animeResults, ...mangaResults];
+                 combinedRecommendedResults = [...animeResults, ...mangaResults];
+                 console.log("Combined AI recommendation details:", combinedRecommendedResults);
 
-                 // --- Filter for unique items based on type and id ---
-                 const uniqueResultsMap = new Map<string, RecommendationItem>();
-                 combinedResults.forEach(item => {
-                     // Ensure item.id is defined before creating key
-                     if (item && typeof item.id !== 'undefined') {
-                         const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
-                         if (!uniqueResultsMap.has(uniqueKey)) {
-                             uniqueResultsMap.set(uniqueKey, item);
-                         }
-                     } else {
-                        console.warn("Skipping item with undefined id during unique filtering:", item);
-                     }
-                 });
-                 const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
-
-                 // Shuffle results if desired (apply to unique results)
-                 uniqueRecommendedContent.sort(() => Math.random() - 0.5);
-
-                 setRecommendedContent(uniqueRecommendedContent.slice(0, 8)); // Limit displayed AI recommendations
              } catch (detailFetchError: any) {
                   console.error("Error fetching details for AI recommendations:", detailFetchError);
-                  // Set error or leave recommendedContent empty
-                  setErrorRecommendations(errorRecommendations || "Failed to fetch details for some recommendations.");
-                  setRecommendedContent([]);
+                  if (isMounted) setErrorRecommendations(prev => prev || "Failed to fetch details for some recommendations.");
+                  // Keep combinedRecommendedResults potentially empty or partially filled
              }
-
-
         } else if (!errorRecommendations) {
+             console.log("No AI recommendations provided or AI flow failed gracefully.");
              // No recommendations from AI, or AI failed gracefully
-             setRecommendedContent([]);
         }
-        setLoadingRecommendations(false); // AI Recommendations part is done
 
-        // --- 3. Fetch Trending Data (After AI details) ---
-        // Add delay even if AI part failed or had no results
-        await delay(800);
+         // --- Filter for unique items based on type and id, and update state ---
+         if (isMounted) {
+             const uniqueResultsMap = new Map<string, RecommendationItem>();
+             combinedRecommendedResults.forEach(item => {
+                 // Ensure item.id is defined before creating key
+                 if (item && typeof item.id === 'number') {
+                     const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
+                     if (!uniqueResultsMap.has(uniqueKey)) {
+                         uniqueResultsMap.set(uniqueKey, item);
+                     }
+                 } else {
+                    console.warn("Skipping item with undefined id during unique filtering:", item);
+                 }
+             });
+             const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
+
+             // Shuffle results if desired (apply to unique results)
+             uniqueRecommendedContent.sort(() => Math.random() - 0.5);
+
+             setRecommendedContent(uniqueRecommendedContent.slice(0, 8)); // Limit displayed AI recommendations
+             setLoadingRecommendations(false); // AI Recommendations part is done
+             console.log("Final unique recommended content set:", uniqueRecommendedContent.slice(0, 8));
+         }
+
+
+        // --- 3. Fetch Trending Data (After AI details processing) ---
+        console.log("Fetching trending data...");
+        await delay(1500); // Increased delay before fetching trending
+        if (!isMounted) return;
+
         try {
-           // Fetch trending using Jikan services (default sort is popularity)
+           // Fetch trending using Jikan services (popularity sort)
            // Fetch them sequentially to further reduce burst load
-           const [trendingAnimeResponse, trendingMangaResponse] = await Promise.all([
-                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity'),
-                getMangas(undefined, undefined, undefined, undefined, undefined, 1, 'popularity')
-           ]);
+           const trendingAnimeResponse = await getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
+           if (isMounted && trendingAnimeResponse?.animes) { // Check if data exists
+                setTrendingAnime(trendingAnimeResponse.animes.slice(0, 6));
+                console.log("Trending anime fetched:", trendingAnimeResponse.animes.slice(0, 6));
+           } else if (isMounted) {
+               setTrendingAnime([]); // Set empty if no data
+               console.warn("No trending anime data received from Jikan.");
+           }
+           if (!isMounted) return;
+           await delay(1000); // Delay between trending fetches
 
-           // Ensure data exists before slicing
-           setTrendingAnime(trendingAnimeResponse?.animes?.slice(0, 6) || []);
-           setTrendingManga(trendingMangaResponse?.mangas?.slice(0, 6) || []);
+           const trendingMangaResponse = await getMangas(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
+           if (isMounted && trendingMangaResponse?.mangas) { // Check if data exists
+               setTrendingManga(trendingMangaResponse.mangas.slice(0, 6));
+               console.log("Trending manga fetched:", trendingMangaResponse.mangas.slice(0, 6));
+           } else if (isMounted) {
+                setTrendingManga([]); // Set empty if no data
+                console.warn("No trending manga data received from Jikan.");
+           }
 
         } catch (trendingError: any) {
              console.error("Failed to fetch trending data from Jikan:", trendingError);
-             setErrorTrending(trendingError.message || "Could not load trending content.");
-             setTrendingAnime([]);
-             setTrendingManga([]);
+             if (isMounted) {
+                 setErrorTrending(trendingError.message || "Could not load trending content.");
+                 setTrendingAnime([]);
+                 setTrendingManga([]);
+             }
         } finally {
-            setLoadingTrending(false);
+            if (isMounted) setLoadingTrending(false);
         }
 
       } catch (generalError: any) {
           // Catch any unexpected errors during the process
           console.error("An unexpected error occurred during initial data fetch:", generalError);
-          setErrorRecommendations(errorRecommendations || "An unexpected error occurred fetching recommendations.");
-          setErrorTrending(errorTrending || "An unexpected error occurred fetching trending content.");
-          setLoadingRecommendations(false);
-          setLoadingTrending(false);
+           if (isMounted) {
+               setErrorRecommendations(prev => prev || "An unexpected error occurred fetching recommendations.");
+               setErrorTrending(prev => prev || "An unexpected error occurred fetching trending content.");
+               setLoadingRecommendations(false);
+               setLoadingTrending(false);
+           }
       }
     };
 
     fetchInitialData();
+
+    return () => {
+        isMounted = false; // Cleanup function to set mount status to false
+        console.log("Homepage component unmounted or dependency changed.");
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array to run only once on mount
 
   // Adapt ItemCard for Jikan data (Anime or Manga interface)
+  // Use RecommendationItem which ensures id and title exist
   const ItemCard = ({ item }: { item: RecommendationItem }) => (
      <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.03] group flex flex-col h-full">
       <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
@@ -222,7 +274,7 @@ export default function Home() {
 
          <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto">
             {/* Display type badge and score */}
-            <Badge variant="outline" className="capitalize">{item.type}</Badge>
+             <Badge variant="outline" className="capitalize">{item.type}</Badge>
              <span className="flex items-center gap-1">
                  <Star size={12} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}
              </span>
@@ -295,7 +347,8 @@ export default function Home() {
              : recommendedContent.length > 0
                ? recommendedContent.map((item) => (
                  // Ensure unique key using type and id (mal_id)
-                 <ItemCard key={`${item.type}-${item.id}`} item={item} />
+                 // Check if item and item.id are valid before rendering
+                 item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} /> : null
                ))
                : !errorRecommendations && <p className="col-span-full text-center text-muted-foreground py-5">Nami couldn't find any specific recommendations right now, or failed to fetch details.</p>
             }
@@ -324,7 +377,7 @@ export default function Home() {
                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-anime-skel-${index}`} />)
                  : trendingAnime.length > 0
                     // Map Anime to RecommendationItem structure for the card
-                    ? trendingAnime.map((item) => <ItemCard key={`trending-anime-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis, type: 'anime' }} />)
+                    ? trendingAnime.map((item) => item && item.mal_id ? <ItemCard key={`trending-anime-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis, type: 'anime' }} /> : null)
                     : !errorTrending && <p className="col-span-full text-center text-muted-foreground py-5">No trending anime found.</p>
                }
            </div>
@@ -352,7 +405,7 @@ export default function Home() {
                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-manga-skel-${index}`} />)
                  : trendingManga.length > 0
                     // Map Manga to RecommendationItem structure for the card
-                    ? trendingManga.map((item) => <ItemCard key={`trending-manga-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis, type: 'manga' }} />)
+                    ? trendingManga.map((item) => item && item.mal_id ? <ItemCard key={`trending-manga-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis, type: 'manga' }} /> : null)
                     : !errorTrending && <p className="col-span-full text-center text-muted-foreground py-5">No trending manga found.</p>
                 }
            </div>
