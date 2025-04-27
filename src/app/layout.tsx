@@ -1,4 +1,3 @@
-
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google'; // Changed from Geist to Poppins
 import './globals.css';
@@ -23,17 +22,17 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark h-full"> {/* Ensure html takes full height */}
       <body
         className={cn(
-          'min-h-screen bg-background font-sans antialiased transition-smooth', // Added transition-smooth
+          'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
           poppins.variable // Use Poppins variable
         )}
       >
+        {/* AppLayout now handles the core layout structure */}
         <AppLayout>
-          <div className="animate-fade-in"> {/* Wrap children in fade-in animation div */}
-            {children}
-          </div>
+          {/* Removed fade-in animation wrapper here, apply within AppLayout if needed */}
+          {children}
         </AppLayout>
         <Toaster /> {/* Add Toaster component */}
       </body>

@@ -1,15 +1,21 @@
+
 'use client';
 
 import { useState, type ReactNode, useCallback } from 'react';
+import { usePathname } from 'next/navigation'; // Import usePathname
 import TopBar from './TopBar';
 import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup'; // Import the SearchPopup component
+import { cn } from '@/lib/utils'; // Import cn
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const pathname = usePathname(); // Get the current path
+  const isCommunityPage = pathname === '/community'; // Check if it's the community page
+
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiSearchActive, setIsAiSearchActive] = useState(false); // State for AI search mode
   const [initialSearchTerm, setInitialSearchTerm] = useState(''); // State for initial search term
@@ -61,8 +67,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Pass handlers and state to TopBar */}
+    // Main flex container for the entire app layout
+    <div className="flex flex-col min-h-screen h-screen overflow-hidden"> {/* Ensure full height and prevent body scroll */}
+      {/* TopBar remains fixed */}
       <TopBar
         onSearchIconClick={() => handleSearchToggle()} // Simple toggle for icon click
         onSearchSubmit={handleSearchToggle} // Pass term on submit (opens popup, standard mode)
@@ -71,14 +78,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
         onOpenAiSearch={handleOpenAiSearch}
         onOpenAdvancedSearch={handleOpenAdvancedSearch} // Pass advanced search handler
       />
-      <main className="flex-1 pb-20 overflow-y-auto"> {/* Adjusted padding for bottom nav */}
-        <div className="animate-in fade-in duration-500">
+
+      {/* Main content area */}
+      {/* Apply flex-grow and conditionally adjust padding */}
+      <main className={cn(
+        "flex-1 overflow-y-auto", // Allow content to scroll internally
+        !isCommunityPage && "pb-20" // Only add bottom padding if NOT the community page
+      )}>
+        <div className="animate-fade-in duration-500">
           {children}
         </div>
       </main>
-      {/* BottomNav no longer needs search control */}
-      <BottomNavigationBar onSearchClick={() => handleSearchToggle()} onAiClick={handleAiToggle} isAiActive={isAiSearchActive} />
-      {/* Pass state to SearchPopup */}
+
+      {/* BottomNav shown conditionally */}
+       {!isCommunityPage && (
+          <BottomNavigationBar onSearchClick={handleSearchToggle} onAiClick={handleAiToggle} isAiActive={isAiSearchActive} />
+       )}
+
+      {/* SearchPopup remains outside the main scroll */}
       <SearchPopup
         isOpen={isSearchOpen}
         onClose={handleCloseSearch}
