@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Upload as UploadIcon, FileImage, Book, Tag, PlusCircle, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import Image from 'next/image'; // Import Image
 
 interface ChapterFile {
   name: string;
@@ -191,9 +192,15 @@ export default function UploadPage() {
                 className="glass file:text-primary file:font-semibold hover:file:bg-primary/10"
               />
               {coverPreview && (
-                 <div className="mt-2 rounded-md overflow-hidden border border-border aspect-[2/3] w-32 relative glass">
-                    <Image src={coverPreview} alt="Cover preview" layout="fill" objectFit="cover" />
-                     <Button type="button" size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 z-10" onClick={() => {setCoverImage(null); setCoverPreview(null);}}>
+                 <div className="mt-2 rounded-md overflow-hidden border border-border w-32 h-48 relative glass"> {/* Adjusted for aspect ratio */}
+                    <Image
+                        src={coverPreview}
+                        alt="Cover preview"
+                        width={128} // 32 * 4
+                        height={192} // 48 * 4 (maintain aspect ratio roughly)
+                        className="object-cover w-full h-full" // Use object-cover
+                    />
+                     <Button type="button" size="icon" variant="destructive" className="absolute top-1 right-1 h-6 w-6 z-10" onClick={() => {setCoverImage(null); setCoverPreview(null); (document.getElementById('cover-image') as HTMLInputElement).value = ''; }}>
                          <X size={14} />
                     </Button>
                  </div>

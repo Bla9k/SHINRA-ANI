@@ -23,11 +23,11 @@ const WatchlistItemCard = ({ item }: { item: WatchlistItem }) => (
   <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 flex">
     <CardHeader className="p-0 relative h-32 w-24 flex-shrink-0">
       <Image
-        src={item.imageUrl || 'https://picsum.photos/200/300?grayscale'}
+        src={item.imageUrl || 'https://picsum.photos/96/128?grayscale'} // Updated placeholder size
         alt={item.title}
-        layout="fill"
-        objectFit="cover"
-        className="rounded-l-lg"
+        width={96} // Specify width
+        height={128} // Specify height
+        className="rounded-l-lg object-cover" // Use object-cover
       />
     </CardHeader>
     <CardContent className="p-3 flex-grow flex flex-col justify-between">

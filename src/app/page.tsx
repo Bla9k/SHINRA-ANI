@@ -79,14 +79,14 @@ export default function Home() {
   }, []);
 
   const RecommendationCard = ({ item }: { item: RecommendationItem }) => (
-     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105">
+     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group">
       <CardHeader className="p-0 relative h-48 md:h-64">
         <Image
           src={item.imageUrl || 'https://picsum.photos/400/600?grayscale'} // Use placeholder if no image
           alt={item.title}
-          layout="fill"
-          objectFit="cover"
-          className="transition-transform duration-300 group-hover:scale-110"
+          fill // Replace layout="fill"
+          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" // Add sizes prop
+          className="object-cover transition-transform duration-300 group-hover:scale-110" // Replace objectFit with object-cover
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
          <div className="absolute bottom-2 left-2 right-2">

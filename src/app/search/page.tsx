@@ -38,7 +38,7 @@ export default function SearchPage() {
   const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce input
 
   const handleSearch = async (currentSearchTerm: string, currentTab: 'anime' | 'manga') => {
-    if (!currentSearchTerm && !genre && !releaseYear && !rating && !status) {
+    if (!currentSearchTerm && !genre && !releaseYear[0] && !rating[0] && !status) {
         setResults([]);
         setAiSuggestions([]);
         return;
@@ -93,13 +93,13 @@ export default function SearchPage() {
 
  const ResultCard = ({ item }: { item: SearchResultItem }) => (
     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 flex flex-col sm:flex-row">
-      <CardHeader className="p-0 relative h-40 w-full sm:w-32 flex-shrink-0">
+      <CardHeader className="p-0 relative h-40 w-full sm:h-auto sm:w-32 flex-shrink-0">
         <Image
           src={item.imageUrl || 'https://picsum.photos/200/300?grayscale'}
           alt={item.title}
-          layout="fill"
-          objectFit="cover"
-          className="rounded-l-lg sm:rounded-t-lg sm:rounded-l-none"
+          fill // Replace layout="fill"
+          sizes="(max-width: 640px) 100vw, 128px" // Adjust sizes for sm breakpoint
+          className="object-cover rounded-l-lg sm:rounded-t-lg sm:rounded-l-none" // Use object-cover
         />
       </CardHeader>
       <CardContent className="p-4 flex-grow">
@@ -124,7 +124,7 @@ export default function SearchPage() {
 
    const SkeletonCard = () => (
      <Card className="overflow-hidden glass flex flex-col sm:flex-row">
-        <CardHeader className="p-0 h-40 w-full sm:w-32 flex-shrink-0">
+        <CardHeader className="p-0 h-40 w-full sm:h-auto sm:w-32 flex-shrink-0">
            <Skeleton className="h-full w-full rounded-l-lg sm:rounded-t-lg sm:rounded-l-none" />
         </CardHeader>
         <CardContent className="p-4 flex-grow space-y-2">
@@ -143,7 +143,7 @@ export default function SearchPage() {
 
 
   // Placeholder options - replace with dynamic data if available
-  const genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Slice of Life", "Romance"];
+  const genres = ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Slice of Life", "Romance", "Dark Fantasy", "Supernatural", "Mystery", "Psychological", "Thriller", "Historical"];
   const mangaStatuses = ["Ongoing", "Completed", "Hiatus"];
 
   return (
@@ -180,9 +180,9 @@ export default function SearchPage() {
                         <SelectTrigger id="genre" className="w-full glass">
                              <SelectValue placeholder="Select Genre" />
                          </SelectTrigger>
-                         <SelectContent className="glass">
+                         <SelectContent className="glass max-h-60">
                             <SelectItem value="">Any Genre</SelectItem>
-                             {genres.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                             {genres.sort().map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                          </SelectContent>
                     </Select>
                  </div>
@@ -272,7 +272,7 @@ export default function SearchPage() {
             </div>
           ) : (
             <p className="text-center text-muted-foreground mt-8">
-               {searchTerm || genre || status ? 'No results found. Try adjusting your search or filters.' : 'Start typing or select filters to search.'}
+               {searchTerm || genre || (activeTab === 'anime' && (releaseYear[0] !== 2000 || rating[0] !== 5)) || (activeTab === 'manga' && status) ? 'No results found. Try adjusting your search or filters.' : 'Start typing or select filters to search.'}
             </p>
           )}
         </TabsContent>
