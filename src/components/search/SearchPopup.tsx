@@ -325,67 +325,76 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
  // Result Card component - Memoized
  const ResultCard = React.memo(({ item }: { item: SearchResult }) => {
+      if (!item || item.id == null) return null; // Check for valid item and ID
       // Use MAL URL for characters, internal links for anime/manga
       const linkHref = item.type !== 'character' ? `/${item.type}/${item.id}` : `https://myanimelist.net/character/${item.id}`;
       const target = item.type === 'character' ? '_blank' : '_self';
 
      return (
-        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:bg-card/60 flex flex-col sm:flex-row group mb-3 mx-1">
-         <CardHeader className="p-0 relative h-36 w-full sm:h-auto sm:w-24 flex-shrink-0 overflow-hidden">
-            {item.imageUrl ? (
-             <Image
-                src={item.imageUrl}
-                alt={item.title}
-                fill
-                sizes="(max-width: 640px) 100vw, 96px"
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/96/144?grayscale`; }}
-              />
-              ) : (
-              <div className="h-full w-full bg-muted flex items-center justify-center">
-                 {item.type === 'anime' ? <Tv className="w-10 h-10 text-muted-foreground opacity-50" /> :
-                  item.type === 'manga' ? <BookText className="w-10 h-10 text-muted-foreground opacity-50" /> :
-                  <User className="w-10 h-10 text-muted-foreground opacity-50" />}
-              </div>
-           )}
-           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent sm:bg-gradient-to-r sm:from-black/40 sm:via-transparent sm:to-transparent pointer-events-none" />
-           <Badge variant="secondary" className="absolute top-1 left-1 text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1 py-0.5">
-               {item.type}
-           </Badge>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between">
-           <div>
-              <CardTitlePrimitive className="text-sm font-semibold mb-0.5 line-clamp-1 group-hover:text-primary transition-colors">
-                 <Link href={linkHref} target={target} rel={target === '_blank' ? "noopener noreferrer" : undefined} onClick={onClose}>
-                    {item.title}
-                 </Link>
-              </CardTitlePrimitive>
-              {item.type !== 'character' && item.genres && item.genres.length > 0 && (
-                  <div className="flex gap-1 mb-1 flex-wrap">
-                      {item.genres.slice(0, 2).map((g) => <Badge key={g.mal_id} variant="secondary" className="text-[10px] px-1 py-0">{g.name}</Badge>)}
-                  </div>
-              )}
-               {item.type === 'character' && item.nicknames && item.nicknames.length > 0 && (
-                   <p className="text-[11px] text-muted-foreground mb-1 line-clamp-1">
-                       AKA: {item.nicknames.join(', ')}
-                   </p>
-               )}
-              <CardDescription className="text-xs text-muted-foreground line-clamp-2 mb-2">
-                 {item.description || 'No description available.'}
-              </CardDescription>
-           </div>
-           <div className="flex flex-wrap justify-start items-center text-[10px] text-muted-foreground border-t border-border/50 pt-1 mt-auto gap-x-2 gap-y-0.5">
-              {item.type === 'anime' && item.score && <span className="flex items-center gap-0.5" title="Score"><Star size={10} className="text-yellow-400"/> {item.score.toFixed(1)}</span>}
-              {item.type === 'anime' && item.episodes && <span className="flex items-center gap-0.5" title="Episodes"><Film size={10} /> {item.episodes} Ep</span>}
-              {item.type === 'manga' && item.score && <span className="flex items-center gap-0.5" title="Score"><Star size={10} className="text-yellow-400"/> {item.score.toFixed(1)}</span>}
-              {item.type === 'manga' && item.chapters && <span className="flex items-center gap-0.5" title="Chapters"><Layers size={10} /> {item.chapters} Ch</span>}
-               {item.type === 'manga' && item.volumes && <span className="flex items-center gap-0.5" title="Volumes"><Library size={10} /> {item.volumes} Vol</span>}
-              {item.type === 'character' && item.favorites !== undefined && <span className="flex items-center gap-0.5" title="Favorites"><Heart size={10} className="text-pink-500"/> {item.favorites.toLocaleString()}</span>}
-               {/* Add Year */}
-               {item.year && <span className="flex items-center gap-0.5" title="Year"><CalendarDays size={10} /> {item.year}</span>}
-           </div>
-        </CardContent>
-       </Card>
+        // Wrap the entire card in a Link
+        <Link href={linkHref} passHref legacyBehavior>
+            <a
+               target={target}
+               rel={target === '_blank' ? "noopener noreferrer" : undefined}
+               onClick={onClose}
+               className="block group mb-3 mx-1" // Make the anchor block level and add group
+            >
+                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:bg-card/60 flex flex-col sm:flex-row"> {/* Apply group hover to card */}
+                    <CardHeader className="p-0 relative h-36 w-full sm:h-auto sm:w-24 flex-shrink-0 overflow-hidden">
+                        {item.imageUrl ? (
+                        <Image
+                            src={item.imageUrl}
+                            alt={item.title}
+                            fill
+                            sizes="(max-width: 640px) 100vw, 96px"
+                            className="object-cover transition-transform duration-300 group-hover:scale-105" // Scale image on group hover
+                            onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/96/144?grayscale`; }}
+                        />
+                        ) : (
+                        <div className="h-full w-full bg-muted flex items-center justify-center">
+                            {item.type === 'anime' ? <Tv className="w-10 h-10 text-muted-foreground opacity-50" /> :
+                            item.type === 'manga' ? <BookText className="w-10 h-10 text-muted-foreground opacity-50" /> :
+                            <User className="w-10 h-10 text-muted-foreground opacity-50" />}
+                        </div>
+                        )}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent sm:bg-gradient-to-r sm:from-black/40 sm:via-transparent sm:to-transparent pointer-events-none" />
+                        <Badge variant="secondary" className="absolute top-1 left-1 text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1 py-0.5">
+                            {item.type}
+                        </Badge>
+                    </CardHeader>
+                    <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between">
+                        <div>
+                            <CardTitlePrimitive className="text-sm font-semibold mb-0.5 line-clamp-1 group-hover:text-primary transition-colors">
+                                {item.title} {/* Title is part of the link */}
+                            </CardTitlePrimitive>
+                            {item.type !== 'character' && item.genres && item.genres.length > 0 && (
+                                <div className="flex gap-1 mb-1 flex-wrap">
+                                    {item.genres.slice(0, 2).map((g) => <Badge key={g.mal_id} variant="secondary" className="text-[10px] px-1 py-0">{g.name}</Badge>)}
+                                </div>
+                            )}
+                            {item.type === 'character' && item.nicknames && item.nicknames.length > 0 && (
+                                <p className="text-[11px] text-muted-foreground mb-1 line-clamp-1">
+                                    AKA: {item.nicknames.join(', ')}
+                                </p>
+                            )}
+                            <CardDescription className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                                {item.description || 'No description available.'}
+                            </CardDescription>
+                        </div>
+                        <div className="flex flex-wrap justify-start items-center text-[10px] text-muted-foreground border-t border-border/50 pt-1 mt-auto gap-x-2 gap-y-0.5">
+                            {item.type === 'anime' && item.score && <span className="flex items-center gap-0.5" title="Score"><Star size={10} className="text-yellow-400"/> {item.score.toFixed(1)}</span>}
+                            {item.type === 'anime' && item.episodes && <span className="flex items-center gap-0.5" title="Episodes"><Film size={10} /> {item.episodes} Ep</span>}
+                            {item.type === 'manga' && item.score && <span className="flex items-center gap-0.5" title="Score"><Star size={10} className="text-yellow-400"/> {item.score.toFixed(1)}</span>}
+                            {item.type === 'manga' && item.chapters && <span className="flex items-center gap-0.5" title="Chapters"><Layers size={10} /> {item.chapters} Ch</span>}
+                            {item.type === 'manga' && item.volumes && <span className="flex items-center gap-0.5" title="Volumes"><Library size={10} /> {item.volumes} Vol</span>}
+                            {item.type === 'character' && item.favorites !== undefined && <span className="flex items-center gap-0.5" title="Favorites"><Heart size={10} className="text-pink-500"/> {item.favorites.toLocaleString()}</span>}
+                            {/* Add Year */}
+                            {item.year && <span className="flex items-center gap-0.5" title="Year"><CalendarDays size={10} /> {item.year}</span>}
+                        </div>
+                    </CardContent>
+                </Card>
+            </a>
+        </Link>
      );
  });
  ResultCard.displayName = 'ResultCard'; // Add display name for React DevTools
@@ -428,7 +437,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
            }}
         >
            {/* Visually hidden title for accessibility */}
-           <VisuallyHidden><DialogTitle>Search Shinra-Ani</DialogTitle></VisuallyHidden>
+            <DialogTitle className="sr-only">Search Shinra-Ani</DialogTitle>
             <DialogHeader className="p-4 pb-3 border-b border-border/50 flex-shrink-0">
                 {/* Input and Buttons Container */}
                 <div className="flex items-center gap-2 w-full">
@@ -644,7 +653,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                      )}
                      {/* Result Cards */}
                     {results.map((item, index) => (
-                        item && item.id ? <ResultCard key={`${item.type}-${item.id}-${index}`} item={item} /> : null // Use unique type-id-index key
+                        item && item.id != null ? <ResultCard key={`${item.type}-${item.id}-${index}`} item={item} /> : null // Use unique type-id-index key, check for null ID
                     ))}
                 </div>
             )}

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -19,11 +18,11 @@ import { useDebounce } from '@/hooks/use-debounce'; // For potential search inpu
 
 // Placeholder options - Fetch dynamically from Jikan /genres/anime if needed for better accuracy
 const genres = [
-    { id: 1, name: "Action" }, { id: 2, name: "Adventure" }, { id: 4, name: "Comedy" },
-    { id: 8, name: "Drama" }, { id: 10, name: "Fantasy" }, { id: 14, name: "Horror" },
-    { id: 7, name: "Mystery" }, { id: 22, name: "Romance" }, { id: 24, name: "Sci-Fi" },
-    { id: 36, name: "Slice of Life" }, { id: 30, name: "Sports" }, { id: 37, name: "Supernatural" },
-    { id: 41, name: "Thriller" }, // Add more genres as needed
+    { id: "1", name: "Action" }, { id: "2", name: "Adventure" }, { id: "4", name: "Comedy" },
+    { id: "8", name: "Drama" }, { id: "10", name: "Fantasy" }, { id: "14", name: "Horror" },
+    { id: "7", name: "Mystery" }, { id: "22", name: "Romance" }, { id: "24", name: "Sci-Fi" },
+    { id: "36", name: "Slice of Life" }, { id: "30", name: "Sports" }, { id: "37", name: "Supernatural" },
+    { id: "41", name: "Thriller" }, // Add more genres as needed
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const statuses = [
@@ -158,67 +157,71 @@ export default function AnimePage() {
 
 
   // Adapt AnimeCard for Jikan data structure
-  const AnimeCard = ({ item }: { item: Anime }) => (
-     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.03] group flex flex-col h-full">
-      <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
-        {item.imageUrl ? ( // Use the derived imageUrl field
-          <Image
-            src={item.imageUrl}
-            alt={item.title}
-            fill
-            sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
-            priority={false}
-            unoptimized={false} // Set true only if host is explicitly not optimized
-             onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/600?grayscale'; }} // Fallback
-          />
-        ) : (
-           <div className="absolute inset-0 bg-muted flex items-center justify-center">
-              <Tv className="w-16 h-16 text-muted-foreground opacity-50" />
-           </div>
-         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-         <div className="absolute bottom-2 left-3 right-3">
-           <CardTitle className="text-md font-semibold text-primary-foreground line-clamp-2 shadow-text">
-             {item.title}
-           </CardTitle>
-         </div>
-      </CardHeader>
-      <CardContent className="p-3 flex flex-col flex-grow">
-         <div className="flex gap-1.5 mb-2 flex-wrap">
-           {/* Map Jikan genres */}
-           {item.genres?.slice(0, 3).map(g => <Badge key={g.mal_id} variant="secondary" className="text-xs">{g.name}</Badge>)}
-         </div>
-        <CardDescription className="text-xs text-muted-foreground line-clamp-3 mb-3 flex-grow">
-           {/* Use Jikan synopsis */}
-           {item.synopsis || 'No description available.'}
-         </CardDescription>
-         {/* Adapt Additional Info Row for Jikan data */}
-         <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto">
-           <span className="flex items-center gap-1">
-             <CalendarDays size={14} /> {item.year || 'N/A'}
-           </span>
-           <span className="flex items-center gap-1">
-              {/* Use Jikan score */}
-              <Star size={14} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}
-            </span>
-           <span className="flex items-center gap-1">
-             {/* Use Jikan episodes */}
-             <Film size={14} /> {item.episodes || 'N/A'} Ep
-           </span>
-         </div>
-        {/* View Details Button */}
-        <div className="flex justify-end mt-2">
-           <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
-              {/* Link using MAL ID */}
-              <Link href={`/anime/${item.mal_id}`}>
-                 View Details
-              </Link>
-           </Button>
-        </div>
-      </CardContent>
-     </Card>
-  );
+  const AnimeCard = ({ item }: { item: Anime }) => {
+       if (!item || !item.mal_id) return null; // Check for valid item and ID
+       const linkHref = `/anime/${item.mal_id}`;
+      return (
+          // Wrap the Card in a Link
+          <Link href={linkHref} passHref legacyBehavior>
+              <a className="block h-full group"> {/* Make the anchor block level and add group */}
+                  <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-[1.03] flex flex-col h-full"> {/* Apply group-hover to card */}
+                      <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
+                          {item.imageUrl ? ( // Use the derived imageUrl field
+                              <Image
+                                  src={item.imageUrl}
+                                  alt={item.title}
+                                  fill
+                                  sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
+                                  className="object-cover transition-transform duration-300 group-hover:scale-105" // Scale image on group hover
+                                  priority={false}
+                                  unoptimized={false} // Set true only if host is explicitly not optimized
+                                  onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/600?grayscale'; }} // Fallback
+                              />
+                          ) : (
+                              <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                                  <Tv className="w-16 h-16 text-muted-foreground opacity-50" />
+                              </div>
+                          )}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+                          <div className="absolute bottom-2 left-3 right-3">
+                              <CardTitle className="text-md font-semibold text-primary-foreground line-clamp-2 shadow-text">
+                                  {item.title}
+                              </CardTitle>
+                          </div>
+                      </CardHeader>
+                      <CardContent className="p-3 flex flex-col flex-grow">
+                          <div className="flex gap-1.5 mb-2 flex-wrap">
+                              {/* Map Jikan genres */}
+                              {item.genres?.slice(0, 3).map(g => <Badge key={g.mal_id} variant="secondary" className="text-xs">{g.name}</Badge>)}
+                          </div>
+                          <CardDescription className="text-xs text-muted-foreground line-clamp-3 mb-3 flex-grow">
+                              {/* Use Jikan synopsis */}
+                              {item.synopsis || 'No description available.'}
+                          </CardDescription>
+                          {/* Adapt Additional Info Row for Jikan data */}
+                          <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto">
+                              <span className="flex items-center gap-1">
+                                  <CalendarDays size={14} /> {item.year || 'N/A'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                  {/* Use Jikan score */}
+                                  <Star size={14} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                  {/* Use Jikan episodes */}
+                                  <Film size={14} /> {item.episodes || 'N/A'} Ep
+                              </span>
+                          </div>
+                           {/* Optional: Style details indicator instead of button */}
+                          <div className="flex justify-end mt-2">
+                             <span className="text-xs text-primary font-medium group-hover:underline">View Details</span>
+                          </div>
+                      </CardContent>
+                  </Card>
+              </a>
+          </Link>
+      );
+  };
 
  // Skeleton Card remains mostly the same structurally
  const SkeletonCard = () => (
@@ -274,7 +277,7 @@ export default function AnimePage() {
                             </SelectTrigger>
                             <SelectContent className="glass max-h-60">
                                 <SelectItem value={ANY_GENRE_VALUE}>Any Genre</SelectItem>
-                                {genres.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                                {genres.map(g => <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>)}
                             </SelectContent>
                        </Select>
                     </div>

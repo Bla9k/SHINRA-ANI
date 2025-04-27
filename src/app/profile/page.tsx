@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState } from 'react';
@@ -74,72 +73,78 @@ const dummyActivity = [
 
 
 // Reusable Card Component for Lists - Adapted for Jikan/UserListItem
-const ListItemCard = ({ item }: { item: UserListItem }) => (
-  <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 flex group">
-    <div className="p-0 relative h-28 w-20 flex-shrink-0 overflow-hidden rounded-l-md">
-      {item.imageUrl ? (
-         <Image
-           src={item.imageUrl}
-           alt={item.title}
-           fill
-           sizes="80px"
-           className="object-cover transition-transform duration-300 group-hover:scale-105"
-         />
-       ) : (
-          <div className="h-full w-full bg-muted flex items-center justify-center">
-            {item.type === 'anime' ? <ListVideo className="w-8 h-8 text-muted-foreground" /> : <BookOpen className="w-8 h-8 text-muted-foreground" />}
-          </div>
-       )}
-    </div>
-    <CardContent className="p-3 flex-grow flex flex-col justify-between">
-      <div>
-        <CardTitle className="text-sm font-semibold mb-1 line-clamp-1 group-hover:text-primary transition-colors">
-           {item.title}
-        </CardTitle>
-         {/* Show User Score if available */}
-         {item.userScore !== undefined && item.userScore !== null && (
-             <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                My Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.userScore}/10
-             </p>
-         )}
-        {item.userProgress && item.userStatus !== 'Favorited' && (
-             <p className="text-xs text-muted-foreground mb-1">Progress: {item.userProgress}</p>
-        )}
-        {/* Show MAL score if no user score */}
-         {(item.userScore === undefined || item.userScore === null) && item.score && (
-            <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                MAL Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.score.toFixed(1)}
-            </p>
-         )}
-         {/* Show synopsis only if it's a favorite and no progress */}
-         {item.userStatus === 'Favorited' && item.description && (
-              <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{item.description}</p>
-         )}
-         <Badge variant="outline" className="capitalize text-xs px-1.5 py-0.5 mb-2">{item.type}</Badge>
-      </div>
-      <div className="flex justify-between items-center mt-1">
-         {/* User Status Badge */}
-         <Badge
-            variant={ // Adjust variants based on status strings
-                item.userStatus === 'Watching' || item.userStatus === 'Reading' ? 'default' :
-                item.userStatus === 'Completed' ? 'secondary' :
-                item.userStatus === 'Dropped' ? 'destructive' :
-                'outline'
-            }
-            className="text-xs px-1.5 py-0.5"
-            >
-             {item.userStatus}
-          </Badge>
-          {/* Link to details page using MAL ID */}
-           <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto self-end">
-               <Link href={`/${item.type}/${item.mal_id}`}>
-                  Details
-               </Link>
-           </Button>
-      </div>
-    </CardContent>
-  </Card>
-);
+const ListItemCard = ({ item }: { item: UserListItem }) => {
+    if (!item || !item.mal_id) return null;
+    const linkHref = `/${item.type}/${item.mal_id}`;
+
+    return (
+        // Wrap the entire Card in a Link
+        <Link href={linkHref} passHref legacyBehavior>
+            <a className="block group"> {/* Make anchor block level and add group */}
+                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-105 flex"> {/* Apply group-hover to card */}
+                    <div className="p-0 relative h-28 w-20 flex-shrink-0 overflow-hidden rounded-l-md">
+                        {item.imageUrl ? (
+                            <Image
+                                src={item.imageUrl}
+                                alt={item.title}
+                                fill
+                                sizes="80px"
+                                className="object-cover transition-transform duration-300 group-hover:scale-105" // Scale image on group hover
+                            />
+                        ) : (
+                            <div className="h-full w-full bg-muted flex items-center justify-center">
+                                {item.type === 'anime' ? <ListVideo className="w-8 h-8 text-muted-foreground" /> : <BookOpen className="w-8 h-8 text-muted-foreground" />}
+                            </div>
+                        )}
+                    </div>
+                    <CardContent className="p-3 flex-grow flex flex-col justify-between">
+                        <div>
+                            <CardTitle className="text-sm font-semibold mb-1 line-clamp-1 group-hover:text-primary transition-colors">
+                                {item.title} {/* Title is already inside the link */}
+                            </CardTitle>
+                            {/* Show User Score if available */}
+                            {item.userScore !== undefined && item.userScore !== null && (
+                                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                    My Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.userScore}/10
+                                </p>
+                            )}
+                            {item.userProgress && item.userStatus !== 'Favorited' && (
+                                <p className="text-xs text-muted-foreground mb-1">Progress: {item.userProgress}</p>
+                            )}
+                            {/* Show MAL score if no user score */}
+                            {(item.userScore === undefined || item.userScore === null) && item.score && (
+                                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                    MAL Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.score.toFixed(1)}
+                                </p>
+                            )}
+                            {/* Show synopsis only if it's a favorite and no progress */}
+                            {item.userStatus === 'Favorited' && item.description && (
+                                <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{item.description}</p>
+                            )}
+                            <Badge variant="outline" className="capitalize text-xs px-1.5 py-0.5 mb-2">{item.type}</Badge>
+                        </div>
+                        <div className="flex justify-between items-center mt-1">
+                            {/* User Status Badge */}
+                            <Badge
+                                variant={ // Adjust variants based on status strings
+                                    item.userStatus === 'Watching' || item.userStatus === 'Reading' ? 'default' :
+                                    item.userStatus === 'Completed' ? 'secondary' :
+                                    item.userStatus === 'Dropped' ? 'destructive' :
+                                    'outline'
+                                }
+                                className="text-xs px-1.5 py-0.5"
+                            >
+                                {item.userStatus}
+                            </Badge>
+                             {/* Optional: Style details indicator instead of button */}
+                             <span className="text-xs text-primary font-medium group-hover:underline">View Details</span>
+                        </div>
+                    </CardContent>
+                </Card>
+            </a>
+        </Link>
+    );
+};
 
 
 // Activity Item Component - Slightly enhanced

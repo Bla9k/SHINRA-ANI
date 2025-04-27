@@ -45,50 +45,57 @@ const ItemCard = ({ item }: { item: DisplayItem }) => {
     const linkHref = `/${item.type}/${item.id}`;
 
     return (
-        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group w-40 md:w-48 flex-shrink-0 h-full flex flex-col snap-start"> {/* Fixed width, snap */}
-            <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
-                {item.imageUrl ? (
-                    <Image
-                        src={item.imageUrl}
-                        alt={item.title}
-                        fill
-                        sizes="(max-width: 768px) 40vw, 192px" // Adjusted sizes
-                        className="object-cover transition-transform duration-300 group-hover:scale-110"
-                        priority={false} // Lower priority for non-banner images
-                        onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/200/300?grayscale`; }}
-                    />
-                ) : (
-                    <div className="absolute inset-0 bg-muted flex items-center justify-center">
-                        {item.type === 'anime' ? <Tv className="w-10 h-10 text-muted-foreground opacity-50" /> : <BookText className="w-10 h-10 text-muted-foreground opacity-50" />}
-                    </div>
-                )}
-                {/* Subtle Gradient for text visibility */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                 <div className="absolute bottom-1.5 left-2 right-2 z-10"> {/* Ensure text is above gradient */}
-                    <CardTitle className="text-xs font-semibold text-primary-foreground line-clamp-2 shadow-text">{item.title}</CardTitle>
-                 </div>
-                 <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1.5 py-0.5 z-10"> {/* Ensure badge is above */}
-                   {item.type}
-                 </Badge>
-            </CardHeader>
-             <CardContent className="p-2 flex flex-col flex-grow"> {/* Reduced padding */}
-                 <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-auto pt-1 border-t border-border/50">
-                     {item.score && (
-                        <span className="flex items-center gap-0.5" title="Score">
-                            <Star size={10} className="text-yellow-400" /> {item.score.toFixed(1)}
-                        </span>
-                     )}
-                     {item.year && (
-                        <span className="flex items-center gap-0.5" title="Year">
-                            <CalendarDays size={10} /> {item.year}
-                        </span>
-                     )}
-                     <Button variant="link" size="sm" asChild className="text-[10px] p-0 h-auto">
-                         <Link href={linkHref}>Details</Link>
-                     </Button>
-                 </div>
-             </CardContent>
-        </Card>
+         // Wrap the entire card content area in a Link
+        <Link href={linkHref} passHref legacyBehavior>
+            <a className="block w-40 md:w-48 flex-shrink-0 h-full snap-start group"> {/* Added group */}
+                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-105 h-full flex flex-col"> {/* Apply group-hover here */}
+                    <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
+                        {item.imageUrl ? (
+                            <Image
+                                src={item.imageUrl}
+                                alt={item.title}
+                                fill
+                                sizes="(max-width: 768px) 40vw, 192px" // Adjusted sizes
+                                className="object-cover transition-transform duration-300 group-hover:scale-110" // Scale image on group hover
+                                priority={false} // Lower priority for non-banner images
+                                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/200/300?grayscale`; }}
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                                {item.type === 'anime' ? <Tv className="w-10 h-10 text-muted-foreground opacity-50" /> : <BookText className="w-10 h-10 text-muted-foreground opacity-50" />}
+                            </div>
+                        )}
+                        {/* Subtle Gradient for text visibility */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                         <div className="absolute bottom-1.5 left-2 right-2 z-10"> {/* Ensure text is above gradient */}
+                            <CardTitle className="text-xs font-semibold text-primary-foreground line-clamp-2 shadow-text">{item.title}</CardTitle>
+                         </div>
+                         <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1.5 py-0.5 z-10"> {/* Ensure badge is above */}
+                           {item.type}
+                         </Badge>
+                    </CardHeader>
+                     <CardContent className="p-2 flex flex-col flex-grow"> {/* Reduced padding */}
+                         <div className="flex justify-between items-center text-[10px] text-muted-foreground mt-auto pt-1 border-t border-border/50">
+                             {item.score && (
+                                <span className="flex items-center gap-0.5" title="Score">
+                                    <Star size={10} className="text-yellow-400" /> {item.score.toFixed(1)}
+                                </span>
+                             )}
+                             {item.year && (
+                                <span className="flex items-center gap-0.5" title="Year">
+                                    <CalendarDays size={10} /> {item.year}
+                                </span>
+                             )}
+                             {/* Optionally remove the details button if the whole card is clickable */}
+                             {/* <Button variant="link" size="sm" asChild className="text-[10px] p-0 h-auto">
+                                 <Link href={linkHref}>Details</Link>
+                             </Button> */}
+                              <span className="text-primary text-[10px] font-medium group-hover:underline">Details</span> {/* Placeholder for button */}
+                         </div>
+                     </CardContent>
+                </Card>
+            </a>
+        </Link>
     );
 };
 
@@ -98,45 +105,48 @@ const BannerCard = ({ item }: { item: DisplayItem }) => {
     const linkHref = `/${item.type}/${item.id}`;
 
     return (
-        // Increased width and adjusted aspect ratio for a more banner-like feel
-        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[55vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Adjusted widths */}
-             <div className="absolute inset-0">
-                {item.imageUrl ? (
-                    <Image
-                        src={item.imageUrl}
-                        alt={item.title}
-                        fill
-                        // Updated sizes for the larger banner
-                        sizes="(max-width: 640px) 85vw, (max-width: 1024px) 75vw, 65vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-110"
-                        priority // Higher priority for banner images
-                        onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/800/350?grayscale`; }} // Larger placeholder
-                    />
-                ) : (
-                    <div className="absolute inset-0 bg-muted flex items-center justify-center">
-                        {item.type === 'anime' ? <Tv className="w-16 h-16 text-muted-foreground opacity-50" /> : <BookText className="w-16 h-16 text-muted-foreground opacity-50" />}
+        // Wrap the entire card in a Link
+        <Link href={linkHref} passHref legacyBehavior>
+            <a className="block w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[55vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center group"> {/* Added group */}
+                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-[1.02] h-full w-full"> {/* Apply group-hover here */}
+                    <div className="absolute inset-0">
+                        {item.imageUrl ? (
+                            <Image
+                                src={item.imageUrl}
+                                alt={item.title}
+                                fill
+                                // Updated sizes for the larger banner
+                                sizes="(max-width: 640px) 85vw, (max-width: 1024px) 75vw, 65vw"
+                                className="object-cover transition-transform duration-500 group-hover:scale-110" // Scale image on group hover
+                                priority // Higher priority for banner images
+                                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/800/350?grayscale`; }} // Larger placeholder
+                            />
+                        ) : (
+                            <div className="absolute inset-0 bg-muted flex items-center justify-center">
+                                {item.type === 'anime' ? <Tv className="w-16 h-16 text-muted-foreground opacity-50" /> : <BookText className="w-16 h-16 text-muted-foreground opacity-50" />}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
-            {/* More subtle gradient overlay for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent pointer-events-none"></div> {/* Left fade subtle */}
+                    {/* More subtle gradient overlay for text readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent pointer-events-none"></div> {/* Left fade subtle */}
 
 
-            {/* Content positioned at the bottom left */}
-            <CardContent className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10 flex justify-between items-end">
-                 <div className="space-y-1 max-w-[70%]"> {/* Limit text width */}
-                    <Badge variant="secondary" className="capitalize text-xs backdrop-blur-sm bg-background/60">{item.type}</Badge>
-                    <CardTitle className="text-xl md:text-2xl font-bold text-primary-foreground line-clamp-1 shadow-text">{item.title}</CardTitle>
-                    <CardDescription className="text-sm text-muted-foreground line-clamp-2 shadow-text">{item.description || 'Check it out!'}</CardDescription>
-                 </div>
-                 <Button variant="outline" size="sm" asChild className="glass neon-glow-hover shrink-0">
-                     <Link href={linkHref}>
-                         View Details <ArrowRight size={14} className="ml-1" />
-                     </Link>
-                 </Button>
-            </CardContent>
-        </Card>
+                    {/* Content positioned at the bottom left */}
+                    <CardContent className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10 flex justify-between items-end">
+                        <div className="space-y-1 max-w-[70%]"> {/* Limit text width */}
+                            <Badge variant="secondary" className="capitalize text-xs backdrop-blur-sm bg-background/60">{item.type}</Badge>
+                            <CardTitle className="text-xl md:text-2xl font-bold text-primary-foreground line-clamp-1 shadow-text">{item.title}</CardTitle>
+                            <CardDescription className="text-sm text-muted-foreground line-clamp-2 shadow-text">{item.description || 'Check it out!'}</CardDescription>
+                        </div>
+                        {/* Button can remain, or be styled differently */}
+                        <Button variant="outline" size="sm" className="glass neon-glow-hover shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                            View Details <ArrowRight size={14} className="ml-1" />
+                        </Button>
+                    </CardContent>
+                </Card>
+            </a>
+        </Link>
     );
 };
 
@@ -253,7 +263,6 @@ export default function Home() {
                             ? displayItems.map((item, index) => React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item })) // Use index in key for safety if IDs overlap between anime/manga in combined lists
                             : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
                   </div>
-                 {/* Removed the fade overlays for cleaner look */}
                 </div>
             </section>
         );
@@ -347,3 +356,4 @@ if (typeof window !== 'undefined') {
         document.head.appendChild(styleSheet);
     }
 }
+
