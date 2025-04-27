@@ -62,11 +62,12 @@ const ItemCard = ({ item }: { item: DisplayItem }) => {
                         {item.type === 'anime' ? <Tv className="w-10 h-10 text-muted-foreground opacity-50" /> : <BookText className="w-10 h-10 text-muted-foreground opacity-50" />}
                     </div>
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
-                <div className="absolute bottom-1.5 left-2 right-2">
+                {/* Subtle Gradient for text visibility */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+                 <div className="absolute bottom-1.5 left-2 right-2 z-10"> {/* Ensure text is above gradient */}
                     <CardTitle className="text-xs font-semibold text-primary-foreground line-clamp-2 shadow-text">{item.title}</CardTitle>
-                </div>
-                 <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1.5 py-0.5">
+                 </div>
+                 <Badge variant="secondary" className="absolute top-1 right-1 text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1.5 py-0.5 z-10"> {/* Ensure badge is above */}
                    {item.type}
                  </Badge>
             </CardHeader>
@@ -98,7 +99,7 @@ const BannerCard = ({ item }: { item: DisplayItem }) => {
 
     return (
         // Increased width and adjusted aspect ratio for a more banner-like feel
-        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group w-[80vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Wider banner, snap center */}
+        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[55vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Adjusted widths */}
              <div className="absolute inset-0">
                 {item.imageUrl ? (
                     <Image
@@ -106,7 +107,7 @@ const BannerCard = ({ item }: { item: DisplayItem }) => {
                         alt={item.title}
                         fill
                         // Updated sizes for the larger banner
-                        sizes="(max-width: 640px) 80vw, (max-width: 1024px) 70vw, 60vw"
+                        sizes="(max-width: 640px) 85vw, (max-width: 1024px) 75vw, 65vw"
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         priority // Higher priority for banner images
                         onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/800/350?grayscale`; }} // Larger placeholder
@@ -117,9 +118,9 @@ const BannerCard = ({ item }: { item: DisplayItem }) => {
                     </div>
                 )}
             </div>
-            {/* Gradient overlay for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent pointer-events-none"></div> {/* Left fade */}
+            {/* More subtle gradient overlay for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-transparent pointer-events-none"></div> {/* Left fade subtle */}
 
 
             {/* Content positioned at the bottom left */}
@@ -159,7 +160,7 @@ const SkeletonItemCard = () => (
 
 // Skeleton Card for Banner section - Adjusted size
 const SkeletonBannerCard = () => (
-    <Card className="overflow-hidden glass w-[80vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Match banner size */}
+    <Card className="overflow-hidden glass w-[85vw] sm:w-[75vw] md:w-[65vw] lg:w-[55vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Match banner size */}
          <Skeleton className="absolute inset-0" />
          <CardContent className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10 flex justify-between items-end">
              <div className="space-y-1 flex-grow mr-4 max-w-[70%]">
@@ -227,7 +228,8 @@ export default function Home() {
 
         return (
             <section className="mb-8 md:mb-12">
-                <div className="flex items-center justify-between mb-3 md:mb-4 px-4 lg:px-0"> {/* Adjusted title padding */}
+                {/* Section Title - Add padding here to align with container */}
+                <div className="flex items-center justify-between mb-3 md:mb-4 px-4 md:px-6 lg:px-8">
                     <h2 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
                         {React.createElement(icon, { className: "text-primary w-5 h-5 md:w-6 md:h-6" })} {title}
                     </h2>
@@ -237,12 +239,13 @@ export default function Home() {
                         </Button>
                     )}
                 </div>
-                <div className="relative">
-                  {/* Scrollable Container - Adjusted padding */}
+                 {/* Scrollable Container - Use pl for starting padding, let it scroll off-screen */}
+                 <div className="relative">
                   <div className={cn(
                       "flex space-x-3 md:space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent",
-                      "pl-4 lg:pl-0 pr-4 lg:pr-0", // Adjust horizontal padding: More padding on smaller screens, none on large
-                      "snap-x snap-mandatory" // Add snap scrolling
+                      "pl-4 md:pl-6 lg:pl-8", // Consistent starting padding matching the title
+                      "snap-x snap-mandatory", // Add snap scrolling
+                      "pr-4 md:pr-6 lg:pr-8" // Add right padding to prevent last item sticking to edge
                       )}>
                     {isLoading && displayItems.length === 0
                         ? Array.from({ length: itemComponent === BannerCard ? 3 : 5 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` })) // Show fewer banner skeletons
@@ -250,10 +253,7 @@ export default function Home() {
                             ? displayItems.map((item, index) => React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item })) // Use index in key for safety if IDs overlap between anime/manga in combined lists
                             : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
                   </div>
-                   {/* Optional: Add fade overlays if desired - Adjust position based on padding */}
-                   {/* Only show fades on smaller screens where horizontal padding exists */}
-                   <div className="absolute top-0 bottom-4 left-0 w-10 bg-gradient-to-r from-background to-transparent pointer-events-none lg:hidden"></div>
-                   <div className="absolute top-0 bottom-4 right-0 w-10 bg-gradient-to-l from-background to-transparent pointer-events-none lg:hidden"></div>
+                 {/* Removed the fade overlays for cleaner look */}
                 </div>
             </section>
         );
@@ -261,14 +261,18 @@ export default function Home() {
 
 
     return (
-        <div className="container mx-auto py-6 md:py-8 px-0 lg:px-4"> {/* Remove padding on small screens, add on large */}
+         // Removed container mx-auto, use full width but control padding within sections
+        <div className="py-6 md:py-8">
             {/* Global Error Display */}
             {error && (
-                <Alert variant="destructive" className="mb-6 mx-4 lg:mx-0"> {/* Add margin for alert on small screens */}
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error Loading Homepage</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                </Alert>
+                 // Added padding to match section titles
+                 <div className="px-4 md:px-6 lg:px-8 mb-6">
+                   <Alert variant="destructive">
+                     <AlertCircle className="h-4 w-4" />
+                     <AlertTitle>Error Loading Homepage</AlertTitle>
+                     <AlertDescription>{error}</AlertDescription>
+                   </Alert>
+                 </div>
             )}
 
             {/* Nami's Picks Banner Section - Using AI data */}
@@ -283,74 +287,17 @@ export default function Home() {
                 SkeletonBannerCard // Use Banner Skeleton
              )}
              {homepageData?.reasoning && !loading && (
-                 <p className="text-sm text-center italic text-muted-foreground mb-8 px-4 lg:px-0">{homepageData.reasoning}</p>
+                 // Added padding to match section titles
+                 <p className="text-sm text-center italic text-muted-foreground mb-8 px-4 md:px-6 lg:px-8">{homepageData.reasoning}</p>
              )}
 
-             {/* Trending Anime Section - Using AI data */}
-             {renderHorizontalSection(
-                 "Trending Anime",
-                 TrendingUp,
-                 homepageData?.trendingAnime,
-                 loading,
-                 "/anime?sort=popularity",
-                 ItemCard,
-                 SkeletonItemCard
-             )}
-
-             {/* Trending Manga Section - Using AI data */}
-             {renderHorizontalSection(
-                 "Trending Manga",
-                 TrendingUp,
-                 homepageData?.trendingManga,
-                 loading,
-                 "/manga?sort=popularity",
-                 ItemCard,
-                 SkeletonItemCard
-             )}
-
-             {/* Airing Now Anime Section - Using AI data */}
-             {renderHorizontalSection(
-                "Airing Now",
-                Clock,
-                homepageData?.airingAnime,
-                loading,
-                "/anime?status=airing",
-                ItemCard,
-                SkeletonItemCard
-            )}
-
-             {/* Popular Anime Section - Using AI data */}
-             {renderHorizontalSection(
-                 "Popular Anime",
-                 Star,
-                 homepageData?.popularAnime,
-                 loading,
-                 "/anime?sort=score",
-                 ItemCard,
-                 SkeletonItemCard
-             )}
-
-            {/* Popular Manga Section - Using AI data */}
-             {renderHorizontalSection(
-                 "Popular Manga",
-                 Star,
-                 homepageData?.popularManga,
-                 loading,
-                 "/manga?sort=score",
-                 ItemCard,
-                 SkeletonItemCard
-             )}
-
-             {/* Upcoming Anime Section - Using AI data */}
-             {renderHorizontalSection(
-                 "Upcoming Anime",
-                 CalendarDays,
-                 homepageData?.upcomingAnime,
-                 loading,
-                 "/anime?status=upcoming",
-                 ItemCard,
-                 SkeletonItemCard
-             )}
+             {/* Other Sections */}
+             {renderHorizontalSection( "Trending Anime", TrendingUp, homepageData?.trendingAnime, loading, "/anime?sort=popularity")}
+             {renderHorizontalSection( "Trending Manga", TrendingUp, homepageData?.trendingManga, loading, "/manga?sort=popularity")}
+             {renderHorizontalSection( "Airing Now", Clock, homepageData?.airingAnime, loading, "/anime?status=airing")}
+             {renderHorizontalSection( "Popular Anime", Star, homepageData?.popularAnime, loading, "/anime?sort=score")}
+             {renderHorizontalSection( "Popular Manga", Star, homepageData?.popularManga, loading, "/manga?sort=score")}
+             {renderHorizontalSection( "Upcoming Anime", CalendarDays, homepageData?.upcomingAnime, loading, "/anime?status=upcoming")}
 
         </div>
     );
