@@ -117,7 +117,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 600; // Increased delay again (was 400ms)
+const JIKAN_DELAY = 800; // Further increased delay (was 600ms)
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

@@ -42,7 +42,7 @@ export async function aiDrivenHomepage(input: AIDrivenHomepageInput): Promise<AI
   return aiDrivenHomepageFlow(input);
 }
 
-// Prompt definition (remains largely the same, asking for titles)
+// Prompt definition (updated to request 3 titles each)
 const prompt = ai.definePrompt({
   name: 'aiDrivenHomepagePrompt',
   input: {
@@ -53,7 +53,7 @@ const prompt = ai.definePrompt({
   },
   prompt: `You are Nami AI, personalizing the homepage for AniManga Stream.
 
-Based on the user's profile and current mood, recommend exactly 4 distinct anime titles and 4 distinct manga titles they are likely to enjoy. Ensure anime and manga titles are different.
+Based on the user's profile and current mood, recommend exactly 3 distinct anime titles and 3 distinct manga titles they are likely to enjoy. Ensure anime and manga titles are different.
 
 User Profile:
 {{{userProfile}}}
