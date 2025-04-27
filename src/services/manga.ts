@@ -107,7 +107,13 @@ export interface MangaResponse {
 // Jikan API v4 base URL
 const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
-const JIKAN_LIMIT = 24;
+const JIKAN_LIMIT = 24; // Keep it slightly below max
+// Delay between Jikan API calls in milliseconds to avoid rate limits
+const JIKAN_DELAY = 400; // Increased delay (e.g., 400ms) - adjust as needed
+
+// Helper function to introduce a delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 
 // Helper function to map Jikan API response to our Manga interface
 const mapJikanDataToManga = (jikanData: any): Manga => {
@@ -130,6 +136,7 @@ const mapJikanDataToManga = (jikanData: any): Manga => {
 
 /**
  * Asynchronously retrieves manga from Jikan API v4 with optional filters and pagination.
+ * Includes delay to mitigate rate limiting.
  *
  * @param genre The genre MAL ID (number) or name (string) to filter mangas on.
  * @param status The status string (e.g., "publishing", "finished", "upcoming").
@@ -156,7 +163,7 @@ export async function getMangas(
   if (search) params.append('q', search);
   if (genre) params.append('genres', genre.toString());
   if (status) params.append('status', status);
-  if (minScore) params.append('min_score', minScore.toString());
+  if (minScore && minScore > 0) params.append('min_score', minScore.toString()); // Add only if > 0
   if (sort) params.append('sort', sort);
   if (sort === 'score') params.append('order_by', 'score');
   if (sort === 'popularity') params.append('order_by', 'members');
@@ -173,6 +180,7 @@ export async function getMangas(
   let response: Response | undefined;
 
   try {
+    await delay(JIKAN_DELAY); // Wait before making the API call
     // console.log("Fetching Jikan Manga URL:", url);
     response = await fetch(url, {
       method: 'GET',
@@ -220,6 +228,7 @@ export async function getMangas(
 
 /**
  * Fetches a single manga by its MyAnimeList ID using Jikan API.
+ * Includes delay to mitigate rate limiting.
  *
  * @param mal_id The MyAnimeList ID of the manga to fetch.
  * @returns A promise that resolves to the Manga object or null if not found.
@@ -230,6 +239,7 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
     let response: Response | undefined;
 
     try {
+        await delay(JIKAN_DELAY); // Wait before making the API call
         // console.log("Fetching Jikan Manga by ID:", url);
         response = await fetch(url, {
             method: 'GET',

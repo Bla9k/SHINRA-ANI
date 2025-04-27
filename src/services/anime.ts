@@ -75,6 +75,10 @@ export interface Anime {
    * Type identifier
    */
   type: 'anime'; // Explicitly set type for easier differentiation
+   /**
+    * Derived image URL field for easier access
+    */
+   imageUrl: string | null; // Add this for easier access in components
 }
 
 /**
@@ -115,7 +119,12 @@ export interface AnimeResponse {
 // Jikan API v4 base URL
 const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
-const JIKAN_LIMIT = 24;
+const JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
+// Delay between Jikan API calls in milliseconds to avoid rate limits
+const JIKAN_DELAY = 400; // Increased delay (e.g., 400ms) - adjust as needed
+
+// Helper function to introduce a delay
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
 // Helper function to map Jikan API response to our Anime interface
@@ -137,15 +146,10 @@ const mapJikanDataToAnime = (jikanData: any): Anime => {
   };
 };
 
-// Add derived imageUrl to the Anime interface
-export interface Anime {
-    // ... other fields
-    imageUrl: string | null; // Add this for easier access in components
-}
-
 
 /**
  * Asynchronously retrieves anime from Jikan API v4 with optional filters and pagination.
+ * Includes delay to mitigate rate limiting.
  *
  * @param genre The genre MAL ID (number) or name (string) to filter animes on.
  * @param year The specific release year to filter animes on.
@@ -178,7 +182,7 @@ export async function getAnimes(
     params.append('genres', genre.toString());
   }
   if (year) params.append('start_date', `${year}-01-01`); // Approximate year filtering
-  if (minScore) params.append('min_score', minScore.toString());
+  if (minScore && minScore > 0) params.append('min_score', minScore.toString()); // Add minScore only if > 0
   if (status) params.append('status', status);
   if (sort) params.append('sort', sort); // Example: 'desc' with 'order_by'='score'
   if (sort === 'score') params.append('order_by', 'score');
@@ -202,6 +206,7 @@ export async function getAnimes(
 
   let response: Response | undefined;
   try {
+    await delay(JIKAN_DELAY); // Wait before making the API call
     // console.log("Fetching Jikan URL:", url); // Log the URL being fetched
     response = await fetch(url, {
       method: 'GET', // Jikan uses GET
@@ -250,6 +255,7 @@ export async function getAnimes(
 
 /**
  * Fetches a single anime by its MyAnimeList ID using Jikan API.
+ * Includes delay to mitigate rate limiting.
  *
  * @param mal_id The MyAnimeList ID of the anime to fetch.
  * @returns A promise that resolves to the Anime object or null if not found.
@@ -260,6 +266,7 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
   let response: Response | undefined;
 
     try {
+        await delay(JIKAN_DELAY); // Wait before making the API call
         // console.log("Fetching Jikan Anime by ID:", url);
         response = await fetch(url, {
             method: 'GET',
