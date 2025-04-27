@@ -67,6 +67,12 @@ export async function getAnimeEpisodes(animeMalId: number): Promise<ConsumetEpis
             console.error(`[getAnimeEpisodes] Consumet API response not OK: ${response.status} "${response.statusText}"`);
             console.error('[getAnimeEpisodes] Consumet Error Body:', errorBody);
             console.error('[getAnimeEpisodes] Consumet Request URL:', url);
+             // Log specific status codes
+             if (response.status === 404) {
+                console.warn(`[getAnimeEpisodes] Consumet returned 404 for episodes of MAL ID ${animeMalId}. Anime might not be available on the source.`);
+            } else if (response.status === 500) {
+                console.warn(`[getAnimeEpisodes] Consumet API returned 500 Internal Server Error for ${url}. The API instance might be having issues.`);
+            }
             // Don't throw, return empty array
             return [];
         }
@@ -75,6 +81,10 @@ export async function getAnimeEpisodes(animeMalId: number): Promise<ConsumetEpis
 
         if (!jsonResponse || !Array.isArray(jsonResponse.episodes)) {
             console.warn('[getAnimeEpisodes] Consumet response OK but "episodes" field is missing or not an array.', jsonResponse);
+            // Handle cases where an empty object or different structure might be returned
+            if (jsonResponse && jsonResponse.message) {
+                 console.warn(`[getAnimeEpisodes] Consumet message: ${jsonResponse.message}`);
+            }
             return []; // Return empty array if episodes are not found or structure is wrong
         }
 
@@ -83,11 +93,14 @@ export async function getAnimeEpisodes(animeMalId: number): Promise<ConsumetEpis
         return jsonResponse.episodes.filter(ep => ep && ep.id && typeof ep.number === 'number');
 
     } catch (error: any) {
-        console.error(`[getAnimeEpisodes] Failed to fetch episodes for MAL ID ${animeMalId} from Consumet.`);
+        // Log detailed fetch error, including potential network errors
+        console.error(`[getAnimeEpisodes] Failed to fetch episodes for MAL ID ${animeMalId} from Consumet. URL: ${url}`);
         if(response) {
             console.error('[getAnimeEpisodes] Response Status on Catch:', response.status, response.statusText);
         }
-        // Log detailed fetch error, including potential network errors
+        // Log the specific error message
+        console.error('[getAnimeEpisodes] Fetch Error Message:', error.message);
+        // Log the full error object structure if helpful
         console.error('[getAnimeEpisodes] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         // Return empty array on any fetch error
         return [];
@@ -121,6 +134,10 @@ export async function getAnimeStreamingLink(episodeId: string): Promise<Consumet
             console.error(`[getAnimeStreamingLink] Consumet API response not OK: ${response.status} "${response.statusText}"`);
             console.error('[getAnimeStreamingLink] Consumet Error Body:', errorBody);
             console.error('[getAnimeStreamingLink] Consumet Request URL:', url);
+             // Add specific status code handling if needed
+            if (response.status === 404) {
+                throw new Error(`Episode '${decodeURIComponent(episodeId)}' not found on the streaming provider (404).`);
+            }
             throw new Error(`Consumet watch fetch failed: ${response.status} ${response.statusText}. URL: ${url}`);
         }
 
@@ -128,18 +145,21 @@ export async function getAnimeStreamingLink(episodeId: string): Promise<Consumet
 
         if (!jsonResponse || !Array.isArray(jsonResponse.sources) || jsonResponse.sources.length === 0) {
             console.warn(`[getAnimeStreamingLink] Consumet response OK but "sources" field is missing, not an array, or empty for episode ${episodeId}.`, jsonResponse);
-            throw new Error(`No streaming sources found for episode ${episodeId}. It might not be available currently.`);
+            throw new Error(`No streaming sources found for episode ${decodeURIComponent(episodeId)}. It might not be available currently.`);
         }
 
         console.log(`[getAnimeStreamingLink] Successfully fetched ${jsonResponse.sources.length} sources for episode ${episodeId}.`);
         return jsonResponse;
 
     } catch (error: any) {
-        console.error(`[getAnimeStreamingLink] Failed to fetch streaming links for episode ${episodeId} from Consumet.`);
+        console.error(`[getAnimeStreamingLink] Failed to fetch streaming links for episode ${episodeId} from Consumet. URL: ${url}`);
         if(response) {
             console.error('[getAnimeStreamingLink] Response Status on Catch:', response.status, response.statusText);
         }
+        // Log the specific error message
+        console.error('[getAnimeStreamingLink] Fetch Error Message:', error.message);
         console.error('[getAnimeStreamingLink] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        // Re-throw the original error or a more specific one
         throw new Error(`Failed to fetch streaming data from Consumet: ${error.message || 'Unknown fetch error'}`);
     }
 }
