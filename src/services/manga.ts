@@ -163,8 +163,9 @@ export async function getMangas(
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-       // Add Authorization header if an API key/token is available
-      // 'Authorization': `Bearer ${env.ANILIST_API_KEY}` // Uncomment if using token auth
+       // AniList API does not use RapidAPI keys or Hosts. Remove these.
+       // Authorization header is only needed for authenticated actions, not public data fetching.
+      // 'Authorization': `Bearer ${env.ANILIST_ACCESS_TOKEN}` // Use access token if you have one
   };
 
 
@@ -217,7 +218,7 @@ export async function getMangas(
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables));
+    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables)); // Log stringified variables
      // Log the response status if available
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
@@ -248,4 +249,16 @@ export async function getMangaById(id: number): Promise<Manga | null> {
         return null;
         // Or: throw error;
     }
+}
+
+/**
+ * Fetches detailed information for a single manga by ID.
+ * This function is intended for detail pages.
+ *
+ * @param id The AniList ID of the manga.
+ * @returns A promise that resolves to the detailed Manga object or null if not found.
+ */
+export async function getMangaDetails(id: number): Promise<Manga | null> {
+  // Similar to anime, we can use a more detailed query later if needed.
+  return getMangaById(id);
 }

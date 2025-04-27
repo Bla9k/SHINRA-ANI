@@ -183,8 +183,9 @@ export async function getAnimes(
   const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      // Add Authorization header if an API key/token is available
-      // 'Authorization': `Bearer ${env.ANILIST_API_KEY}` // Uncomment if using token auth
+      // AniList API does not use RapidAPI keys or Hosts. Remove these.
+      // Authorization header is only needed for authenticated actions, not public data fetching.
+      // 'Authorization': `Bearer ${env.ANILIST_ACCESS_TOKEN}` // Use access token if you have one
   };
 
   let response: Response | undefined;
@@ -274,4 +275,17 @@ export async function getAnimeById(id: number): Promise<Anime | null> {
         return null;
         // Or: throw error;
     }
+}
+
+/**
+ * Fetches detailed information for a single anime by ID, including related media and characters.
+ * This function is intended for detail pages.
+ *
+ * @param id The AniList ID of the anime.
+ * @returns A promise that resolves to the detailed Anime object or null if not found.
+ */
+export async function getAnimeDetails(id: number): Promise<Anime | null> {
+  // We can potentially use a more detailed GraphQL query here later if needed,
+  // for now, getAnimeById (which uses getAnimes with ID) is sufficient.
+  return getAnimeById(id);
 }
