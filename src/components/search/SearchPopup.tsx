@@ -16,8 +16,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Search as SearchIcon, Loader2, Sparkles, AlertCircle, X, CalendarDays, Star, Layers, Library, Film, BookText, Tv, User, Heart, Filter, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { aiPoweredSearch, AIPoweredSearchOutput, SearchResult, AIPoweredSearchInput } from '@/ai/flows/ai-powered-search'; // Import AI Flow input type
-import { getAnimes, getMangas, AnimeResponse, MangaResponse } from '@/services'; // Import Jikan-based services
+import { aiPoweredSearch, AIPoweredSearchOutput, SearchResult, AIPoweredSearchInput } from '@/ai/flows/ai-powered-search';
+import { getAnimes, getMangas, AnimeResponse, MangaResponse, Anime, Manga } from '@/services'; // Import Jikan-based services & types
 import { Badge } from '@/components/ui/badge';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -227,32 +227,20 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
                   // Prepare service call promises based on selectedType
                   const searchLimit = 15; // Limit results for standard popup search
-                  const animePromise = (!typeParam || typeParam === 'anime')
-                    ? getAnimes(
-                          genreParam,
-                          undefined,
-                          validMinScore,
-                          searchTermParam,
-                          statusParam,
-                          1,
-                          sortParam,
-                          searchLimit
-                      ).catch(err => { console.error("[SearchPopup] Jikan Anime fetch failed:", err); return { animes: [], hasNextPage: false } as AnimeResponse; })
-                    : Promise.resolve({ animes: [], hasNextPage: false } as AnimeResponse);
+                  let animeRes: AnimeResponse | null = null;
+                  let mangaRes: MangaResponse | null = null;
 
-                  const mangaPromise = (!typeParam || typeParam === 'manga')
-                    ? getMangas(
-                          genreParam,
-                          statusParam,
-                          searchTermParam,
-                          validMinScore,
-                          1,
-                          sortParam,
-                          searchLimit
-                      ).catch(err => { console.error("[SearchPopup] Jikan Manga fetch failed:", err); return { mangas: [], hasNextPage: false } as MangaResponse; })
-                    : Promise.resolve({ mangas: [], hasNextPage: false } as MangaResponse);
+                  if (!typeParam || typeParam === 'anime') {
+                    animeRes = await getAnimes(
+                      genreParam, undefined, validMinScore, searchTermParam, statusParam, 1, sortParam, searchLimit
+                    );
+                  }
+                  if (!typeParam || typeParam === 'manga') {
+                     mangaRes = await getMangas(
+                        genreParam, statusParam, searchTermParam, validMinScore, 1, sortParam, searchLimit
+                     );
+                  }
 
-                  const [animeRes, mangaRes] = await Promise.all([animePromise, mangaPromise]);
 
                   console.log("[SearchPopup] Jikan Response - Anime:", animeRes?.animes?.length, "Manga:", mangaRes?.mangas?.length);
 
@@ -264,7 +252,8 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                        ...(mangaRes?.mangas || []).map(m => ({
                            id: m.mal_id, title: m.title, imageUrl: m.imageUrl, description: m.synopsis, type: 'manga' as const, genres: m.genres, year: m.year, score: m.score, chapters: m.chapters, volumes: m.volumes, status: m.status,
                        }))
-                   ].filter(item => item.id != null);
+                   ].filter((item): item is SearchResult => !!item && item.id != null); // Ensure item and id are valid
+
 
                   // Simple sort primarily by score (desc), then title (asc) as fallback for standard search
                   // Jikan's `rank` sort should handle relevance better when `sortParam` is 'rank'
@@ -277,7 +266,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                    }
 
 
-                  // Deduplicate combined results - adding index for absolute uniqueness
+                   // Deduplicate combined results - adding index for absolute uniqueness
                   const uniqueResults = Array.from(new Map(combinedResults.map((item, index) => [`${item.type}-${item.id}-${index}`, item])).values());
                   const finalResults = uniqueResults.slice(0, searchLimit * 2); // Limit total displayed results
 
@@ -436,8 +425,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                 }
            }}
         >
-           {/* Visually hidden title for accessibility */}
-            <DialogTitle className="sr-only">Search Shinra-Ani</DialogTitle>
+           <VisuallyHidden><DialogTitle>Search Shinra-Ani</DialogTitle></VisuallyHidden>
             <DialogHeader className="p-4 pb-3 border-b border-border/50 flex-shrink-0">
                 {/* Input and Buttons Container */}
                 <div className="flex items-center gap-2 w-full">
@@ -456,7 +444,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                            value={searchTerm}
                            onChange={(e) => setSearchTerm(e.target.value)}
                            className={cn(
-                               "pl-10 pr-10 w-full glass text-base h-11 rounded-full border-2", // Added pr-10 for loader
+                               "pl-10 pr-10 w-full glass text-base h-11 rounded-full border-2", // Adjusted padding and height
                                isAiActive ? "border-primary/60 focus:border-primary" : "border-input focus:border-primary/50"
                            )}
                            aria-label="Search Shinra-Ani"
@@ -464,7 +452,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                        />
                        {/* Loader inside input area */}
                         {(loading || isPending) && (
-                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-spin"> {/* Use animate-spin */}
+                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-pulse"> {/* Changed spin to pulse */}
                                 <Loader2 />
                              </div>
                         )}
@@ -692,3 +680,5 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
       </Dialog>
   );
 }
+
+    
