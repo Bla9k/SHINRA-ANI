@@ -40,6 +40,8 @@ const sortOptions = [
     { value: "episodes", label: "Episodes"}, // Maps to 'episodes' desc
 ];
 
+const ANY_GENRE_VALUE = "any-genre";
+const ANY_STATUS_VALUE = "any-status";
 
 export default function AnimePage() {
   const [animeList, setAnimeList] = useState<Anime[]>([]);
@@ -76,12 +78,16 @@ export default function AnimePage() {
           const yearNumber = debouncedYear ? parseInt(debouncedYear, 10) : undefined;
           const validYear = yearNumber && !isNaN(yearNumber) && yearNumber > 1900 && yearNumber < 2100 ? yearNumber : undefined;
 
+          // Map "any" value back to undefined for the API call
+          const genreParam = selectedGenre === ANY_GENRE_VALUE ? undefined : selectedGenre;
+          const statusParam = selectedStatus === ANY_STATUS_VALUE ? undefined : selectedStatus;
+
           const response: AnimeResponse = await getAnimes(
-              selectedGenre,
+              genreParam,
               validYear,
               undefined, // minScore - not implemented in filter UI yet
               undefined, // search term - not implemented yet
-              selectedStatus,
+              statusParam,
               page,
               selectedSort // Pass selected sort option
           );
@@ -233,12 +239,12 @@ export default function AnimePage() {
                      {/* Genre Filter */}
                     <div className="space-y-1.5">
                        <Label htmlFor="genre-filter">Genre</Label>
-                        <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+                        <Select value={selectedGenre ?? ANY_GENRE_VALUE} onValueChange={(value) => setSelectedGenre(value === ANY_GENRE_VALUE ? undefined : value)}>
                            <SelectTrigger id="genre-filter" className="w-full glass text-sm">
                                 <SelectValue placeholder="Any Genre" />
                             </SelectTrigger>
                             <SelectContent className="glass max-h-60">
-                                <SelectItem value="">Any Genre</SelectItem>
+                                <SelectItem value={ANY_GENRE_VALUE}>Any Genre</SelectItem>
                                 {genres.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
                             </SelectContent>
                        </Select>
@@ -260,12 +266,12 @@ export default function AnimePage() {
                     {/* Status Filter */}
                     <div className="space-y-1.5">
                        <Label htmlFor="status-filter">Status</Label>
-                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                        <Select value={selectedStatus ?? ANY_STATUS_VALUE} onValueChange={(value) => setSelectedStatus(value === ANY_STATUS_VALUE ? undefined : value)}>
                            <SelectTrigger id="status-filter" className="w-full glass text-sm">
                                <SelectValue placeholder="Any Status" />
                            </SelectTrigger>
                            <SelectContent className="glass">
-                               <SelectItem value="">Any Status</SelectItem>
+                               <SelectItem value={ANY_STATUS_VALUE}>Any Status</SelectItem>
                                {statuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                            </SelectContent>
                        </Select>

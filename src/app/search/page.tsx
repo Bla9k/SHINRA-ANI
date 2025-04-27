@@ -40,8 +40,12 @@ type SearchResultItem = (Anime | Manga) & {
 // Helper function to format status (Jikan uses different strings)
 const formatStatus = (status: string | null): string => {
     if (!status) return 'N/A';
-    return status; // Return raw Jikan status
+    // Capitalize first letter for display if needed
+    return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
 };
+
+const ANY_GENRE_VALUE = "any-genre";
+const ANY_STATUS_VALUE = "any-status";
 
 export default function SearchPage() {
   const [isPending, startTransition] = useTransition();
@@ -83,14 +87,19 @@ export default function SearchPage() {
           try {
               let fetchedResults: SearchResultItem[] = [];
 
+              // Map "any" values back to undefined for API call
+              const genreParam = genre === ANY_GENRE_VALUE ? undefined : genre;
+              const statusParam = status === ANY_STATUS_VALUE ? undefined : status;
+              const minScoreParam = minScore[0] === 0 ? undefined : minScore[0];
+
               // 1. Fetch initial results from Jikan
               if (currentTab === 'anime') {
                   const response = await getAnimes(
-                      genre,
+                      genreParam,
                       year,
-                      minScore[0] === 0 ? undefined : minScore[0], // Pass undefined if 0
+                      minScoreParam,
                       currentSearchTerm.trim() || undefined,
-                      status,
+                      statusParam,
                       1 // Start with page 1 for new search
                   );
                   // Map Jikan Anime to SearchResultItem
@@ -98,10 +107,10 @@ export default function SearchPage() {
                   setHasNextPage(response.hasNextPage);
               } else {
                    const response = await getMangas(
-                      genre,
-                      status,
+                      genreParam,
+                      statusParam,
                       currentSearchTerm.trim() || undefined,
-                      minScore[0] === 0 ? undefined : minScore[0],
+                      minScoreParam,
                       1 // Start with page 1
                   );
                   // Map Jikan Manga to SearchResultItem
@@ -112,20 +121,19 @@ export default function SearchPage() {
               setCurrentPage(1); // Reset page on new search
 
               // 2. Fetch AI Suggestions (still useful) - Adapt input if necessary
-              // The AI flow might need adjustment if it relies heavily on AniList-specific fields
-              // For now, we'll pass Jikan-available data where possible.
               try {
                   const suggestionInput = {
                       searchTerm: currentSearchTerm.trim(),
                       searchType: currentTab,
-                      genre: genre, // Pass genre name/ID
-                      status: currentTab === 'manga' ? status : undefined,
-                      // Potentially pass year or score if the AI flow uses them
+                      genre: genreParam, // Pass potentially undefined genre
+                      status: currentTab === 'manga' ? statusParam : undefined, // Pass potentially undefined status
+                       // Potentially pass year or score if the AI flow uses them
+                       year: year,
+                       minScore: minScoreParam,
                        initialResultsCount: fetchedResults.length,
                        exampleResults: fetchedResults.slice(0, 5).map(r => ({
                            title: r.title,
-                           // Provide Jikan genre names if available
-                           genres: r.genres?.map(g => g.name) || [],
+                           genres: r.genres?.map(g => g.name) || [], // Provide Jikan genre names
                        })),
                   };
                   const aiOutput: AIPoweredSearchOutput = await aiPoweredSearch(suggestionInput);
@@ -213,7 +221,7 @@ export default function SearchPage() {
                          variant={ // Adapt based on Jikan status strings
                             item.status === 'Publishing' ? 'default' :
                             item.status === 'Finished' ? 'secondary' :
-                            item.status === 'On Hiatus' ? 'destructive' :
+                            item.status === 'On Hiatus' || item.status === 'Discontinued' ? 'destructive' :
                             'outline'
                          }
                          className="text-xs px-1.5 py-0.5"
@@ -266,10 +274,25 @@ export default function SearchPage() {
 
   // Placeholder options - Adapt genres for Jikan if needed (e.g., use names or IDs)
   // Jikan might require specific IDs for filtering. Fetching these dynamically is best.
-  // For now, using names as placeholders. Jikan search *might* work with names.
-   const genres = useMemo(() => ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Slice of Life", "Romance", "Horror", "Supernatural", "Mystery", "Psychological", "Thriller", "Historical", "Mecha", "Sports"].sort(), []);
-   const animeStatuses = useMemo(() => ["airing", "complete", "upcoming"], []); // Jikan anime statuses
-   const mangaStatuses = useMemo(() => ["publishing", "finished", "on_hiatus", "discontinued", "upcoming"], []); // Jikan manga statuses
+   const genres = useMemo(() => [
+        { id: 1, name: "Action" }, { id: 2, name: "Adventure" }, { id: 4, name: "Comedy" },
+        { id: 8, name: "Drama" }, { id: 10, name: "Fantasy" }, { id: 14, name: "Horror" },
+        { id: 7, name: "Mystery" }, { id: 22, name: "Romance" }, { id: 24, name: "Sci-Fi" },
+        { id: 36, name: "Slice of Life" }, { id: 30, name: "Sports" }, { id: 37, name: "Supernatural" },
+        { id: 41, name: "Thriller" }, { id: 42, name: "Seinen" }, { id: 27, name: "Shounen" }, { id: 25, name: "Shoujo" },
+    ].sort((a, b) => a.name.localeCompare(b.name)), []);
+   const animeStatuses = useMemo(() => [
+        { value: "airing", label: "Currently Airing" },
+        { value: "complete", label: "Finished Airing" },
+        { value: "upcoming", label: "Not Yet Aired" },
+    ], []);
+   const mangaStatuses = useMemo(() => [
+        { value: "publishing", label: "Publishing" },
+        { value: "finished", label: "Finished" },
+        { value: "on_hiatus", label: "On Hiatus" },
+        { value: "discontinued", label: "Discontinued" },
+        { value: "upcoming", label: "Not Yet Published" },
+    ], []);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -322,13 +345,13 @@ export default function SearchPage() {
                  {/* Genre Filter (Using names, might need IDs for Jikan) */}
                  <div className="space-y-1.5">
                     <Label htmlFor="genre">Genre</Label>
-                     <Select value={genre} onValueChange={setGenre}>
+                     <Select value={genre ?? ANY_GENRE_VALUE} onValueChange={(value) => setGenre(value === ANY_GENRE_VALUE ? undefined : value)}>
                         <SelectTrigger id="genre" className="w-full glass text-sm">
                              <SelectValue placeholder="Any Genre" />
                          </SelectTrigger>
                          <SelectContent className="glass max-h-60">
-                             <SelectItem value={undefined}>Any Genre</SelectItem> {/* Allow clearing */}
-                             {genres.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                             <SelectItem value={ANY_GENRE_VALUE}>Any Genre</SelectItem>
+                             {genres.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
                          </SelectContent>
                     </Select>
                  </div>
@@ -351,14 +374,14 @@ export default function SearchPage() {
                  {/* Status Filter */}
                  <div className="space-y-1.5">
                      <Label htmlFor="status">Status</Label>
-                      <Select value={status} onValueChange={setStatus}>
+                      <Select value={status ?? ANY_STATUS_VALUE} onValueChange={(value) => setStatus(value === ANY_STATUS_VALUE ? undefined : value)}>
                          <SelectTrigger id="status" className="w-full glass text-sm">
                             <SelectValue placeholder="Any Status" />
                          </SelectTrigger>
                          <SelectContent className="glass">
-                            <SelectItem value={undefined}>Any Status</SelectItem> {/* Allow clearing */}
+                            <SelectItem value={ANY_STATUS_VALUE}>Any Status</SelectItem>
                              {(activeTab === 'anime' ? animeStatuses : mangaStatuses).map(s =>
-                                <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+                                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                              )}
                          </SelectContent>
                      </Select>
