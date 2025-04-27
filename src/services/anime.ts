@@ -128,7 +128,7 @@ export interface AnimeResponse {
 // Jikan API v4 base URL
 const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
-const JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
+const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
 // Delay between Jikan API calls in milliseconds to avoid rate limits
 const JIKAN_DELAY = 1500; // 1.5 seconds delay
 
@@ -173,7 +173,8 @@ const mapJikanDataToAnime = (jikanData: any): Anime | null => {
  * @param status Optional status string (e.g., "airing", "complete", "upcoming").
  * @param page The page number to fetch (default: 1).
  * @param sort Optional sorting parameter mapping to Jikan's `order_by` and `sort`.
- *             Examples: "popularity", "score", "rank", "title", "start_date", "episodes".
+ *             Examples: "popularity", "score", "rank", "title", "start_date", "episodes", "favorites".
+ * @param limit Optional number of items per page (defaults to DEFAULT_JIKAN_LIMIT, max 25).
  * @returns A promise that resolves to an AnimeResponse object containing the list of Anime and pagination info.
  */
 export async function getAnimes(
@@ -183,11 +184,15 @@ export async function getAnimes(
   search?: string,
   status?: string,
   page: number = 1,
-  sort: string = 'popularity' // Default sort is popularity
+  sort: string = 'popularity', // Default sort is popularity
+  limit: number = DEFAULT_JIKAN_LIMIT // Allow custom limit
 ): Promise<AnimeResponse> {
+  // Ensure limit doesn't exceed Jikan's max
+  const effectiveLimit = Math.min(limit, 25);
+
   const params = new URLSearchParams({
     page: page.toString(),
-    limit: JIKAN_LIMIT.toString(),
+    limit: effectiveLimit.toString(),
     // sfw: 'true', // Ensure Safe-for-Work results, optional
   });
 
@@ -222,6 +227,9 @@ export async function getAnimes(
        case 'episodes':
           orderBy = 'episodes';
           break;
+       case 'favorites': // Added favorites sort
+           orderBy = 'favorites';
+           break;
       default:
          // If no specific sort matches, and no search term, default to popularity
          if(!search) {
@@ -256,6 +264,10 @@ export async function getAnimes(
       console.error('Jikan API response not OK:', response.status, response.statusText);
       console.error('Jikan Error Body:', errorBody);
       console.error('Jikan Request URL:', url);
+       // Improved logging for rate limiting
+       if (response.status === 429) {
+          console.warn("Jikan API rate limit likely exceeded. Consider increasing JIKAN_DELAY or reducing requests.");
+       }
       // Try parsing for structured error
       try {
           const errorJson = JSON.parse(errorBody);
@@ -337,6 +349,9 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
             console.error('Jikan API response not OK:', response.status, response.statusText);
             console.error('Jikan Error Body:', errorBody);
             console.error('Jikan Request URL:', url);
+             if (response.status === 429) {
+                console.warn("Jikan API rate limit likely exceeded on single fetch. Consider increasing JIKAN_DELAY.");
+             }
              try {
                 const errorJson = JSON.parse(errorBody);
                 console.error('Parsed Jikan Error:', errorJson);

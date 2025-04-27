@@ -119,7 +119,7 @@ export interface MangaResponse {
 // Jikan API v4 base URL
 const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
-const JIKAN_LIMIT = 24; // Keep it slightly below max
+const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
 const JIKAN_DELAY = 1500; // 1.5 seconds delay
 
@@ -163,6 +163,7 @@ const mapJikanDataToManga = (jikanData: any): Manga | null => {
  * @param page The page number to fetch (default: 1).
  * @param sort Optional sorting parameter mapping to Jikan's `order_by` and `sort`.
  *             Examples: "popularity", "score", "rank", "title", "start_date", "chapters", "volumes".
+ * @param limit Optional number of items per page (defaults to DEFAULT_JIKAN_LIMIT, max 25).
  * @returns A promise that resolves to a MangaResponse object containing the list of Manga and pagination info.
  */
 export async function getMangas(
@@ -171,11 +172,15 @@ export async function getMangas(
   search?: string,
   minScore?: number,
   page: number = 1,
-  sort: string = 'popularity' // Default sort is popularity
+  sort: string = 'popularity', // Default sort is popularity
+  limit: number = DEFAULT_JIKAN_LIMIT // Allow custom limit
 ): Promise<MangaResponse> {
+   // Ensure limit doesn't exceed Jikan's max
+   const effectiveLimit = Math.min(limit, 25);
+
   const params = new URLSearchParams({
     page: page.toString(),
-    limit: JIKAN_LIMIT.toString(),
+    limit: effectiveLimit.toString(),
     // sfw: 'true', // Optional: Ensure Safe-for-Work results
   });
 
@@ -212,6 +217,9 @@ export async function getMangas(
        case 'volumes':
            orderBy = 'volumes';
            break;
+       case 'favorites': // Added favorites sort
+           orderBy = 'favorites';
+           break;
       default:
          if(!search) {
             orderBy = 'members'; // Default if no sort/search
@@ -245,6 +253,9 @@ export async function getMangas(
         console.error(`Jikan API response not OK: ${response.status} "${response.statusText}"`);
         console.error('Jikan Error Body:', errorBody);
         console.error('Jikan Request URL:', url);
+         if (response.status === 429) {
+            console.warn("Jikan API rate limit likely exceeded. Consider increasing JIKAN_DELAY or reducing requests.");
+         }
         try {
             const errorJson = JSON.parse(errorBody);
             console.error('Parsed Jikan Error Body:', errorJson);
@@ -330,6 +341,9 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
             console.error(`Jikan API response not OK: ${response.status} "${response.statusText}"`);
             console.error('Jikan Error Body:', errorBody);
             console.error('Jikan Request URL:', url);
+             if (response.status === 429) {
+                 console.warn("Jikan API rate limit likely exceeded on single fetch. Consider increasing JIKAN_DELAY.");
+             }
              try {
                 const errorJson = JSON.parse(errorBody);
                 console.error('Parsed Jikan Error Body:', errorJson);

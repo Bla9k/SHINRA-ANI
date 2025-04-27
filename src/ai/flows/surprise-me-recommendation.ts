@@ -3,7 +3,7 @@
 
 /**
  * @fileOverview Flow for generating a surprise anime/manga recommendation based on user profile, mood, and recent interactions.
- * Relies on LLM knowledge, does not fetch from Jikan directly.
+ * Relies on LLM knowledge and generates structured data matching Jikan format.
  *
  * - surpriseMeRecommendation - A function that returns a surprise anime or manga recommendation.
  * - SurpriseMeRecommendationInput - The input type for the surpriseMeRecommendation function.
@@ -12,8 +12,8 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import { Anime } from '@/services/anime'; // Import Jikan-based type
-import { Manga } from '@/services/manga'; // Import Jikan-based type
+// Import shared schemas for output structure
+import { AnimeRecommendationSchema, MangaRecommendationSchema } from '@/ai/flows/shared-schemas';
 
 const SurpriseMeRecommendationInputSchema = z.object({
   userProfile: z
@@ -26,17 +26,12 @@ const SurpriseMeRecommendationInputSchema = z.object({
 });
 export type SurpriseMeRecommendationInput = z.infer<typeof SurpriseMeRecommendationInputSchema>;
 
-// Output schema based on Jikan structure (or a simplified version for surprise)
-const SurpriseMeRecommendationOutputSchema = z.object({
-  type: z.enum(['anime', 'manga']).describe('The type of recommendation.'),
-  mal_id: z.number().describe('The MyAnimeList ID of the recommended item.'),
-  title: z.string().describe('The title of the recommended anime or manga.'),
-  synopsis: z.string().nullable().describe('A brief synopsis of the recommendation.'),
-  imageUrl: z.string().nullable().describe('The URL of the recommended content cover image (large jpg).'),
-  // Optionally include other relevant fields like score or year
-  score: z.number().nullable().optional().describe('The score (0-10).'),
-  year: z.number().nullable().optional().describe('The release year.'),
-});
+// Output schema: Returns either a single anime or manga recommendation structure
+const SurpriseMeRecommendationOutputSchema = z.union([
+    AnimeRecommendationSchema,
+    MangaRecommendationSchema
+]).describe('A single surprise recommendation, either anime or manga, matching Jikan structure.');
+
 export type SurpriseMeRecommendationOutput = z.infer<typeof SurpriseMeRecommendationOutputSchema>;
 
 export async function surpriseMeRecommendation(input: SurpriseMeRecommendationInput): Promise<SurpriseMeRecommendationOutput> {
@@ -50,7 +45,7 @@ const surpriseMeRecommendationPrompt = ai.definePrompt({
     schema: SurpriseMeRecommendationInputSchema // Use the defined input schema
   },
   output: {
-    schema: SurpriseMeRecommendationOutputSchema // Use the Jikan-based output schema
+    schema: SurpriseMeRecommendationOutputSchema // Use the union output schema
   },
   prompt: `You are Nami, an AI assistant specializing in anime and manga recommendations on AniManga Stream.
 
@@ -60,7 +55,8 @@ User Profile: {{{userProfile}}}
 Mood: {{{mood}}}
 Recent Interactions: {{{recentInteractions}}}
 
-Select either anime or manga. Provide the recommendation details strictly matching the output JSON schema, including a plausible 'mal_id', 'title', 'synopsis', 'imageUrl' (use cdn.myanimelist.net pattern if possible), 'score', and 'year'.
+Select EITHER anime OR manga. Provide the recommendation details strictly matching EITHER the AnimeRecommendationSchema OR the MangaRecommendationSchema (including plausible 'mal_id', 'title', 'synopsis', 'images' (use cdn.myanimelist.net pattern), 'score', 'year'/'status', 'genres', etc.). Ensure the 'type' field is correctly set to 'anime' or 'manga'.
+Return ONLY the single JSON object for the recommendation.
 `,
 });
 
@@ -86,12 +82,18 @@ const surpriseMeRecommendationFlow = ai.defineFlow<
              throw new Error('AI model returned incomplete recommendation data.');
         }
 
-        return output;
+         // Add imageUrl and id mapping
+        return {
+             ...output,
+             imageUrl: output.images?.jpg?.large_image_url || output.images?.jpg?.image_url || null,
+             id: output.mal_id // Ensure id is mapped from mal_id
+        };
+
     } catch (error) {
          console.error("Error in surpriseMeRecommendationFlow:", error);
          // Provide a fallback or re-throw
-         // For now, re-throwing might be better to indicate failure
-         throw new Error(`Failed to get surprise recommendation: ${error instanceof Error ? error.message : error}`);
+         // Re-throwing might be better to indicate failure clearly
+         throw new Error(`Failed to get surprise recommendation: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );
