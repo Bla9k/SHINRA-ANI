@@ -334,7 +334,6 @@ const aiPoweredSearchFlow = ai.defineFlow<
 
     } catch (flowError: any) {
         console.error("Error in aiPoweredSearchFlow:", flowError);
-        setError(flowError.message || "An unexpected error occurred during the search.");
         // Return empty results with error analysis if possible
         return {
             results: [],

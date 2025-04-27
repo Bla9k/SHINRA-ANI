@@ -17,7 +17,7 @@ import Link from 'next/link';
 import { Search as SearchIcon, Loader2, Sparkles, AlertCircle, X, CalendarDays, Star, Layers, Library, Film, BookText, Tv, User, Heart, Filter, Settings, ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { aiPoweredSearch, AIPoweredSearchOutput, SearchResult } from '@/ai/flows/ai-powered-search';
-import { getAnimes, getMangas } from '@/services'; // Import Jikan-based services
+import { getAnimes, getMangas, AnimeResponse, MangaResponse } from '@/services'; // Import Jikan-based services
 import { Badge } from '@/components/ui/badge';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -56,6 +56,9 @@ const statuses = [ // Combine common anime & manga statuses
     { value: "airing", label: "Airing / Publishing" }, // Combined term
     { value: "complete", label: "Finished" }, // Jikan 'complete' for anime, 'finished' for manga
     { value: "upcoming", label: "Upcoming" },
+    // Jikan uses different statuses for manga, ensure services handle mapping if needed
+    { value: "finished", label: "Finished" },
+    { value: "publishing", label: "Publishing" },
     { value: "on_hiatus", label: "On Hiatus" },
     { value: "discontinued", label: "Discontinued" },
 ];
@@ -70,7 +73,7 @@ const sortOptions = [
 ];
 
 const contentTypes = [
-    { value: "all", label: "Anime & Manga" },
+    { value: ANY_VALUE, label: "Anime & Manga" }, // Changed 'all' to ANY_VALUE
     { value: "anime", label: "Anime Only" },
     { value: "manga", label: "Manga Only" },
 ];
@@ -118,54 +121,52 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
   const toggleFilters = () => setShowFilters(prev => !prev);
 
   // Reset filters function
-  const resetFilters = () => {
-    setSelectedType(ANY_VALUE);
-    setSelectedGenre(ANY_VALUE);
-    setSelectedStatus(ANY_VALUE);
-    setMinScore('');
-    // setSelectedSort(DEFAULT_SORT); // Optionally reset sort too
-    // Re-run search with cleared filters if a term exists
-    if (debouncedSearchTerm) {
-      handleSearch(debouncedSearchTerm);
-    }
-  };
+  const resetFilters = useCallback(() => {
+      console.log("[SearchPopup] Resetting filters");
+      setSelectedType(ANY_VALUE);
+      setSelectedGenre(ANY_VALUE);
+      setSelectedStatus(ANY_VALUE);
+      setMinScore('');
+      // Keep sort selection unless explicitly reset elsewhere
+  }, []); // No dependencies, it's a pure reset action
 
   // Update initial filter state when opening with `openWithFilters`
   useEffect(() => {
     if (isOpen && openWithFilters) {
       setShowFilters(true);
     }
-  }, [isOpen, openWithFilters]);
-
-  // Update internal search term if initial term changes while open
-  useEffect(() => {
-      if (isOpen && initialSearchTerm) {
-          setSearchTerm(initialSearchTerm);
-          setHasSearched(true);
-          handleSearch(initialSearchTerm); // Trigger search immediately
-      }
-      // Ensure filters are shown if `openWithFilters` is true when opening
-      if (isOpen && openWithFilters) {
-         setShowFilters(true);
-      }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSearchTerm, isOpen, openWithFilters]); // Depend on openWithFilters too
+     // Clear initial search term when closing or opening without one
+     if (!isOpen || (isOpen && !initialSearchTerm && !openWithFilters)) {
+         setSearchTerm('');
+     } else if (isOpen && initialSearchTerm) {
+         setSearchTerm(initialSearchTerm);
+     }
+  }, [isOpen, openWithFilters, initialSearchTerm]);
 
   // Reset state when popup opens/closes
   useEffect(() => {
       if (isOpen) {
+          console.log("[SearchPopup] Opened. Initial Term:", initialSearchTerm, "Open with filters:", openWithFilters);
           setSearchTerm(initialSearchTerm);
           setHasSearched(!!initialSearchTerm);
-           setShowFilters(openWithFilters); // Set filter visibility based on prop
-          if (!initialSearchTerm) {
-              setResults([]);
-              setAiSuggestions(initialAiSuggestions);
-              setAiAnalysis(null);
-              setError(null);
-              setLoading(false);
-              resetFilters(); // Reset filters when opening fresh
+          setShowFilters(openWithFilters); // Set filter visibility based on prop
+
+          if (initialSearchTerm) {
+               // If opened with an initial term, trigger search immediately
+               console.log("[SearchPopup] Triggering initial search for:", initialSearchTerm);
+               handleSearch(initialSearchTerm);
+          } else {
+               // If opened fresh (no term, no filters initially shown), reset fully
+               setResults([]);
+               setAiSuggestions(isAiActive ? initialAiSuggestions : []);
+               setAiAnalysis(null);
+               setError(null);
+               setLoading(false);
+               resetFilters(); // Reset filters when opening fresh
           }
+
       } else {
+          console.log("[SearchPopup] Closed. Resetting state.");
           // Reset everything on close.
           setSearchTerm('');
           setResults([]);
@@ -178,18 +179,21 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
           resetFilters(); // Reset filters on close
       }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen]); // Only run on open/close state change
 
 
   const handleSearch = useCallback(async (currentSearchTerm: string) => {
       const term = currentSearchTerm.trim();
+      console.log(`[SearchPopup] handleSearch called. Term: "${term}", AI: ${isAiActive}, Filters Active: ${hasActiveFilters}`);
+
       if (!term && !hasActiveFilters) { // Don't search if term is empty AND no filters are active
+          console.log("[SearchPopup] Skipping search: No term and no active filters.");
           setResults([]);
           setAiSuggestions(isAiActive ? initialAiSuggestions : []);
           setAiAnalysis(null);
           setError(null);
           setLoading(false);
-          setHasSearched(false);
+          setHasSearched(false); // Indicate no search was performed
           return;
       }
 
@@ -197,103 +201,130 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
       setError(null);
       setAiAnalysis(null);
       setHasSearched(true);
+      console.log("[SearchPopup] Setting loading=true, hasSearched=true");
 
       startTransition(async () => {
           try {
-              let searchOutput: AIPoweredSearchOutput;
               if (isAiActive) {
                   // --- AI Search Logic ---
-                  const searchInput = { searchTerm: term || "anything", searchType: 'all' as const }; // Use term or default prompt
-                  console.log("Performing AI Search with input:", searchInput);
-                  searchOutput = await aiPoweredSearch(searchInput);
+                  const searchInput = { searchTerm: term || "show me something interesting", searchType: 'all' as const }; // Use term or default prompt
+                  console.log("[SearchPopup] Performing AI Search with input:", searchInput);
+                  const searchOutput = await aiPoweredSearch(searchInput);
+                  console.log("[SearchPopup] AI Search Response:", searchOutput);
                   setResults(searchOutput.results || []);
                   setAiSuggestions(searchOutput.suggestions || []);
                   setAiAnalysis(searchOutput.aiAnalysis || null);
-                  console.log("AI Search successful");
+                  setError(null); // Clear previous errors
+                  console.log("[SearchPopup] AI Search successful. Results:", searchOutput.results?.length);
               } else {
                   // --- Standard Jikan Search Logic with Filters ---
-                  console.log("Performing Standard Jikan Search for:", term, "Filters:", { selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort });
+                  console.log("[SearchPopup] Performing Standard Jikan Search. Term:", term, "Filters:", { selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort });
 
                    // Convert minScore string to number, handle invalid input
                   const scoreNum = debouncedMinScore ? parseFloat(debouncedMinScore) : undefined;
                   const validMinScore = scoreNum && !isNaN(scoreNum) && scoreNum >= 0 && scoreNum <= 10 ? scoreNum : undefined;
 
-                  // Prepare service call promises based on selectedType
-                  const animePromise = (selectedType === 'all' || selectedType === 'anime')
-                    ? getAnimes(
-                          selectedGenre === ANY_VALUE ? undefined : selectedGenre,
-                          undefined, // Year filter not implemented in this popup
-                          validMinScore,
-                          term || undefined, // Pass term if present
-                          selectedStatus === ANY_VALUE ? undefined : selectedStatus,
-                          1, // Always fetch page 1 for popup results
-                          selectedSort,
-                          12 // Limit results for popup view
-                      )
-                    : Promise.resolve({ animes: [], hasNextPage: false }); // Empty promise if not searching anime
+                   // Map 'any' values to undefined for API calls
+                  const typeParam = selectedType === ANY_VALUE ? 'all' : selectedType;
+                  const genreParam = selectedGenre === ANY_VALUE ? undefined : selectedGenre;
+                  const statusParam = selectedStatus === ANY_VALUE ? undefined : selectedStatus;
+                  const sortParam = selectedSort === ANY_VALUE ? DEFAULT_SORT : selectedSort;
+                  const searchTermParam = term || undefined;
 
-                  const mangaPromise = (selectedType === 'all' || selectedType === 'manga')
+                  console.log("[SearchPopup] API Params - Type:", typeParam, "Genre:", genreParam, "Status:", statusParam, "MinScore:", validMinScore, "Sort:", sortParam, "SearchTerm:", searchTermParam);
+
+                  // Prepare service call promises based on selectedType
+                  const searchLimit = 12; // Max results for popup
+                  const animePromise = (typeParam === 'all' || typeParam === 'anime')
+                    ? getAnimes(
+                          genreParam,
+                          undefined, // Year filter not currently in popup
+                          validMinScore,
+                          searchTermParam,
+                          statusParam,
+                          1, // Always fetch page 1 for popup results
+                          sortParam,
+                          searchLimit
+                      ).catch(err => { console.error("Anime fetch failed:", err); return { animes: [], hasNextPage: false } as AnimeResponse; }) // Catch errors per promise
+                    : Promise.resolve({ animes: [], hasNextPage: false } as AnimeResponse);
+
+                  const mangaPromise = (typeParam === 'all' || typeParam === 'manga')
                     ? getMangas(
-                          selectedGenre === ANY_VALUE ? undefined : selectedGenre,
-                          selectedStatus === ANY_VALUE ? undefined : selectedStatus,
-                          term || undefined, // Pass term if present
+                          genreParam,
+                          statusParam, // Note: Jikan status filtering for manga might differ
+                          searchTermParam,
                           validMinScore,
                           1, // Always fetch page 1
-                          selectedSort,
-                          12 // Limit results
-                      )
-                    : Promise.resolve({ mangas: [], hasNextPage: false }); // Empty promise if not searching manga
+                          sortParam,
+                          searchLimit
+                      ).catch(err => { console.error("Manga fetch failed:", err); return { mangas: [], hasNextPage: false } as MangaResponse; }) // Catch errors per promise
+                    : Promise.resolve({ mangas: [], hasNextPage: false } as MangaResponse);
 
                   const [animeRes, mangaRes] = await Promise.all([animePromise, mangaPromise]);
 
+                  console.log("[SearchPopup] Jikan Response - Anime:", animeRes, "Manga:", mangaRes);
+
+
                   // Map results to the unified SearchResult format
                   const combinedResults: SearchResult[] = [
-                      ...(animeRes.animes || []).map(a => ({
-                          id: a.mal_id, title: a.title, imageUrl: a.imageUrl, description: a.synopsis, type: 'anime' as const, genres: a.genres, year: a.year, score: a.score, episodes: a.episodes, status: a.status,
+                      ...(animeRes?.animes || []).map(a => ({
+                           id: a.mal_id, title: a.title, imageUrl: a.imageUrl, description: a.synopsis, type: 'anime' as const, genres: a.genres, year: a.year, score: a.score, episodes: a.episodes, status: a.status,
                       })),
-                      ...(mangaRes.mangas || []).map(m => ({
+                      ...(mangaRes?.mangas || []).map(m => ({
                           id: m.mal_id, title: m.title, imageUrl: m.imageUrl, description: m.synopsis, type: 'manga' as const, genres: m.genres, year: m.year, score: m.score, chapters: m.chapters, volumes: m.volumes, status: m.status,
                       }))
                   ].filter(item => item.id != null)
-                   .sort((a, b) => { // Prioritize exact title matches, then score/rank
+                   .sort((a, b) => { // Prioritize exact title matches, then sort order from Jikan (usually relevance/rank)
                        const titleA = a.title.toLowerCase();
                        const titleB = b.title.toLowerCase();
                        const termLower = term?.toLowerCase() || '';
                        if (termLower) {
                            if (titleA === termLower && titleB !== termLower) return -1;
                            if (titleB === termLower && titleA !== termLower) return 1;
+                           if (titleA.startsWith(termLower) && !titleB.startsWith(termLower)) return -1;
+                           if (titleB.startsWith(termLower) && !titleA.startsWith(termLower)) return 1;
                        }
-                       return (b.score ?? -1) - (a.score ?? -1); // Fallback sort by score
-                   });
+                       // Let the default sort order from Jikan handle relevance if no exact match
+                       return 0; // Maintain Jikan's order otherwise (assuming combined array preserves relative order)
+                       // Or fallback sort: return (b.score ?? -1) - (a.score ?? -1);
+                   })
+                   .slice(0, searchLimit * 2); // Ensure we don't exceed limits post-combination
 
+
+                  console.log("[SearchPopup] Combined Results:", combinedResults);
                   setResults(combinedResults);
-                  setAiSuggestions([]); // No AI suggestions
-                  setAiAnalysis(null); // No AI analysis
-                  console.log(`Standard Search successful, found ${combinedResults.length} items.`);
+                  setAiSuggestions([]); // No AI suggestions in standard mode
+                  setAiAnalysis(null); // No AI analysis in standard mode
+                  setError(null); // Clear previous errors
+                  console.log(`[SearchPopup] Standard Search successful, found ${combinedResults.length} items.`);
               }
-              setError(null);
+
           } catch (err: any) {
-              console.error(`Search failed (AI Active: ${isAiActive}):`, err);
+              console.error(`[SearchPopup] Search failed (AI Active: ${isAiActive}):`, err);
               const mode = isAiActive ? "Nami" : "Standard search";
               setError(err.message || `${mode} encountered an issue. Please try again.`);
-              setResults([]);
+              setResults([]); // Clear results on error
               setAiSuggestions([]);
               setAiAnalysis(`${mode} Error: ${err.message}`);
           } finally {
               setLoading(false);
+              console.log("[SearchPopup] Setting loading=false");
           }
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startTransition, isAiActive, selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort]); // Include filter states
+  }, [startTransition, isAiActive, hasActiveFilters, selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort]); // Add filter states to dependencies
 
   // Trigger search on debounced term/filter changes or AI mode change
   useEffect(() => {
+    console.log("[SearchPopup] Debounced term or filters changed. Term:", debouncedSearchTerm, "AI:", isAiActive, "Filters:", {selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort});
     if (isOpen) { // Only search when the popup is open
-       // Search if debounced term OR any filter changes
+       // Search if debounced term changes OR any filter changes while open
         handleSearch(debouncedSearchTerm);
+    } else {
+        console.log("[SearchPopup] Skipping search because popup is closed.");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, isAiActive, selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort, isOpen]);
+  }, [debouncedSearchTerm, isAiActive, selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort, isOpen]); // Rerun search if filters change
 
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -302,8 +333,8 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
   };
 
 
- // Result Card component (Remains the same)
- const ResultCard = ({ item }: { item: SearchResult }) => {
+ // Result Card component
+ const ResultCard = React.memo(({ item }: { item: SearchResult }) => { // Memoize for performance
       const linkHref = item.type !== 'character' ? `/${item.type}/${item.id}` : `https://myanimelist.net/character/${item.id}`;
       const target = item.type === 'character' ? '_blank' : '_self';
 
@@ -363,7 +394,8 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
         </CardContent>
        </Card>
      );
- };
+ });
+ ResultCard.displayName = 'ResultCard'; // Add display name for React DevTools
 
    // Skeleton card (Remains the same)
    const SkeletonCard = () => (
@@ -391,16 +423,17 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
 
   return (
-      <Dialog open={isOpen} onOpenChange={onClose}>
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent
           className="glass p-0 sm:p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl"
+           onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click if needed
         >
            <VisuallyHidden><DialogTitle>Search AniManga Stream</DialogTitle></VisuallyHidden>
             <DialogHeader className="p-4 pb-3 border-b border-border/50 flex-shrink-0">
                 {/* Input and Buttons Container */}
                 <div className="flex items-center gap-2 w-full">
                     {/* Search Input */}
-                    <div className="relative flex-grow">
+                     <form onSubmit={(e) => { e.preventDefault(); handleSearch(searchTerm); }} className="relative flex-grow">
                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 pointer-events-none z-10">
                            {isAiActive ? (
                               <Sparkles className="h-full w-full text-primary" />
@@ -426,7 +459,9 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                                 <Loader2 />
                              </div>
                         )}
-                    </div>
+                         {/* Hidden submit button for form submission on Enter */}
+                         <button type="submit" hidden />
+                    </form>
 
                     {/* Filter Toggle Button (only in Standard Mode) */}
                     {!isAiActive && (
@@ -483,8 +518,9 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                                     <SelectValue placeholder="Any Type" />
                                 </SelectTrigger>
                                 <SelectContent className="glass max-h-60">
+                                    {/* Ensure ANY_VALUE is used */}
                                     <SelectItem value={ANY_VALUE}>Any Type</SelectItem>
-                                    {contentTypes.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                                    {contentTypes.filter(t => t.value !== ANY_VALUE).map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
                                 </SelectContent>
                              </Select>
                          </div>
@@ -567,8 +603,8 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                 </Alert>
             )}
 
-             {/* Initial State & AI Suggestions (Only if AI is active and no search term) */}
-             {!loading && !error && !searchTerm && isAiActive && !hasSearched && (
+             {/* Initial State & AI Suggestions (Only if AI is active and no search term/results) */}
+             {!loading && !error && !searchTerm && isAiActive && !hasSearched && results.length === 0 && (
                  <div className="px-2 py-4">
                      <h3 className="text-sm font-semibold mb-3 text-muted-foreground px-1">Try asking Nami:</h3>
                      <div className="space-y-2">
@@ -610,7 +646,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                      )}
                      {/* Result Cards */}
                     {results.map((item) => (
-                        item && item.id ? <ResultCard key={`${item.type}-${item.id}-${Date.now()}`} item={item} /> : null // Added timestamp to key temporarily
+                        item && item.id ? <ResultCard key={`${item.type}-${item.id}`} item={item} /> : null // Use unique type-id key
                     ))}
                 </div>
             )}
@@ -627,13 +663,19 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                             </div>
                         </div>
                      )}
+                      {!isAiActive && !hasActiveFilters && (
+                          <p className="text-xs mt-2">Try broadening your search or use the filters <Filter size={12} className="inline-block mx-1"/>.</p>
+                      )}
+                       {!isAiActive && hasActiveFilters && (
+                          <Button variant="link" size="sm" onClick={resetFilters} className="mt-2">Reset Filters</Button>
+                      )}
                 </div>
             )}
 
-             {/* Prompt to enter search if popup is open but no search has been made */}
+             {/* Prompt to enter search if popup is open but no search has been made and not AI mode */}
              {!loading && !error && !hasSearched && !isAiActive && (
                  <div className="text-center text-muted-foreground py-10 px-4">
-                     <p>Enter a search term or use filters.</p>
+                     <p>Enter a search term or use filters <Filter size={16} className="inline-block ml-1"/>.</p>
                  </div>
              )}
 

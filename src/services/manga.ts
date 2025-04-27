@@ -121,7 +121,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 1500; // 1.5 seconds delay
+const JIKAN_DELAY = 3000; // Increased delay to 3 seconds
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -187,7 +187,7 @@ export async function getMangas(
   if (search) params.append('q', search);
   if (genre) params.append('genres', genre.toString());
   if (status) params.append('status', status);
-  if (minScore && minScore > 0) params.append('min_score', minScore.toString());
+  if (minScore && minScore > 0 && minScore <= 10) params.append('min_score', minScore.toString());
 
    // Jikan Sorting Logic
   let orderBy = '';
@@ -236,7 +236,7 @@ export async function getMangas(
   const headers: HeadersInit = { 'Accept': 'application/json' };
   let response: Response | undefined;
 
-  console.log(`Attempting to fetch Jikan Manga URL: ${url} with delay ${JIKAN_DELAY}ms`);
+  console.log(`[getMangas] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
   await delay(JIKAN_DELAY); // Wait before making the API call
 
   try {
@@ -247,39 +247,45 @@ export async function getMangas(
       next: { revalidate: 1800 }, // Cache for 30 minutes
     });
 
+    console.log(`[getMangas] Response status for ${url}: ${response.status}`);
+
+
     // Check if the response status is OK (2xx) BEFORE trying to parse JSON
     if (!response.ok) {
         const errorBody = await response.text(); // Get raw error body
-        console.error(`Jikan API response not OK: ${response.status} "${response.statusText}"`);
-        console.error('Jikan Error Body:', errorBody);
-        console.error('Jikan Request URL:', url);
+        console.error(`[getMangas] Jikan API response not OK: ${response.status} "${response.statusText}"`);
+        console.error('[getMangas] Jikan Error Body:', errorBody);
+        console.error('[getMangas] Jikan Request URL:', url);
          if (response.status === 429) {
-            console.warn("Jikan API rate limit likely exceeded. Consider increasing JIKAN_DELAY or reducing requests.");
+            console.warn("[getMangas] Jikan API rate limit likely exceeded (429). Consider increasing JIKAN_DELAY or reducing requests.");
          }
+         let parsedError = null;
         try {
-            const errorJson = JSON.parse(errorBody);
-            console.error('Parsed Jikan Error Body:', errorJson);
+            parsedError = JSON.parse(errorBody);
+            console.error('[getMangas] Parsed Jikan Error Body:', parsedError);
         } catch {}
-        throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}`);
+        throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
     }
 
     // If response is OK, proceed to parse JSON
     const jsonResponse: JikanMangaListResponse = await response.json();
+    // console.log('[getMangas] Jikan JSON Response:', JSON.stringify(jsonResponse, null, 2)); // Verbose logging
+
 
     // Check if the data field is missing or not an array AFTER confirming response.ok
-     if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-         console.warn('Jikan API error: Response OK but missing or invalid "data" field.');
-         console.warn('Jikan Response:', JSON.stringify(jsonResponse));
-         console.warn('Jikan Request URL:', url);
+     if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+         console.warn('[getMangas] Jikan API error: Response OK but missing or invalid "data" field.');
+         console.warn('[getMangas] Jikan Response:', JSON.stringify(jsonResponse));
+         console.warn('[getMangas] Jikan Request URL:', url);
          if (jsonResponse.status && jsonResponse.message) {
-             console.warn(`Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}`);
+             console.warn(`[getMangas] Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}`);
          }
           // Return an empty list gracefully
           return {
               mangas: [],
               hasNextPage: false,
               currentPage: page,
-              lastPage: jsonResponse.pagination?.last_visible_page ?? page,
+              lastPage: jsonResponse?.pagination?.last_visible_page ?? page,
           };
     }
 
@@ -289,7 +295,7 @@ export async function getMangas(
                         .map(mapJikanDataToManga)
                         .filter((manga): manga is Manga => manga !== null);
 
-     console.log(`Successfully fetched ${mangas.length} manga for URL: ${url}. HasNextPage: ${pagination?.has_next_page ?? false}`);
+     console.log(`[getMangas] Successfully fetched ${mangas.length} manga for URL: ${url}. HasNextPage: ${pagination?.has_next_page ?? false}`);
 
     return {
         mangas: mangas,
@@ -299,11 +305,11 @@ export async function getMangas(
     };
 
   } catch (error: any) {
-    console.error(`Failed to fetch manga from Jikan. URL: ${url}`);
+    console.error(`[getMangas] Failed to fetch manga from Jikan. URL: ${url}`);
     if(response) {
-        console.error('Response Status:', response.status, response.statusText);
+        console.error('[getMangas] Response Status on Catch:', response.status, response.statusText);
     }
-    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error('[getMangas] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     throw new Error(`Failed to fetch manga data from Jikan: ${error.message || 'Unknown fetch error'}`);
   }
 }
@@ -321,7 +327,7 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
     const headers: HeadersInit = { 'Accept': 'application/json' };
     let response: Response | undefined;
 
-    console.log(`Attempting to fetch Jikan Manga by ID: ${url} with delay ${JIKAN_DELAY}ms`);
+    console.log(`[getMangaById] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
     await delay(JIKAN_DELAY); // Wait before making the API call
 
     try {
@@ -331,50 +337,56 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
             next: { revalidate: 3600 }, // Cache for 1 hour
         });
 
+        console.log(`[getMangaById] Response status for ${url}: ${response.status}`);
+
+
         if (response.status === 404) {
-            console.warn(`Jikan: Manga with MAL ID ${mal_id} not found (404).`);
+            console.warn(`[getMangaById] Jikan: Manga with MAL ID ${mal_id} not found (404).`);
             return null; // Not found is not necessarily an error
         }
 
         if (!response.ok) {
             const errorBody = await response.text();
-            console.error(`Jikan API response not OK: ${response.status} "${response.statusText}"`);
-            console.error('Jikan Error Body:', errorBody);
-            console.error('Jikan Request URL:', url);
+            console.error(`[getMangaById] Jikan API response not OK: ${response.status} "${response.statusText}"`);
+            console.error('[getMangaById] Jikan Error Body:', errorBody);
+            console.error('[getMangaById] Jikan Request URL:', url);
              if (response.status === 429) {
-                 console.warn("Jikan API rate limit likely exceeded on single fetch. Consider increasing JIKAN_DELAY.");
+                 console.warn("[getMangaById] Jikan API rate limit likely exceeded on single fetch (429). Consider increasing JIKAN_DELAY.");
              }
+             let parsedError = null;
              try {
-                const errorJson = JSON.parse(errorBody);
-                console.error('Parsed Jikan Error Body:', errorJson);
+                parsedError = JSON.parse(errorBody);
+                console.error('[getMangaById] Parsed Jikan Error Body:', parsedError);
             } catch {}
-            throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}`);
+            throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
         }
 
         const jsonResponse: JikanSingleMangaResponse = await response.json();
+        // console.log('[getMangaById] Jikan JSON Response:', JSON.stringify(jsonResponse, null, 2));
+
 
          if (!jsonResponse.data) {
-             console.warn('Jikan API error: Response OK but missing data field for single manga.');
-             console.warn('Jikan Response:', JSON.stringify(jsonResponse));
-             console.warn('Jikan Request URL:', url);
+             console.warn('[getMangaById] Jikan API error: Response OK but missing data field for single manga.');
+             console.warn('[getMangaById] Jikan Response:', JSON.stringify(jsonResponse));
+             console.warn('[getMangaById] Jikan Request URL:', url);
               return null; // Return null instead of throwing
          }
 
         const mappedManga = mapJikanDataToManga(jsonResponse.data);
 
         if (mappedManga) {
-             console.log(`Successfully fetched manga ID ${mal_id}: ${mappedManga.title}`);
+             console.log(`[getMangaById] Successfully fetched manga ID ${mal_id}: ${mappedManga.title}`);
         } else {
-             console.warn(`Failed to map Jikan data for manga ID ${mal_id}.`);
+             console.warn(`[getMangaById] Failed to map Jikan data for manga ID ${mal_id}. Raw Data:`, JSON.stringify(jsonResponse.data));
         }
 
         return mappedManga;
     } catch (error: any) {
-        console.error(`Failed to fetch manga with MAL ID ${mal_id} from Jikan. URL: ${url}`);
+        console.error(`[getMangaById] Failed to fetch manga with MAL ID ${mal_id} from Jikan. URL: ${url}`);
         if(response) {
-            console.error('Response Status:', response.status, response.statusText);
+            console.error('[getMangaById] Response Status on Catch:', response.status, response.statusText);
         }
-        console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        console.error('[getMangaById] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         // Return null as the function signature suggests, indicating failure to retrieve
         return null;
     }
