@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
@@ -12,12 +12,12 @@ import { getAnimes, Anime, AnimeResponse } from '@/services/anime'; // Import Ji
 import { getMangas, Manga, MangaResponse } from '@/services/manga'; // Import Jikan-based manga service
 import { Sparkles, AlertCircle, Tv, BookText, Star } from 'lucide-react'; // Import icons
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from '@/components/ui/badge';
+import { Badge } from '@/components/ui/badge'; // Make sure Badge is imported
 
 // Define types for combined recommendations (can be Anime or Manga from Jikan)
 // Ensure required fields for the card are present
 type RecommendationItem = (Partial<Anime> | Partial<Manga>) & {
-  id: number; // Use mal_id from Jikan, ensuring it's present
+  mal_id: number; // Use mal_id from Jikan, ensuring it's present
   title: string; // Ensure title is present
   type: 'anime' | 'manga';
   imageUrl?: string | null; // Use derived imageUrl
@@ -35,7 +35,7 @@ async function fetchDetailsByTitleWithDelay(
     titles: string[],
     fetchFunction: (genre?: string | number, year?: number, minScore?: number, search?: string, status?: string, page?: number, sort?: string) => Promise<AnimeResponse | MangaResponse>,
     itemType: 'anime' | 'manga',
-    delayMs = 1200 // Increased delay further for Jikan (was 600ms, then 800ms)
+    delayMs = 1500 // Maintain 1.5s delay for Jikan
 ): Promise<RecommendationItem[]> {
     const results: RecommendationItem[] = [];
     // Ensure unique titles before fetching to avoid redundant calls
@@ -45,6 +45,7 @@ async function fetchDetailsByTitleWithDelay(
         try {
             // Fetch page 1, limit handled by service, sort by relevance (default for search)
             console.log(`Fetching ${itemType} details for: "${title}"`);
+            // Use search param for title, Jikan default sort might be relevance or ID
             const response = await fetchFunction(undefined, undefined, undefined, title, undefined, 1);
             let firstMatch: Anime | Manga | null = null;
 
@@ -54,20 +55,25 @@ async function fetchDetailsByTitleWithDelay(
                 firstMatch = response.mangas[0];
             }
 
-            if (firstMatch && firstMatch.mal_id && firstMatch.title) {
-                // Ensure id is mapped correctly from mal_id and core fields exist
-                results.push({
-                    ...firstMatch,
-                    id: firstMatch.mal_id,
-                    type: itemType,
-                    description: firstMatch.synopsis, // Map synopsis to description
-                    // Ensure score is included if present
-                    score: firstMatch.score ?? null,
-                    // Ensure imageUrl is included
-                    imageUrl: firstMatch.imageUrl ?? null,
-                });
+            // Additional check: Does the found item's title closely match the searched title?
+            // Jikan search can sometimes return loosely related items first.
+            // This is a simple check; more sophisticated matching could be added.
+            if (firstMatch?.title && firstMatch.title.toLowerCase().includes(title.toLowerCase().substring(0, 5))) {
+                if (firstMatch && firstMatch.mal_id && firstMatch.title) {
+                    // Ensure id is mapped correctly from mal_id and core fields exist
+                    results.push({
+                        ...firstMatch,
+                        id: firstMatch.mal_id, // Map mal_id to id for card key consistency
+                        type: itemType,
+                        description: firstMatch.synopsis, // Map synopsis to description
+                        score: firstMatch.score ?? null,
+                        imageUrl: firstMatch.imageUrl ?? null,
+                    });
+                } else {
+                     console.warn(`Could not fetch valid details for ${itemType} "${title}" from Jikan (no match or missing critical fields). Response:`, firstMatch);
+                }
             } else {
-                 console.warn(`Could not fetch valid details for ${itemType} "${title}" from Jikan (no match or missing critical fields).`);
+                 console.warn(`Jikan search for "${title}" returned a best match "${firstMatch?.title}" that might not be accurate. Skipping.`);
             }
         } catch (err) {
             // Log the error but don't throw, allow the loop to continue
@@ -90,17 +96,12 @@ export default function Home() {
   const [loadingTrending, setLoadingTrending] = useState(true);
   const [errorTrending, setErrorTrending] = useState<string | null>(null);
 
-  useEffect(() => {
-    let isMounted = true; // Flag to prevent state updates on unmounted component
-
-    const fetchInitialData = async () => {
-      if (!isMounted) return;
-
+  const fetchInitialData = useCallback(async () => {
       setLoadingRecommendations(true);
       setLoadingTrending(true);
       setErrorRecommendations(null);
       setErrorTrending(null);
-      setRecommendedContent([]); // Clear previous results
+      setRecommendedContent([]);
       setTrendingAnime([]);
       setTrendingManga([]);
 
@@ -116,11 +117,11 @@ export default function Home() {
         try {
              console.log("Fetching AI recommendations...");
              aiOutput = await aiDrivenHomepage({ userProfile, currentMood });
-             if (isMounted) setRecommendations(aiOutput);
-             console.log("AI Recommendations:", aiOutput);
+             setRecommendations(aiOutput);
+             console.log("AI Recommendations received:", aiOutput);
         } catch (aiError: any) {
             console.error("Failed to fetch AI recommendations:", aiError);
-            if (isMounted) setErrorRecommendations(aiError.message || "Nami couldn't generate recommendations right now.");
+            setErrorRecommendations(aiError.message || "Nami couldn't generate recommendations right now.");
             // Continue to fetch trending even if AI fails
         }
 
@@ -132,39 +133,38 @@ export default function Home() {
             try {
                  console.log("Fetching details for AI recommended anime...");
                  const animeResults = await fetchDetailsByTitleWithDelay(animeTitles, getAnimes, 'anime');
-                 if (!isMounted) return; // Check mount status after async operation
+
 
                  console.log("Fetching details for AI recommended manga...");
-                 await delay(1000); // Add delay between fetching anime and manga details
+                 // No extra delay needed here as fetchDetailsByTitleWithDelay has internal delays
                  const mangaResults = await fetchDetailsByTitleWithDelay(mangaTitles, getMangas, 'manga');
-                 if (!isMounted) return; // Check mount status
+
 
                  // Combine results
                  combinedRecommendedResults = [...animeResults, ...mangaResults];
-                 console.log("Combined AI recommendation details:", combinedRecommendedResults);
+                 console.log("Combined AI recommendation details fetched:", combinedRecommendedResults);
 
              } catch (detailFetchError: any) {
                   console.error("Error fetching details for AI recommendations:", detailFetchError);
-                  if (isMounted) setErrorRecommendations(prev => prev || "Failed to fetch details for some recommendations.");
-                  // Keep combinedRecommendedResults potentially empty or partially filled
+                  // Set error but keep any partial results
+                  setErrorRecommendations(prev => prev || "Failed to fetch details for some recommendations.");
              }
         } else if (!errorRecommendations) {
              console.log("No AI recommendations provided or AI flow failed gracefully.");
-             // No recommendations from AI, or AI failed gracefully
         }
 
          // --- Filter for unique items based on type and id, and update state ---
-         if (isMounted) {
              const uniqueResultsMap = new Map<string, RecommendationItem>();
              combinedRecommendedResults.forEach(item => {
                  // Ensure item.id is defined before creating key
-                 if (item && typeof item.id === 'number') {
-                     const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
+                 if (item && typeof item.mal_id === 'number') { // Use mal_id for keying
+                     const uniqueKey = `${item.type}-${item.mal_id}`;
                      if (!uniqueResultsMap.has(uniqueKey)) {
-                         uniqueResultsMap.set(uniqueKey, item);
+                         // Map mal_id to id for ItemCard consistency if needed by card component
+                         uniqueResultsMap.set(uniqueKey, { ...item, id: item.mal_id });
                      }
                  } else {
-                    console.warn("Skipping item with undefined id during unique filtering:", item);
+                    console.warn("Skipping item with undefined mal_id during unique filtering:", item);
                  }
              });
              const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
@@ -175,71 +175,58 @@ export default function Home() {
              setRecommendedContent(uniqueRecommendedContent.slice(0, 8)); // Limit displayed AI recommendations
              setLoadingRecommendations(false); // AI Recommendations part is done
              console.log("Final unique recommended content set:", uniqueRecommendedContent.slice(0, 8));
-         }
 
 
         // --- 3. Fetch Trending Data (After AI details processing) ---
         console.log("Fetching trending data...");
-        await delay(1500); // Increased delay before fetching trending
-        if (!isMounted) return;
-
+        // No extra delay needed here as the services have internal delays
         try {
            // Fetch trending using Jikan services (popularity sort)
            // Fetch them sequentially to further reduce burst load
            const trendingAnimeResponse = await getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
-           if (isMounted && trendingAnimeResponse?.animes) { // Check if data exists
+            if (trendingAnimeResponse?.animes) {
                 setTrendingAnime(trendingAnimeResponse.animes.slice(0, 6));
                 console.log("Trending anime fetched:", trendingAnimeResponse.animes.slice(0, 6));
-           } else if (isMounted) {
+           } else {
                setTrendingAnime([]); // Set empty if no data
                console.warn("No trending anime data received from Jikan.");
            }
-           if (!isMounted) return;
-           await delay(1000); // Delay between trending fetches
 
-           const trendingMangaResponse = await getMangas(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
-           if (isMounted && trendingMangaResponse?.mangas) { // Check if data exists
+           const trendingMangaResponse = await getMangas(undefined, undefined, undefined, undefined, 1, 'popularity');
+            if (trendingMangaResponse?.mangas) {
                setTrendingManga(trendingMangaResponse.mangas.slice(0, 6));
                console.log("Trending manga fetched:", trendingMangaResponse.mangas.slice(0, 6));
-           } else if (isMounted) {
+           } else {
                 setTrendingManga([]); // Set empty if no data
                 console.warn("No trending manga data received from Jikan.");
            }
 
         } catch (trendingError: any) {
              console.error("Failed to fetch trending data from Jikan:", trendingError);
-             if (isMounted) {
                  setErrorTrending(trendingError.message || "Could not load trending content.");
                  setTrendingAnime([]);
                  setTrendingManga([]);
-             }
         } finally {
-            if (isMounted) setLoadingTrending(false);
+             setLoadingTrending(false);
         }
 
       } catch (generalError: any) {
           // Catch any unexpected errors during the process
           console.error("An unexpected error occurred during initial data fetch:", generalError);
-           if (isMounted) {
                setErrorRecommendations(prev => prev || "An unexpected error occurred fetching recommendations.");
                setErrorTrending(prev => prev || "An unexpected error occurred fetching trending content.");
                setLoadingRecommendations(false);
                setLoadingTrending(false);
-           }
       }
-    };
+  }, []); // Add dependencies if needed, but likely should run once on mount
 
-    fetchInitialData();
+  useEffect(() => {
+      fetchInitialData();
+  }, [fetchInitialData]); // Run fetchInitialData when the component mounts
 
-    return () => {
-        isMounted = false; // Cleanup function to set mount status to false
-        console.log("Homepage component unmounted or dependency changed.");
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty dependency array to run only once on mount
 
   // Adapt ItemCard for Jikan data (Anime or Manga interface)
-  // Use RecommendationItem which ensures id and title exist
+  // Use RecommendationItem which ensures mal_id and title exist
   const ItemCard = ({ item }: { item: RecommendationItem }) => (
      <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.03] group flex flex-col h-full">
       <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
@@ -250,8 +237,8 @@ export default function Home() {
              fill
              sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
              className="object-cover transition-transform duration-300 group-hover:scale-105"
-             priority={false} // Keep false unless critical LCP element
-             unoptimized={false} // Only set true if image host is explicitly NOT optimized
+             priority={false}
+             unoptimized={false}
              onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/600?grayscale'; }} // Fallback image on error
            />
           ) : (
@@ -278,11 +265,11 @@ export default function Home() {
              <span className="flex items-center gap-1">
                  <Star size={12} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}
              </span>
-             {/* Link using MAL ID (stored in item.id) */}
+             {/* Link using MAL ID (stored in item.mal_id) */}
              <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
-                 {/* Ensure item.id is valid before creating Link */}
-                 {typeof item.id === 'number' ? (
-                    <Link href={`/${item.type}/${item.id}`}>
+                 {/* Ensure item.mal_id is valid before creating Link */}
+                 {typeof item.mal_id === 'number' ? (
+                    <Link href={`/${item.type}/${item.mal_id}`}>
                         View Details
                     </Link>
                  ) : (
@@ -346,9 +333,9 @@ export default function Home() {
              ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`rec-skel-${index}`} />)
              : recommendedContent.length > 0
                ? recommendedContent.map((item) => (
-                 // Ensure unique key using type and id (mal_id)
-                 // Check if item and item.id are valid before rendering
-                 item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} /> : null
+                 // Ensure unique key using type and mal_id
+                 // Check if item and item.mal_id are valid before rendering
+                 item && item.mal_id ? <ItemCard key={`${item.type}-${item.mal_id}`} item={item} /> : null
                ))
                : !errorRecommendations && <p className="col-span-full text-center text-muted-foreground py-5">Nami couldn't find any specific recommendations right now, or failed to fetch details.</p>
             }
@@ -431,4 +418,3 @@ if (typeof window !== 'undefined') {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 }
-

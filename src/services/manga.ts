@@ -68,6 +68,10 @@ export interface Manga {
     * Derived image URL field for easier access
     */
    imageUrl: string | null;
+    /**
+    * Mapped ID field for component key consistency
+    */
+   id?: number; // Add this optional field
 }
 
 /**
@@ -117,7 +121,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 1500; // Increased delay again to 1.5 seconds
+const JIKAN_DELAY = 1500; // 1.5 seconds delay
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -132,6 +136,7 @@ const mapJikanDataToManga = (jikanData: any): Manga | null => {
   }
   return {
     mal_id: jikanData.mal_id,
+    id: jikanData.mal_id, // Map mal_id to id for consistency
     title: jikanData.title_english || jikanData.title || 'Untitled',
     genres: jikanData.genres || [],
     status: jikanData.status || null,
@@ -151,12 +156,13 @@ const mapJikanDataToManga = (jikanData: any): Manga | null => {
  * Asynchronously retrieves manga from Jikan API v4 with optional filters and pagination.
  * Includes delay to mitigate rate limiting.
  *
- * @param genre The genre MAL ID (number) or name (string) to filter mangas on.
+ * @param genre The genre MAL ID (number) or name (string) to filter mangas on. Jikan expects ID.
  * @param status The status string (e.g., "publishing", "finished", "upcoming").
  * @param search Optional search term (query) for the title.
  * @param minScore The minimum score to filter mangas on (0-10 scale).
  * @param page The page number to fetch (default: 1).
- * @param sort Optional sorting parameter (e.g., "score", "popularity", "rank").
+ * @param sort Optional sorting parameter mapping to Jikan's `order_by` and `sort`.
+ *             Examples: "popularity", "score", "rank", "title", "start_date", "chapters", "volumes".
  * @returns A promise that resolves to a MangaResponse object containing the list of Manga and pagination info.
  */
 export async function getMangas(
@@ -165,7 +171,7 @@ export async function getMangas(
   search?: string,
   minScore?: number,
   page: number = 1,
-  sort?: string
+  sort: string = 'popularity' // Default sort is popularity
 ): Promise<MangaResponse> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -176,17 +182,47 @@ export async function getMangas(
   if (search) params.append('q', search);
   if (genre) params.append('genres', genre.toString());
   if (status) params.append('status', status);
-  if (minScore && minScore > 0) params.append('min_score', minScore.toString()); // Add only if > 0
-  if (sort) params.append('sort', sort); // Jikan uses 'sort' ('asc', 'desc') and 'order_by'
-  if (sort === 'score') params.append('order_by', 'score');
-  if (sort === 'popularity') params.append('order_by', 'members');
+  if (minScore && minScore > 0) params.append('min_score', minScore.toString());
 
-  // Default sort if no search or specific sort provided
-   if (!search && !sort) {
-       params.append('order_by', 'members'); // Default to sorting by popularity
-       params.append('sort', 'desc');
-   }
+   // Jikan Sorting Logic
+  let orderBy = '';
+  let sortDirection = 'desc'; // Default sort direction
 
+  switch (sort) {
+      case 'popularity':
+          orderBy = 'members';
+          break;
+      case 'score':
+          orderBy = 'score';
+          break;
+      case 'rank':
+          orderBy = 'rank';
+          sortDirection = 'asc';
+          break;
+      case 'title':
+          orderBy = 'title';
+          sortDirection = 'asc';
+          break;
+      case 'start_date':
+          orderBy = 'start_date';
+          break;
+       case 'chapters':
+          orderBy = 'chapters';
+          break;
+       case 'volumes':
+           orderBy = 'volumes';
+           break;
+      default:
+         if(!search) {
+            orderBy = 'members'; // Default if no sort/search
+         }
+         // Let Jikan handle relevance if search term exists and no specific sort
+  }
+
+  if (orderBy) {
+     params.append('order_by', orderBy);
+     params.append('sort', sortDirection);
+  }
 
   const url = `${JIKAN_API_URL}/manga?${params.toString()}`;
   const headers: HeadersInit = { 'Accept': 'application/json' };
@@ -209,14 +245,10 @@ export async function getMangas(
         console.error(`Jikan API response not OK: ${response.status} "${response.statusText}"`);
         console.error('Jikan Error Body:', errorBody);
         console.error('Jikan Request URL:', url);
-        // Try to parse error body as JSON for more details, but don't fail if it's not JSON
         try {
             const errorJson = JSON.parse(errorBody);
             console.error('Parsed Jikan Error Body:', errorJson);
-        } catch {
-             // Ignore if parsing fails, already logged raw body
-        }
-        // Throw a more specific error
+        } catch {}
         throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}`);
     }
 
@@ -225,19 +257,18 @@ export async function getMangas(
 
     // Check if the data field is missing or not an array AFTER confirming response.ok
      if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-         console.warn('Jikan API error: Response OK but missing or invalid "data" field.'); // Changed to warn
-         console.warn('Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
+         console.warn('Jikan API error: Response OK but missing or invalid "data" field.');
+         console.warn('Jikan Response:', JSON.stringify(jsonResponse));
          console.warn('Jikan Request URL:', url);
-         // Check if it looks like a Jikan error structure even with 2xx status (unlikely but possible)
          if (jsonResponse.status && jsonResponse.message) {
              console.warn(`Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}`);
          }
-          // Return an empty list instead of throwing an error
+          // Return an empty list gracefully
           return {
               mangas: [],
               hasNextPage: false,
               currentPage: page,
-              lastPage: jsonResponse.pagination?.last_visible_page ?? page, // Use pagination if available
+              lastPage: jsonResponse.pagination?.last_visible_page ?? page,
           };
     }
 
@@ -247,7 +278,7 @@ export async function getMangas(
                         .map(mapJikanDataToManga)
                         .filter((manga): manga is Manga => manga !== null);
 
-     console.log(`Successfully fetched ${mangas.length} manga for URL: ${url}`);
+     console.log(`Successfully fetched ${mangas.length} manga for URL: ${url}. HasNextPage: ${pagination?.has_next_page ?? false}`);
 
     return {
         mangas: mangas,
@@ -258,13 +289,10 @@ export async function getMangas(
 
   } catch (error: any) {
     console.error(`Failed to fetch manga from Jikan. URL: ${url}`);
-    // Log response status if available (might be undefined if fetch itself failed)
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
-    // Log detailed fetch error (e.g., network error, CORS error)
-    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-    // Re-throw a consistent error message
+    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
     throw new Error(`Failed to fetch manga data from Jikan: ${error.message || 'Unknown fetch error'}`);
   }
 }
@@ -306,14 +334,13 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
                 const errorJson = JSON.parse(errorBody);
                 console.error('Parsed Jikan Error Body:', errorJson);
             } catch {}
-            // Throw error for non-404 issues
             throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}`);
         }
 
         const jsonResponse: JikanSingleMangaResponse = await response.json();
 
          if (!jsonResponse.data) {
-             console.warn('Jikan API error: Response OK but missing data field for single manga.'); // Changed to warn
+             console.warn('Jikan API error: Response OK but missing data field for single manga.');
              console.warn('Jikan Response:', JSON.stringify(jsonResponse));
              console.warn('Jikan Request URL:', url);
               return null; // Return null instead of throwing
@@ -333,11 +360,9 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
         if(response) {
             console.error('Response Status:', response.status, response.statusText);
         }
-        console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+        console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
         // Return null as the function signature suggests, indicating failure to retrieve
         return null;
-        // Or re-throw if the caller should handle it:
-        // throw new Error(`Failed to fetch manga details (ID: ${mal_id}): ${error.message || 'Unknown fetch error'}`);
     }
 }
 

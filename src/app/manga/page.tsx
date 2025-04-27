@@ -1,24 +1,53 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getMangas, Manga, MangaResponse } from '@/services/manga'; // Import updated manga service (Jikan based)
-import { BookText, Layers, Library, AlertCircle, Loader2, Star } from 'lucide-react'; // Added Star icon
+import { BookText, Layers, Library, AlertCircle, Loader2, Star, Filter, X } from 'lucide-react'; // Added Star icon
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // For filters
+import { Label } from '@/components/ui/label';
 
 // Helper function to format status (Jikan uses different strings)
 const formatStatus = (status: string | null): string => {
     if (!status) return 'N/A';
-    // You might want to map Jikan statuses ("Finished", "Publishing", "On Hiatus", etc.)
-    // to more user-friendly terms if needed. For now, just return the status.
-    return status;
+    // Capitalize first letter for display if needed
+    return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
 };
+
+// Placeholder options - Fetch dynamically from Jikan /genres/manga if needed
+const genres = [
+    { id: 1, name: "Action" }, { id: 2, name: "Adventure" }, { id: 4, name: "Comedy" },
+    { id: 8, name: "Drama" }, { id: 10, name: "Fantasy" }, { id: 14, name: "Horror" },
+    { id: 7, name: "Mystery" }, { id: 22, name: "Romance" }, { id: 24, name: "Sci-Fi" },
+    { id: 36, name: "Slice of Life" }, { id: 30, name: "Sports" }, { id: 37, name: "Supernatural" },
+    { id: 41, name: "Thriller" },
+    { id: 42, name: "Seinen" }, { id: 27, name: "Shounen" }, { id: 25, name: "Shoujo" }, // Demographics
+].sort((a, b) => a.name.localeCompare(b.name));
+
+const statuses = [
+    { value: "publishing", label: "Publishing" },
+    { value: "finished", label: "Finished" },
+    { value: "on_hiatus", label: "On Hiatus" },
+    { value: "discontinued", label: "Discontinued" },
+    { value: "upcoming", label: "Not Yet Published" }, // Jikan uses 'upcoming' for manga too
+];
+
+const sortOptions = [
+    { value: "popularity", label: "Popularity" }, // Maps to 'members' desc in Jikan
+    { value: "score", label: "Score" }, // Maps to 'score' desc in Jikan
+    { value: "rank", label: "Rank" }, // Maps to 'rank' asc in Jikan
+    { value: "title", label: "Title (A-Z)"}, // Maps to 'title' asc
+    { value: "start_date", label: "Start Date (Newest)"}, // Maps to 'start_date' desc
+    { value: "chapters", label: "Chapters"}, // Maps to 'chapters' desc
+    { value: "volumes", label: "Volumes"}, // Maps to 'volumes' desc
+];
 
 export default function MangaPage() {
   const [mangaList, setMangaList] = useState<Manga[]>([]);
@@ -28,51 +57,71 @@ export default function MangaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
 
-  const fetchManga = useCallback(async (page: number, append = false) => {
+   // Filter State
+  const [selectedGenre, setSelectedGenre] = useState<string | undefined>(undefined);
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
+  const [selectedSort, setSelectedSort] = useState<string>('popularity'); // Default sort
+  const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = useMemo(() => {
+    return !!selectedGenre || !!selectedStatus;
+  }, [selectedGenre, selectedStatus]);
+
+
+  const fetchManga = useCallback(async (page: number, filtersChanged = false) => {
       if (page === 1) {
           setLoading(true);
+          if(filtersChanged) setMangaList([]); // Clear list if filters change
       } else {
           setLoadingMore(true);
       }
       setError(null);
 
       try {
-        // Fetch manga using Jikan service
+        // Fetch manga using Jikan service with filters
         const response: MangaResponse = await getMangas(
-            undefined, // genre
-            undefined, // status
-            undefined, // search
-            undefined, // minScore
-            page       // page
-            // Default sort (popularity) will be used by the service
+            selectedGenre,
+            selectedStatus,
+            undefined, // search term - not implemented yet
+            undefined, // minScore - not implemented yet
+            page,
+            selectedSort
         );
-        setMangaList(prev => append ? [...prev, ...response.mangas] : response.mangas);
+        setMangaList(prev => (page === 1 || filtersChanged) ? response.mangas : [...prev, ...response.mangas]);
         setHasNextPage(response.hasNextPage);
         setCurrentPage(page);
       } catch (err: any) {
         console.error("Failed to fetch manga:", err);
         setError(err.message || "Couldn't load manga list. Please try again later.");
-        if (!append) {
+        if (page === 1 || filtersChanged) {
             setMangaList([]);
         }
+         setHasNextPage(false); // Stop pagination on error
       } finally {
-        if (page === 1) {
-            setLoading(false);
-        } else {
-            setLoadingMore(false);
-        }
+        setLoading(false);
+        setLoadingMore(false);
       }
-  }, []);
+  }, [selectedGenre, selectedStatus, selectedSort]); // Dependencies for useCallback
 
+  // Fetch on initial load and when filters change
   useEffect(() => {
-    fetchManga(1);
-  }, [fetchManga]);
+      fetchManga(1, true); // Reset page to 1 and indicate filters changed
+  }, [fetchManga]); // fetchManga dependency includes all filter states
+
 
   const loadMoreManga = () => {
-    if (hasNextPage && !loadingMore) {
-      fetchManga(currentPage + 1, true);
+    if (hasNextPage && !loadingMore && !loading) {
+      fetchManga(currentPage + 1, false);
     }
   };
+
+   const resetFilters = () => {
+      setSelectedGenre(undefined);
+      setSelectedStatus(undefined);
+      setSelectedSort('popularity'); // Reset sort to default
+      // Fetching will be triggered by useEffect
+  };
+
 
   // Adapt MangaCard for Jikan data structure
   const MangaCard = ({ item }: { item: Manga }) => (
@@ -85,6 +134,7 @@ export default function MangaPage() {
              fill
              sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
              className="object-cover transition-transform duration-300 group-hover:scale-105"
+             onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/600?grayscale'; }} // Fallback
            />
          ) : (
            <div className="absolute inset-0 bg-muted flex items-center justify-center">
@@ -114,7 +164,7 @@ export default function MangaPage() {
                     variant={ // Adjust badge variants based on Jikan status strings
                         item.status === 'Publishing' ? 'default' :
                         item.status === 'Finished' ? 'secondary' :
-                        item.status === 'On Hiatus' ? 'destructive' :
+                        item.status === 'On Hiatus' || item.status === 'Discontinued' ? 'destructive' : // Grouped destructive
                         'outline'
                     }
                     className="text-xs px-1.5 py-0.5"
@@ -176,15 +226,71 @@ export default function MangaPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <section>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
            <h1 className="text-3xl font-bold flex items-center gap-2">
              <BookText className="text-primary w-7 h-7" />
              Browse Manga
            </h1>
-            {/* TODO: Add Filtering/Sorting Options based on Jikan API parameters */}
-            {/* <Button variant="outline">Filter</Button> */}
+            <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className="neon-glow-hover">
+               <Filter size={18} />
+               <span className="sr-only">Toggle Filters</span>
+           </Button>
         </div>
+
+        {/* Filters Section */}
+        {showFilters && (
+            <Card className="mb-6 glass p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {/* Genre Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="genre-filter">Genre</Label>
+                        <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+                           <SelectTrigger id="genre-filter" className="w-full glass text-sm">
+                               <SelectValue placeholder="Any Genre" />
+                           </SelectTrigger>
+                           <SelectContent className="glass max-h-60">
+                               <SelectItem value="">Any Genre</SelectItem>
+                               {genres.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                           </SelectContent>
+                       </Select>
+                    </div>
+                    {/* Status Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="status-filter">Status</Label>
+                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                           <SelectTrigger id="status-filter" className="w-full glass text-sm">
+                               <SelectValue placeholder="Any Status" />
+                           </SelectTrigger>
+                           <SelectContent className="glass">
+                               <SelectItem value="">Any Status</SelectItem>
+                               {statuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                           </SelectContent>
+                       </Select>
+                    </div>
+                     {/* Sort Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="sort-filter">Sort By</Label>
+                        <Select value={selectedSort} onValueChange={setSelectedSort}>
+                           <SelectTrigger id="sort-filter" className="w-full glass text-sm">
+                               <SelectValue placeholder="Sort By" />
+                           </SelectTrigger>
+                           <SelectContent className="glass">
+                               {sortOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                           </SelectContent>
+                       </Select>
+                    </div>
+                </div>
+                 {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={resetFilters} className="text-xs text-muted-foreground hover:text-destructive mt-4">
+                        <X size={14} className="mr-1"/> Reset Filters
+                    </Button>
+                 )}
+            </Card>
+        )}
+
+
+        {/* Content Section */}
+      <section>
         {error && !loadingMore && (
            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
@@ -197,7 +303,7 @@ export default function MangaPage() {
              ? Array.from({ length: 12 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />)
              : mangaList.length > 0
                ? mangaList.map((item) => (
-                 <MangaCard key={item.mal_id} item={item} /> // Use MAL ID as key
+                 item && item.mal_id ? <MangaCard key={item.mal_id} item={item} /> : null // Use MAL ID as key, check validity
                ))
                : !error && !loading && (
                  <div className="col-span-full text-center py-10">
@@ -208,7 +314,7 @@ export default function MangaPage() {
          </div>
 
          {/* Load More Button */}
-         {hasNextPage && !loading && !error && (
+         {hasNextPage && !loading && !error && mangaList.length > 0 && ( // Show only if there are items and potentially more
              <div className="flex justify-center mt-8">
                   <Button
                      onClick={loadMoreManga}

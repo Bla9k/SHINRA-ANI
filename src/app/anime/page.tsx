@@ -1,16 +1,45 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAnimes, Anime, AnimeResponse } from '@/services/anime'; // Import updated anime service (Jikan based)
-import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2 } from 'lucide-react'; // Icons
+import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X } from 'lucide-react'; // Icons
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // For filters
+import { Input } from '@/components/ui/input'; // For year filter
+import { Label } from '@/components/ui/label';
+import { useDebounce } from '@/hooks/use-debounce'; // For potential search input
+
+// Placeholder options - Fetch dynamically from Jikan /genres/anime if needed for better accuracy
+const genres = [
+    { id: 1, name: "Action" }, { id: 2, name: "Adventure" }, { id: 4, name: "Comedy" },
+    { id: 8, name: "Drama" }, { id: 10, name: "Fantasy" }, { id: 14, name: "Horror" },
+    { id: 7, name: "Mystery" }, { id: 22, name: "Romance" }, { id: 24, name: "Sci-Fi" },
+    { id: 36, name: "Slice of Life" }, { id: 30, name: "Sports" }, { id: 37, name: "Supernatural" },
+    { id: 41, name: "Thriller" }, // Add more genres as needed
+].sort((a, b) => a.name.localeCompare(b.name));
+
+const statuses = [
+    { value: "airing", label: "Currently Airing" },
+    { value: "complete", label: "Finished Airing" },
+    { value: "upcoming", label: "Not Yet Aired" },
+];
+
+const sortOptions = [
+    { value: "popularity", label: "Popularity" }, // Maps to 'members' desc in Jikan
+    { value: "score", label: "Score" }, // Maps to 'score' desc in Jikan
+    { value: "rank", label: "Rank" }, // Maps to 'rank' asc in Jikan
+    { value: "title", label: "Title (A-Z)"}, // Maps to 'title' asc
+    { value: "start_date", label: "Start Date (Newest)"}, // Maps to 'start_date' desc
+    { value: "episodes", label: "Episodes"}, // Maps to 'episodes' desc
+];
+
 
 export default function AnimePage() {
   const [animeList, setAnimeList] = useState<Anime[]>([]);
@@ -20,52 +49,78 @@ export default function AnimePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
 
-  const fetchAnime = useCallback(async (page: number, append = false) => {
+  // Filter State
+  const [selectedGenre, setSelectedGenre] = useState<string | undefined>(undefined);
+  const [selectedYear, setSelectedYear] = useState<string>(''); // Use string for input
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
+  const [selectedSort, setSelectedSort] = useState<string>('popularity'); // Default sort
+  const [showFilters, setShowFilters] = useState(false);
+
+  const debouncedYear = useDebounce(selectedYear, 500); // Debounce year input
+
+  const hasActiveFilters = useMemo(() => {
+    return !!selectedGenre || !!debouncedYear || !!selectedStatus;
+  }, [selectedGenre, debouncedYear, selectedStatus]);
+
+  const fetchAnime = useCallback(async (page: number, filtersChanged = false) => {
       if (page === 1) {
           setLoading(true);
+          if(filtersChanged) setAnimeList([]); // Clear list if filters change, keep on load more
       } else {
           setLoadingMore(true);
       }
       setError(null);
 
       try {
-        // Fetch anime using Jikan service
-        const response: AnimeResponse = await getAnimes(
-            undefined, // genre
-            undefined, // year
-            undefined, // minScore
-            undefined, // search
-            undefined, // status
-            page       // page
-            // Default sort (popularity) will be used by the service
-        );
-        setAnimeList(prev => append ? [...prev, ...response.animes] : response.animes);
-        setHasNextPage(response.hasNextPage);
-        setCurrentPage(page);
-      } catch (err: any) {
-        console.error("Failed to fetch anime:", err);
-        setError(err.message || "Couldn't load anime list. Please try again later.");
-        if (!append) {
-            setAnimeList([]);
-        }
-      } finally {
-        if (page === 1) {
-            setLoading(false);
-        } else {
-            setLoadingMore(false);
-        }
-      }
-  }, []);
+          // Convert selectedYear string to number, handle invalid input
+          const yearNumber = debouncedYear ? parseInt(debouncedYear, 10) : undefined;
+          const validYear = yearNumber && !isNaN(yearNumber) && yearNumber > 1900 && yearNumber < 2100 ? yearNumber : undefined;
 
+          const response: AnimeResponse = await getAnimes(
+              selectedGenre,
+              validYear,
+              undefined, // minScore - not implemented in filter UI yet
+              undefined, // search term - not implemented yet
+              selectedStatus,
+              page,
+              selectedSort // Pass selected sort option
+          );
+
+          setAnimeList(prev => (page === 1 || filtersChanged) ? response.animes : [...prev, ...response.animes]);
+          setHasNextPage(response.hasNextPage);
+          setCurrentPage(page);
+      } catch (err: any) {
+          console.error("Failed to fetch anime:", err);
+          setError(err.message || "Couldn't load anime list. Please try again later.");
+          if (page === 1 || filtersChanged) { // Only clear list on initial load/filter error
+              setAnimeList([]);
+          }
+          setHasNextPage(false); // Stop pagination on error
+      } finally {
+          setLoading(false);
+          setLoadingMore(false);
+      }
+  }, [selectedGenre, debouncedYear, selectedStatus, selectedSort]); // Include debouncedYear
+
+  // Fetch on initial load and when filters change
   useEffect(() => {
-    fetchAnime(1);
-  }, [fetchAnime]);
+      fetchAnime(1, true); // Reset page to 1 and indicate filters changed
+  }, [fetchAnime]); // fetchAnime dependency includes all filter states
 
   const loadMoreAnime = () => {
-    if (hasNextPage && !loadingMore) {
-      fetchAnime(currentPage + 1, true);
-    }
+      if (hasNextPage && !loadingMore && !loading) { // Prevent loading more if already loading
+          fetchAnime(currentPage + 1, false); // Fetch next page, filters didn't change
+      }
   };
+
+  const resetFilters = () => {
+      setSelectedGenre(undefined);
+      setSelectedYear('');
+      setSelectedStatus(undefined);
+      setSelectedSort('popularity'); // Reset sort to default
+      // Fetching will be triggered by useEffect due to state changes
+  };
+
 
   // Adapt AnimeCard for Jikan data structure
   const AnimeCard = ({ item }: { item: Anime }) => (
@@ -79,7 +134,8 @@ export default function AnimePage() {
             sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
             className="object-cover transition-transform duration-300 group-hover:scale-105"
             priority={false}
-            unoptimized={false}
+            unoptimized={false} // Set true only if host is explicitly not optimized
+             onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/600?grayscale'; }} // Fallback
           />
         ) : (
            <div className="absolute inset-0 bg-muted flex items-center justify-center">
@@ -159,16 +215,84 @@ export default function AnimePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <section>
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
            <h1 className="text-3xl font-bold flex items-center gap-2">
              <Tv className="text-primary w-7 h-7" />
              Browse Anime
            </h1>
-            {/* TODO: Add Filtering/Sorting Options based on Jikan API parameters */}
-            {/* <Button variant="outline">Filter</Button> */}
+           <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className="neon-glow-hover">
+               <Filter size={18} />
+               <span className="sr-only">Toggle Filters</span>
+           </Button>
         </div>
 
+        {/* Filters Section */}
+        {showFilters && (
+            <Card className="mb-6 glass p-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                     {/* Genre Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="genre-filter">Genre</Label>
+                        <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+                           <SelectTrigger id="genre-filter" className="w-full glass text-sm">
+                                <SelectValue placeholder="Any Genre" />
+                            </SelectTrigger>
+                            <SelectContent className="glass max-h-60">
+                                <SelectItem value="">Any Genre</SelectItem>
+                                {genres.map(g => <SelectItem key={g.id} value={g.id.toString()}>{g.name}</SelectItem>)}
+                            </SelectContent>
+                       </Select>
+                    </div>
+                     {/* Year Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="year-filter">Year</Label>
+                       <Input
+                            id="year-filter"
+                            type="number"
+                            placeholder="e.g., 2023"
+                            value={selectedYear}
+                            onChange={(e) => setSelectedYear(e.target.value)}
+                            className="w-full glass text-sm"
+                            min="1900"
+                            max="2100"
+                        />
+                    </div>
+                    {/* Status Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="status-filter">Status</Label>
+                        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+                           <SelectTrigger id="status-filter" className="w-full glass text-sm">
+                               <SelectValue placeholder="Any Status" />
+                           </SelectTrigger>
+                           <SelectContent className="glass">
+                               <SelectItem value="">Any Status</SelectItem>
+                               {statuses.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                           </SelectContent>
+                       </Select>
+                    </div>
+                    {/* Sort Filter */}
+                    <div className="space-y-1.5">
+                       <Label htmlFor="sort-filter">Sort By</Label>
+                        <Select value={selectedSort} onValueChange={setSelectedSort}>
+                           <SelectTrigger id="sort-filter" className="w-full glass text-sm">
+                               <SelectValue placeholder="Sort By" />
+                           </SelectTrigger>
+                           <SelectContent className="glass">
+                               {sortOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+                           </SelectContent>
+                       </Select>
+                    </div>
+                </div>
+                 {hasActiveFilters && (
+                    <Button variant="ghost" size="sm" onClick={resetFilters} className="text-xs text-muted-foreground hover:text-destructive mt-4">
+                        <X size={14} className="mr-1"/> Reset Filters
+                    </Button>
+                 )}
+            </Card>
+        )}
+
+        {/* Content Section */}
+      <section>
         {error && !loadingMore && (
           <Alert variant="destructive" className="mb-6">
              <AlertCircle className="h-4 w-4" />
@@ -182,7 +306,7 @@ export default function AnimePage() {
              ? Array.from({ length: 12 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />)
              : animeList.length > 0
                ? animeList.map((item) => (
-                 <AnimeCard key={item.mal_id} item={item} /> // Use MAL ID as key
+                 item && item.mal_id ? <AnimeCard key={item.mal_id} item={item} /> : null // Use MAL ID as key, check validity
                ))
                : !error && !loading && (
                  <div className="col-span-full text-center py-10">
@@ -193,7 +317,7 @@ export default function AnimePage() {
          </div>
 
          {/* Load More Button */}
-        {hasNextPage && !loading && !error && (
+        {hasNextPage && !loading && !error && animeList.length > 0 && ( // Show only if there are items and potentially more
             <div className="flex justify-center mt-8">
                  <Button
                     onClick={loadMoreAnime}
