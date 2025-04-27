@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -175,8 +176,8 @@ export default function ProfilePage() {
   const renderList = (items: UserListItem[], emptyMessage: string) => (
        items.length > 0 ? (
          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-           {items.map((item) => (
-             <ListItemCard key={`${item.type}-${item.mal_id}`} item={item} /> // Use MAL ID as key
+           {items.map((item, index) => (
+             <ListItemCard key={`${item.type}-${item.mal_id}-${index}`} item={item} /> // Use unique key
            ))}
          </div>
        ) : (
@@ -203,12 +204,14 @@ export default function ProfilePage() {
              </div>
           </div>
            <div className="absolute top-3 right-3 flex gap-2">
-               <Button size="icon" variant="outline" className="glass w-8 h-8" asChild>
-                   <Link href="/settings">
-                      <Settings className="h-4 w-4"/>
-                      <span className="sr-only">Settings</span>
-                   </Link>
-               </Button>
+               {/* Link Settings Button to /settings page */}
+               <Link href="/settings" passHref legacyBehavior>
+                    <Button size="icon" variant="outline" className="glass w-8 h-8">
+                       <Settings className="h-4 w-4"/>
+                       <span className="sr-only">Settings</span>
+                   </Button>
+               </Link>
+                {/* Keep Edit Profile Button (functionality can be added later) */}
                <Button size="icon" variant="outline" className="glass w-8 h-8">
                   <Edit2 className="h-4 w-4"/>
                   <span className="sr-only">Edit Profile</span>
