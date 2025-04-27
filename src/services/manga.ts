@@ -219,15 +219,20 @@ export async function getMangas(
 
     // Check if the data field is missing or not an array AFTER confirming response.ok
      if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-         console.error('Jikan API error: Response OK but missing or invalid "data" field.');
-         console.error('Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
-         console.error('Jikan Request URL:', url);
+         console.warn('Jikan API error: Response OK but missing or invalid "data" field.'); // Changed to warn
+         console.warn('Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
+         console.warn('Jikan Request URL:', url);
          // Check if it looks like a Jikan error structure even with 2xx status (unlikely but possible)
          if (jsonResponse.status && jsonResponse.message) {
-             throw new Error(`Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}`);
-         } else {
-             throw new Error('Jikan API response OK but missing or invalid data field.');
+             console.warn(`Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}`);
          }
+          // Return an empty list instead of throwing an error
+          return {
+              mangas: [],
+              hasNextPage: false,
+              currentPage: page,
+              lastPage: page, // Assume this is the last page if data is missing
+          };
     }
 
     const pagination = jsonResponse.pagination;
@@ -297,10 +302,10 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
         const jsonResponse: JikanSingleMangaResponse = await response.json();
 
          if (!jsonResponse.data) {
-             console.error('Jikan API error: Response OK but missing data field for single manga.');
-             console.error('Jikan Response:', JSON.stringify(jsonResponse));
-             console.error('Jikan Request URL:', url);
-             throw new Error('Jikan API response OK but missing data field.');
+             console.warn('Jikan API error: Response OK but missing data field for single manga.'); // Changed to warn
+             console.warn('Jikan Response:', JSON.stringify(jsonResponse));
+             console.warn('Jikan Request URL:', url);
+              return null; // Return null instead of throwing
          }
 
         return mapJikanDataToManga(jsonResponse.data);
