@@ -11,42 +11,36 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Search as SearchIcon, Loader2, Sparkles, Filter, AlertCircle, X, CalendarDays, Star, Layers, Library, Film } from 'lucide-react'; // Added icons
+import { Search as SearchIcon, Loader2, Sparkles, Filter, AlertCircle, X, CalendarDays, Star, Layers, Library, Film, BookText, Tv } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { aiPoweredSearch, AIPoweredSearchOutput } from '@/ai/flows/ai-powered-search';
-import { Anime, getAnimes } from '@/services/anime';
-import { Manga, getMangas } from '@/services/manga';
+import { aiPoweredSearch, AIPoweredSearchOutput } from '@/ai/flows/ai-powered-search'; // Keep AI flow for suggestions
+import { Anime, getAnimes } from '@/services/anime'; // Import Jikan-based anime service
+import { Manga, getMangas } from '@/services/manga'; // Import Jikan-based manga service
 import { Badge } from '@/components/ui/badge';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Combine types using AniList structure
-type SearchResultItem = (Partial<Anime> & Partial<Manga>) & {
-  id: number; // Use AniList ID
+// Combine types using Jikan structure
+type SearchResultItem = (Anime | Manga) & {
+  id: number; // Use mal_id
   title: string;
   type: 'anime' | 'manga';
   imageUrl?: string | null;
-  description?: string | null;
-  genre?: string[];
-  // Anime specific
-  releaseYear?: number | null;
-  rating?: number | null; // 0-10 scale
+  description?: string | null; // Use synopsis
+  // Add other relevant fields from Jikan types if needed for display
+  genres?: { name: string; mal_id: number }[];
+  score?: number | null;
+  year?: number | null;
   episodes?: number | null;
-  // Manga specific
-  status?: string | null; // AniList status enum (e.g., RELEASING)
   chapters?: number | null;
   volumes?: number | null;
+  status?: string | null;
 };
 
-// Helper function to format status (consistent with manga page)
+// Helper function to format status (Jikan uses different strings)
 const formatStatus = (status: string | null): string => {
     if (!status) return 'N/A';
-    return status
-        .toLowerCase()
-        .replace(/_/g, ' ')
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+    return status; // Return raw Jikan status
 };
 
 export default function SearchPage() {
@@ -57,109 +51,122 @@ export default function SearchPage() {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1); // For potential future pagination
+  const [hasNextPage, setHasNextPage] = useState(true); // For potential future pagination
 
-  // Filters State - Use nullish coalescing for defaults to avoid confusion with 0/empty string
-  const [genre, setGenre] = useState<string | undefined>(undefined);
-  const [releaseYear, setReleaseYear] = useState<number[]>([2000]); // Default year for anime
-  const [rating, setRating] = useState<number[]>([0]); // Default rating for anime (start from 0)
-  const [status, setStatus] = useState<string | undefined>(undefined); // For manga
+  // Filters State - Adapt for Jikan parameters
+  const [genre, setGenre] = useState<string | undefined>(undefined); // Jikan uses genre IDs/names
+  const [year, setYear] = useState<number | undefined>(undefined); // Use optional year
+  const [minScore, setMinScore] = useState<number[]>([0]); // Jikan uses min_score (0-10)
+  const [status, setStatus] = useState<string | undefined>(undefined); // Jikan status strings
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const hasActiveFilters = useMemo(() => {
-    return !!genre || releaseYear[0] !== 2000 || rating[0] !== 0 || !!status;
-  }, [genre, releaseYear, rating, status]);
+    return !!genre || !!year || minScore[0] !== 0 || !!status;
+  }, [genre, year, minScore, status]);
 
 
   const handleSearch = async (currentSearchTerm: string, currentTab: 'anime' | 'manga') => {
-      // Only trigger search if there's a search term or active filters
       if (!currentSearchTerm.trim() && !hasActiveFilters) {
           setResults([]);
           setAiSuggestions([]);
           setError(null);
-          setLoading(false); // Ensure loading is false if nothing to search
+          setLoading(false);
           return;
       }
 
       setLoading(true);
       setError(null);
-      // Don't clear suggestions immediately, let the flow update them
-      // setAiSuggestions([]);
 
       startTransition(async () => {
           try {
-              // Prepare input for the Genkit flow
-              const searchInput = {
-                  searchTerm: currentSearchTerm.trim(),
-                  searchType: currentTab,
-                  genre: genre || undefined, // Pass undefined if empty string
-                  // Pass filters only if they are relevant to the current tab and have non-default values
-                  releaseYear: currentTab === 'anime' && releaseYear[0] !== 2000 ? releaseYear[0] : undefined,
-                  rating: currentTab === 'anime' && rating[0] !== 0 ? rating[0] : undefined,
-                  status: currentTab === 'manga' && status ? status : undefined,
-              };
+              let fetchedResults: SearchResultItem[] = [];
 
-              // Call the AI-powered search flow
-              const output: AIPoweredSearchOutput = await aiPoweredSearch(searchInput);
+              // 1. Fetch initial results from Jikan
+              if (currentTab === 'anime') {
+                  const response = await getAnimes(
+                      genre,
+                      year,
+                      minScore[0] === 0 ? undefined : minScore[0], // Pass undefined if 0
+                      currentSearchTerm.trim() || undefined,
+                      status,
+                      1 // Start with page 1 for new search
+                  );
+                  // Map Jikan Anime to SearchResultItem
+                  fetchedResults = response.animes.map(a => ({ ...a, id: a.mal_id, description: a.synopsis }));
+                  setHasNextPage(response.hasNextPage);
+              } else {
+                   const response = await getMangas(
+                      genre,
+                      status,
+                      currentSearchTerm.trim() || undefined,
+                      minScore[0] === 0 ? undefined : minScore[0],
+                      1 // Start with page 1
+                  );
+                  // Map Jikan Manga to SearchResultItem
+                  fetchedResults = response.mangas.map(m => ({ ...m, id: m.mal_id, description: m.synopsis }));
+                  setHasNextPage(response.hasNextPage);
+              }
+              setResults(fetchedResults);
+              setCurrentPage(1); // Reset page on new search
 
-              // Map the raw results from the flow (which should already be using AniList data)
-              const formattedResults: SearchResultItem[] = output.results.map(r => ({
-                  // Spread the result from the flow output
-                  ...r,
-                  // Ensure the 'type' is correctly set based on the active tab
-                  type: currentTab,
-                  // Ensure id is a number, handle potential inconsistencies if necessary
-                  id: typeof r.id === 'number' ? r.id : parseInt(r.id as any, 10) || Date.now(), // Fallback ID if parsing fails
-                  // Ensure title is always a string
-                  title: r.title || 'Untitled',
-                   // Map genres if they exist
-                  genre: r.genre || [],
-                  // Safely access potentially nullable fields
-                  releaseYear: r.releaseYear ?? null,
-                  rating: r.rating ?? null,
-                  description: r.description ?? null,
-                  imageUrl: r.imageUrl ?? null,
-                  status: r.status ?? null,
-                  episodes: r.episodes ?? null,
-                  chapters: r.chapters ?? null,
-                  volumes: r.volumes ?? null,
-
-              }));
-
-              setResults(formattedResults);
-              setAiSuggestions(output.suggestions || []); // Ensure suggestions is an array
+              // 2. Fetch AI Suggestions (still useful) - Adapt input if necessary
+              // The AI flow might need adjustment if it relies heavily on AniList-specific fields
+              // For now, we'll pass Jikan-available data where possible.
+              try {
+                  const suggestionInput = {
+                      searchTerm: currentSearchTerm.trim(),
+                      searchType: currentTab,
+                      genre: genre, // Pass genre name/ID
+                      status: currentTab === 'manga' ? status : undefined,
+                      // Potentially pass year or score if the AI flow uses them
+                       initialResultsCount: fetchedResults.length,
+                       exampleResults: fetchedResults.slice(0, 5).map(r => ({
+                           title: r.title,
+                           // Provide Jikan genre names if available
+                           genres: r.genres?.map(g => g.name) || [],
+                       })),
+                  };
+                  const aiOutput: AIPoweredSearchOutput = await aiPoweredSearch(suggestionInput);
+                  setAiSuggestions(aiOutput.suggestions || []);
+              } catch (aiError: any) {
+                   console.warn("Failed to get AI suggestions:", aiError);
+                   setAiSuggestions([]); // Clear suggestions if AI fails
+              }
 
           } catch (err: any) {
               console.error('Search failed:', err);
-              setError(err.message || `Nami couldn't fetch results. Please try again.`);
-              setResults([]); // Clear results on error
-              setAiSuggestions([]); // Clear suggestions on error
+              setError(err.message || `Could not fetch results. Please try again.`);
+              setResults([]);
+              setAiSuggestions([]);
           } finally {
               setLoading(false);
           }
       });
   };
 
+  // Trigger search on changes
   useEffect(() => {
-      // Trigger search when debounced term or any filter changes
       handleSearch(debouncedSearchTerm, activeTab);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, activeTab, genre, releaseYear, rating, status]);
+  }, [debouncedSearchTerm, activeTab, genre, year, minScore, status]);
 
 
   const handleSuggestionClick = (suggestion: string) => {
     setSearchTerm(suggestion);
-    // The useEffect will automatically trigger the search due to debouncedSearchTerm change
+    // The useEffect will automatically trigger the search
   };
 
   const resetFilters = () => {
       setGenre(undefined);
-      setReleaseYear([2000]);
-      setRating([0]);
+      setYear(undefined);
+      setMinScore([0]);
       setStatus(undefined);
-      // The useEffect will trigger a new search with reset filters
+      // The useEffect will trigger a new search
   };
 
+ // Adapt ResultCard for Jikan data structure
  const ResultCard = ({ item }: { item: SearchResultItem }) => (
     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:bg-card/60 flex flex-col sm:flex-row group">
       <CardHeader className="p-0 relative h-48 w-full sm:h-auto sm:w-32 flex-shrink-0 overflow-hidden">
@@ -182,18 +189,20 @@ export default function SearchPage() {
          <div>
             <CardTitle className="text-base sm:text-lg font-semibold mb-1 line-clamp-1 group-hover:text-primary transition-colors">{item.title}</CardTitle>
             <div className="flex gap-1 mb-2 flex-wrap">
-            {item.genre?.slice(0, 3).map((g) => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
+             {/* Use Jikan genres */}
+            {item.genres?.slice(0, 3).map((g) => <Badge key={g.mal_id} variant="secondary" className="text-xs">{g.name}</Badge>)}
             </div>
             <CardDescription className="text-xs sm:text-sm text-muted-foreground line-clamp-2 mb-3">
+            {/* Use Jikan synopsis (mapped to description) */}
             {item.description || 'No description available.'}
             </CardDescription>
          </div>
-         {/* Details Footer */}
+         {/* Adapt Details Footer for Jikan data */}
          <div className="flex flex-wrap justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto gap-x-3 gap-y-1">
             {item.type === 'anime' && (
                 <>
-                <span className="flex items-center gap-1"><CalendarDays size={14} /> {item.releaseYear ?? 'N/A'}</span>
-                <span className="flex items-center gap-1"><Star size={14} className={item.rating ? 'text-yellow-400' : ''}/> {item.rating?.toFixed(1) ?? 'N/A'}</span>
+                <span className="flex items-center gap-1"><CalendarDays size={14} /> {item.year ?? 'N/A'}</span>
+                <span className="flex items-center gap-1"><Star size={14} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}</span>
                 <span className="flex items-center gap-1"><Film size={14} /> {item.episodes ?? 'N/A'} Ep</span>
                 </>
             )}
@@ -201,23 +210,25 @@ export default function SearchPage() {
                 <>
                  <span className="flex items-center gap-1">
                      <Badge
-                         variant={
-                             item.status === 'RELEASING' ? 'default' :
-                             item.status === 'FINISHED' ? 'secondary' :
-                             item.status === 'HIATUS' ? 'destructive' :
-                             'outline'
+                         variant={ // Adapt based on Jikan status strings
+                            item.status === 'Publishing' ? 'default' :
+                            item.status === 'Finished' ? 'secondary' :
+                            item.status === 'On Hiatus' ? 'destructive' :
+                            'outline'
                          }
                          className="text-xs px-1.5 py-0.5"
                          >
                          {formatStatus(item.status)}
                       </Badge>
                  </span>
+                  <span className="flex items-center gap-1"><Star size={14} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}</span>
                 <span className="flex items-center gap-1"><Layers size={14} /> {item.chapters ?? 'N/A'} Ch</span>
                 <span className="flex items-center gap-1"><Library size={14} /> {item.volumes ?? 'N/A'} Vol</span>
                 </>
             )}
+             {/* Link using MAL ID */}
              <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto ml-auto">
-                 <Link href={`/${item.type}/${item.id}-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                 <Link href={`/${item.type}/${item.id}`}>
                     View Details
                  </Link>
             </Button>
@@ -226,6 +237,7 @@ export default function SearchPage() {
     </Card>
   );
 
+   // Skeleton card remains similar
    const SkeletonCard = () => (
      <Card className="overflow-hidden glass flex flex-col sm:flex-row">
         <CardHeader className="p-0 h-48 w-full sm:h-auto sm:w-32 flex-shrink-0">
@@ -252,9 +264,12 @@ export default function SearchPage() {
   );
 
 
-  // Placeholder options - Can be fetched dynamically in the future
-  const genres = useMemo(() => ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Slice of Life", "Romance", "Horror", "Supernatural", "Mystery", "Psychological", "Thriller", "Historical", "Mecha", "Sports"].sort(), []);
-  const mangaStatuses = useMemo(() => ["RELEASING", "FINISHED", "NOT_YET_RELEASED", "CANCELLED", "HIATUS"], []); // AniList statuses
+  // Placeholder options - Adapt genres for Jikan if needed (e.g., use names or IDs)
+  // Jikan might require specific IDs for filtering. Fetching these dynamically is best.
+  // For now, using names as placeholders. Jikan search *might* work with names.
+   const genres = useMemo(() => ["Action", "Adventure", "Comedy", "Drama", "Fantasy", "Sci-Fi", "Slice of Life", "Romance", "Horror", "Supernatural", "Mystery", "Psychological", "Thriller", "Historical", "Mecha", "Sports"].sort(), []);
+   const animeStatuses = useMemo(() => ["airing", "complete", "upcoming"], []); // Jikan anime statuses
+   const mangaStatuses = useMemo(() => ["publishing", "finished", "on_hiatus", "discontinued", "upcoming"], []); // Jikan manga statuses
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -269,12 +284,12 @@ export default function SearchPage() {
             <div className="relative flex-grow w-full">
                 <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
                 <Input
-                type="search"
-                placeholder={`Search ${activeTab}... (e.g., title, character)`}
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full glass neon-glow-focus text-base" // Larger text
-                aria-label={`Search ${activeTab}`}
+                    type="search"
+                    placeholder={`Search ${activeTab}... (e.g., title, character)`}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 w-full glass neon-glow-focus text-base"
+                    aria-label={`Search ${activeTab}`}
                 />
                  {searchTerm && (
                     <Button
@@ -290,7 +305,7 @@ export default function SearchPage() {
             </div>
         </div>
 
-        {/* Filters Section */}
+        {/* Filters Section - Adapt for Jikan */}
          <Card className="mb-6 glass">
              <CardHeader className="flex flex-row items-center justify-between pb-4">
                  <div className="flex items-center gap-2">
@@ -304,7 +319,7 @@ export default function SearchPage() {
                  )}
              </CardHeader>
              <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-0">
-                 {/* Genre Filter */}
+                 {/* Genre Filter (Using names, might need IDs for Jikan) */}
                  <div className="space-y-1.5">
                     <Label htmlFor="genre">Genre</Label>
                      <Select value={genre} onValueChange={setGenre}>
@@ -312,65 +327,49 @@ export default function SearchPage() {
                              <SelectValue placeholder="Any Genre" />
                          </SelectTrigger>
                          <SelectContent className="glass max-h-60">
-                            {/* Remove the item with empty string value */}
-                             {/* <SelectItem value="">Any Genre</SelectItem> */}
+                             <SelectItem value={undefined}>Any Genre</SelectItem> {/* Allow clearing */}
                              {genres.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                          </SelectContent>
                     </Select>
                  </div>
 
-                 {/* Anime Specific Filters */}
-                 {activeTab === 'anime' && (
-                     <>
-                        <div className="space-y-1.5">
-                             <Label htmlFor="releaseYear" className="text-sm">Min. Year: <span className="font-medium text-primary">{releaseYear[0]}</span></Label>
-                             <Slider
-                                 id="releaseYear"
-                                 min={1960} // Adjusted min year
-                                 max={new Date().getFullYear()}
-                                 step={1}
-                                 value={releaseYear}
-                                 onValueChange={setReleaseYear}
-                                 className="pt-2 [&>span]:bg-primary/20 [&>span>span]:bg-primary"
-                              />
-                         </div>
-                         <div className="space-y-1.5">
-                             <Label htmlFor="rating" className="text-sm">Min. Rating: <span className="font-medium text-primary">{rating[0].toFixed(1)} ★</span></Label>
-                              <Slider
-                                id="rating"
-                                min={0}
-                                max={10}
-                                step={0.5}
-                                value={rating}
-                                onValueChange={setRating}
-                                className="pt-2 [&>span]:bg-primary/20 [&>span>span]:bg-primary"
-                              />
-                          </div>
-                     </>
-                  )}
+                 {/* Min Score Filter */}
+                 <div className="space-y-1.5">
+                     <Label htmlFor="minScore" className="text-sm">Min. Score: <span className="font-medium text-primary">{minScore[0].toFixed(1)} ★</span></Label>
+                      <Slider
+                        id="minScore"
+                        min={0}
+                        max={10}
+                        step={0.5}
+                        value={minScore}
+                        onValueChange={setMinScore}
+                        className="pt-2 [&>span]:bg-primary/20 [&>span>span]:bg-primary"
+                      />
+                  </div>
 
-                 {/* Manga Specific Filters */}
-                 {activeTab === 'manga' && (
-                     <div className="space-y-1.5 md:col-start-2"> {/* Align with anime filters */}
-                         <Label htmlFor="status">Status</Label>
-                          <Select value={status} onValueChange={setStatus}>
-                             <SelectTrigger id="status" className="w-full glass text-sm">
-                                <SelectValue placeholder="Any Status" />
-                             </SelectTrigger>
-                             <SelectContent className="glass">
-                                {/* Remove the item with empty string value */}
-                                 {/* <SelectItem value="">Any Status</SelectItem> */}
-                                 {mangaStatuses.map(s => <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>)}
-                             </SelectContent>
-                         </Select>
-                     </div>
-                 )}
+
+                 {/* Status Filter */}
+                 <div className="space-y-1.5">
+                     <Label htmlFor="status">Status</Label>
+                      <Select value={status} onValueChange={setStatus}>
+                         <SelectTrigger id="status" className="w-full glass text-sm">
+                            <SelectValue placeholder="Any Status" />
+                         </SelectTrigger>
+                         <SelectContent className="glass">
+                            <SelectItem value={undefined}>Any Status</SelectItem> {/* Allow clearing */}
+                             {(activeTab === 'anime' ? animeStatuses : mangaStatuses).map(s =>
+                                <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>
+                             )}
+                         </SelectContent>
+                     </Select>
+                 </div>
+
             </CardContent>
          </Card>
 
 
         {/* AI Suggestions */}
-        {isPending && searchTerm && ( // Show loader for suggestions only when pending and user is typing
+        {isPending && searchTerm && (
              <div className="mb-6 text-center text-muted-foreground text-sm">
                 <Loader2 className="inline-block animate-spin mr-2 h-4 w-4" /> Asking Nami for suggestions...
             </div>
@@ -398,7 +397,7 @@ export default function SearchPage() {
 
         {/* Results Section */}
         <TabsContent value={activeTab}>
-          {loading && !isPending ? ( // Show main loading state only if not debouncing/transitioning
+          {loading && !isPending ? (
              <div className="grid grid-cols-1 gap-4">
                  {Array.from({ length: 5 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />)}
             </div>
@@ -411,6 +410,7 @@ export default function SearchPage() {
           ) : results.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
               {results.map((item) => (
+                 // Use MAL ID as key
                 <ResultCard key={`${item.type}-${item.id}`} item={item} />
               ))}
             </div>
@@ -418,10 +418,11 @@ export default function SearchPage() {
             <div className="text-center text-muted-foreground mt-12 py-6">
                 { (debouncedSearchTerm || hasActiveFilters)
                   ? "No results found. Try adjusting your search or filters."
-                  : "Start typing or select filters to search for anime or manga."
+                  : "Start typing or select filters to search."
                 }
             </div>
           )}
+          {/* TODO: Add Load More functionality for search results if needed */}
         </TabsContent>
       </Tabs>
     </div>

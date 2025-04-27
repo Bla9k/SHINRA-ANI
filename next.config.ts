@@ -19,16 +19,12 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'm.media-amazon.com',
+        hostname: 'cdn.myanimelist.net', // Add MyAnimeList CDN hostname (used by Jikan)
         port: '',
         pathname: '/**',
       },
-      {
-        protocol: 'https',
-        hostname: 's4.anilist.co', // Add AniList image hostname
-        port: '',
-        pathname: '/**',
-      },
+      // Removed m.media-amazon.com as it wasn't in the previous config after last update
+      // Removed s4.anilist.co
     ],
   },
   // Add webpack configuration to handle server-only modules
@@ -37,6 +33,7 @@ const nextConfig: NextConfig = {
     // This prevents client-side code from trying to bundle Node.js built-in modules
     // which are often dependencies of server-side packages like OpenTelemetry.
     if (!isServer) {
+      // Add 'async_hooks' to externals if it's not already there
       config.externals = [...(config.externals || []), 'async_hooks'];
     }
 

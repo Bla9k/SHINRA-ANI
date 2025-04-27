@@ -2,263 +2,281 @@
 import { env } from '@/env';
 
 /**
- * Represents a Manga based on AniList data structure.
+ * Represents a Manga based on Jikan API v4 data structure.
  */
 export interface Manga {
   /**
-   * The AniList ID of the manga.
+   * The MyAnimeList ID of the manga.
    */
-  id: number;
+  mal_id: number;
   /**
-   * The title of the manga.
+   * The primary title of the manga.
    */
   title: string;
   /**
    * The manga genres.
    */
-  genre: string[];
+  genres: { mal_id: number; type: string; name: string; url: string }[];
   /**
-   * The manga status (e.g., RELEASING, FINISHED).
+   * The manga status (e.g., "Finished", "Publishing").
    */
-  status: string | null; // Status can be null
+  status: string | null;
   /**
-   * The manga description (HTML format).
+   * The manga synopsis.
    */
-  description: string | null; // Description can be null
+  synopsis: string | null;
   /**
-   * The manga cover image url.
+   * The manga cover image URLs.
    */
-  imageUrl: string | null; // Image can be null
+  images: {
+      jpg: {
+          image_url: string | null;
+          small_image_url: string | null;
+          large_image_url: string | null; // Use this for cards/details
+      };
+      webp: {
+          image_url: string | null;
+          small_image_url: string | null;
+          large_image_url: string | null;
+      };
+  };
+  /**
+   * The manga score (0-10 scale).
+   */
+  score: number | null;
+  /**
+   * Number of chapters.
+   */
+  chapters: number | null;
+  /**
+   * Number of volumes.
+   */
+  volumes: number | null;
    /**
-    * The manga average score (0-100).
+    * The release year (from published.from).
     */
-   averageScore: number | null;
+   year: number | null;
    /**
-    * Number of chapters.
+    * URL to the MyAnimeList page.
     */
-   chapters: number | null;
+   url: string | null;
    /**
-    * Number of volumes.
+    * Type identifier
     */
-   volumes: number | null;
-    /**
-    * The release year.
-    */
-   releaseYear: number | null;
+   type: 'manga'; // Explicitly set type
    /**
-    * Banner image URL (optional)
+    * Derived image URL field for easier access
     */
-   bannerImage?: string | null;
-    /**
-    * AniList URL
-    */
-    siteUrl?: string | null;
-     /**
-      * Type identifier
-      */
-     type: 'manga';
+   imageUrl: string | null;
 }
 
 /**
- * Represents the response structure for manga fetch operations, including pagination info.
+ * Represents the response structure for Jikan manga list fetch operations.
+ */
+export interface JikanMangaListResponse {
+    data: any[]; // Array of Jikan manga objects
+    pagination: {
+        last_visible_page: number;
+        has_next_page: boolean;
+        current_page: number;
+        items: {
+            count: number;
+            total: number;
+            per_page: number;
+        };
+    };
+}
+
+/**
+ * Represents the response structure for Jikan single manga fetch operations.
+ */
+export interface JikanSingleMangaResponse {
+    data: any; // Single Jikan manga object
+}
+
+/**
+ * Represents the response structure for manga fetch operations using our Manga interface.
  */
 export interface MangaResponse {
     mangas: Manga[];
     hasNextPage: boolean;
+    currentPage?: number;
+    lastPage?: number;
 }
 
-// AniList API endpoint
-const ANILIST_API_URL = 'https://graphql.anilist.co';
-// Define a reasonable number of items per page
-const PER_PAGE = 24;
+// Jikan API v4 base URL
+const JIKAN_API_URL = 'https://api.jikan.moe/v4';
+// Default items per page for Jikan API (max 25)
+const JIKAN_LIMIT = 24;
 
-// GraphQL query to fetch manga details including banner and pagination info
-const MANGA_QUERY = `
-query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String, $id: Int, $seasonYear: Int) {
-  Page(page: $page, perPage: $perPage) {
-     pageInfo {
-        total
-        currentPage
-        lastPage
-        hasNextPage
-        perPage
-    }
-    media(id: $id, type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false, seasonYear: $seasonYear) {
-      id
-      title {
-        romaji
-        english
-        native
-      }
-      genres
-      startDate {
-        year
-      }
-      averageScore
-      description(asHtml: false)
-      coverImage {
-        large # For cards
-        extraLarge # For details page potentially
-      }
-      bannerImage # Fetch banner image
-      status
-      chapters
-      volumes
-      siteUrl # Fetch AniList URL
-    }
-  }
-}
-`;
-
-// Helper function to map AniList response to our Manga interface
-const mapAniListDataToManga = (media: any): Manga => {
+// Helper function to map Jikan API response to our Manga interface
+const mapJikanDataToManga = (jikanData: any): Manga => {
   return {
-    id: media.id,
-    title: media.title.english || media.title.romaji || media.title.native || 'Untitled',
-    genre: media.genres || [],
-    status: media.status || null,
-    description: media.description || null,
-    imageUrl: media.coverImage?.large || null, // Use large for consistency in cards
-    bannerImage: media.bannerImage || null,
-    averageScore: media.averageScore || null,
-    chapters: media.chapters || null,
-    volumes: media.volumes || null,
-    releaseYear: media.startDate?.year || null,
-    siteUrl: media.siteUrl || null,
-    type: 'manga', // Add type identifier
+    mal_id: jikanData.mal_id,
+    title: jikanData.title_english || jikanData.title || 'Untitled',
+    genres: jikanData.genres || [],
+    status: jikanData.status || null,
+    synopsis: jikanData.synopsis || null,
+    images: jikanData.images,
+    imageUrl: jikanData.images?.jpg?.large_image_url || jikanData.images?.jpg?.image_url || null,
+    score: jikanData.score || null,
+    chapters: jikanData.chapters || null,
+    volumes: jikanData.volumes || null,
+    year: jikanData.published?.from ? new Date(jikanData.published.from).getFullYear() : null,
+    url: jikanData.url || null,
+    type: 'manga',
   };
 };
 
 /**
- * Asynchronously retrieves manga from AniList with optional filters, by ID, and pagination.
+ * Asynchronously retrieves manga from Jikan API v4 with optional filters and pagination.
  *
- * @param genre The genre to filter mangas on.
- * @param status The status to filter mangas on (e.g., RELEASING, FINISHED).
- * @param search Optional search term for the title.
- * @param id Optional AniList ID to fetch a specific manga.
- * @param releaseYear Optional release year to filter manga on.
+ * @param genre The genre MAL ID (number) or name (string) to filter mangas on.
+ * @param status The status string (e.g., "publishing", "finished", "upcoming").
+ * @param search Optional search term (query) for the title.
+ * @param minScore The minimum score to filter mangas on (0-10 scale).
  * @param page The page number to fetch (default: 1).
+ * @param sort Optional sorting parameter (e.g., "score", "popularity", "rank").
  * @returns A promise that resolves to a MangaResponse object containing the list of Manga and pagination info.
  */
 export async function getMangas(
-  genre?: string,
+  genre?: string | number,
   status?: string,
   search?: string,
-  id?: number, // Add id parameter
-  releaseYear?: number, // Add releaseYear parameter
-  page: number = 1 // Add page parameter with default value
-): Promise<MangaResponse> { // Return MangaResponse
-   const variables: any = {
-    page: page, // Use the page parameter
-    perPage: id ? 1 : PER_PAGE, // Fetch 1 if ID is provided, else PER_PAGE
-    sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'],
-    genre: genre || undefined,
-    status: status ? status.toUpperCase().replace(' ', '_') : undefined,
-    search: search || undefined,
-    id: id || undefined, // Include id in variables if provided
-    seasonYear: releaseYear || undefined, // Filter by year
-  };
+  minScore?: number,
+  page: number = 1,
+  sort?: string
+): Promise<MangaResponse> {
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: JIKAN_LIMIT.toString(),
+    // sfw: 'true', // Optional: Ensure Safe-for-Work results
+  });
 
-  // Standard headers for AniList GraphQL API
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-       // AniList API does not use RapidAPI keys or Hosts. Remove these.
-       // Authorization header is only needed for authenticated actions, not public data fetching.
-      // 'Authorization': `Bearer ${env.ANILIST_ACCESS_TOKEN}` // Use access token if you have one
-  };
+  if (search) params.append('q', search);
+  if (genre) params.append('genres', genre.toString());
+  if (status) params.append('status', status);
+  if (minScore) params.append('min_score', minScore.toString());
+  if (sort) params.append('sort', sort);
+  if (sort === 'score') params.append('order_by', 'score');
+  if (sort === 'popularity') params.append('order_by', 'members');
+
+  // Default sort if no search or specific sort provided
+   if (!search && !sort) {
+       params.append('order_by', 'members'); // Default to sorting by popularity
+       params.append('sort', 'desc');
+   }
 
 
+  const url = `${JIKAN_API_URL}/manga?${params.toString()}`;
+  const headers: HeadersInit = { 'Accept': 'application/json' };
   let response: Response | undefined;
+
   try {
-    response = await fetch(ANILIST_API_URL, {
-      method: 'POST',
+    // console.log("Fetching Jikan Manga URL:", url);
+    response = await fetch(url, {
+      method: 'GET',
       headers: headers,
-      body: JSON.stringify({
-        query: MANGA_QUERY,
-        variables: variables,
-      }),
-       // Using shorter revalidation for testing, increase for production
-      next: { revalidate: 600 }, // Revalidate cache every 10 minutes
-      // Consider adding a timeout if needed
-      // signal: AbortSignal.timeout(10000) // e.g., 10 seconds timeout
+      next: { revalidate: 3600 }, // Cache for 1 hour
     });
 
-     if (!response.ok) {
+    if (!response.ok) {
         const errorBody = await response.text();
-        console.error('AniList API response not OK:', response.status, response.statusText);
-        console.error('AniList Error Body:', errorBody);
-        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
-        throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
-     }
+        console.error('Jikan API response not OK:', response.status, response.statusText);
+        console.error('Jikan Error Body:', errorBody);
+        console.error('Jikan Request URL:', url);
+        throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}`);
+    }
 
-    const jsonResponse = await response.json();
+    const jsonResponse: JikanMangaListResponse = await response.json();
 
-     if (jsonResponse.errors) {
-        console.error('AniList API errors:', jsonResponse.errors);
-        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
-        const errorMessage = jsonResponse.errors.map((e: any) => e.message).join(', ');
-        // Check for specific error messages like 'Invalid token' or 'Not authenticated.'
-        if (errorMessage.includes('Invalid token') || errorMessage.includes('Not authenticated')) {
-            console.error("AniList Authentication Error: Please check your API Key/Token.");
-            // Potentially throw a more specific error or return a specific state
-            throw new Error(`AniList Authentication Error: ${errorMessage}`);
-        }
-       throw new Error(`AniList API errors: ${errorMessage}`);
-     }
+     if (!jsonResponse.data) {
+         console.error('Jikan API error: Response missing data field.');
+         console.error('Jikan Response:', JSON.stringify(jsonResponse));
+         console.error('Jikan Request URL:', url);
+         throw new Error('Jikan API response missing data field.');
+    }
 
-    const pageInfo = jsonResponse.data?.Page?.pageInfo;
-    let mangas = jsonResponse.data?.Page?.media?.map(mapAniListDataToManga) || [];
-
+    const pagination = jsonResponse.pagination;
+    const mangas = jsonResponse.data.map(mapJikanDataToManga);
 
     return {
         mangas: mangas,
-        hasNextPage: pageInfo?.hasNextPage ?? false // Return hasNextPage info
+        hasNextPage: pagination?.has_next_page ?? false,
+        currentPage: pagination?.current_page,
+        lastPage: pagination?.last_visible_page,
     };
 
   } catch (error: any) {
-    // Log the specific error and the request variables
-    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables)); // Log stringified variables
-     // Log the response status if available
+    console.error('Failed to fetch manga from Jikan. URL:', url);
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
-    // Attempt to log more detailed error information using JSON.stringify
     console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
-
-    // Re-throw the error to be handled by the calling component
-    throw new Error(`Failed to fetch manga data from AniList: ${error.message || 'Unknown fetch error'}`);
+    throw new Error(`Failed to fetch manga data from Jikan: ${error.message || 'Unknown fetch error'}`);
   }
 }
 
 
 /**
- * Fetches a single manga by its AniList ID.
+ * Fetches a single manga by its MyAnimeList ID using Jikan API.
  *
- * @param id The AniList ID of the manga to fetch.
+ * @param mal_id The MyAnimeList ID of the manga to fetch.
  * @returns A promise that resolves to the Manga object or null if not found.
  */
-export async function getMangaById(id: number): Promise<Manga | null> {
+export async function getMangaById(mal_id: number): Promise<Manga | null> {
+    const url = `${JIKAN_API_URL}/manga/${mal_id}`;
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    let response: Response | undefined;
+
     try {
-        // Ensure getMangas is called correctly to fetch by ID, expecting MangaResponse
-        const response = await getMangas(undefined, undefined, undefined, id);
-        return response.mangas.length > 0 ? response.mangas[0] : null;
-    } catch (error) {
-        console.error(`Failed to fetch manga with ID ${id}:`, error);
-        // Return null or re-throw based on how you want to handle errors in the specific component
+        // console.log("Fetching Jikan Manga by ID:", url);
+        response = await fetch(url, {
+            method: 'GET',
+            headers: headers,
+            next: { revalidate: 3600 }, // Cache for 1 hour
+        });
+
+        if (response.status === 404) {
+            return null; // Not found
+        }
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error('Jikan API response not OK:', response.status, response.statusText);
+            console.error('Jikan Error Body:', errorBody);
+            console.error('Jikan Request URL:', url);
+            throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}`);
+        }
+
+        const jsonResponse: JikanSingleMangaResponse = await response.json();
+
+         if (!jsonResponse.data) {
+             console.error('Jikan API error: Response missing data field.');
+             console.error('Jikan Response:', JSON.stringify(jsonResponse));
+             console.error('Jikan Request URL:', url);
+             throw new Error('Jikan API response missing data field.');
+         }
+
+        return mapJikanDataToManga(jsonResponse.data);
+    } catch (error: any) {
+        console.error(`Failed to fetch manga with MAL ID ${mal_id} from Jikan. URL:`, url);
+        if(response) {
+            console.error('Response Status:', response.status, response.statusText);
+        }
+        console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+        // Return null or re-throw based on how you want to handle errors
         return null;
-        // Or: throw error;
+        // Or: throw new Error(`Failed to fetch manga details (ID: ${mal_id}): ${error.message}`);
     }
 }
 
 /**
- * Fetches detailed information for a single manga by ID.
- * This function is intended for detail pages.
+ * Fetches detailed information for a single manga by ID using Jikan API.
  *
- * @param id The AniList ID of the manga.
+ * @param id The MyAnimeList ID of the manga.
  * @returns A promise that resolves to the detailed Manga object or null if not found.
  */
 export async function getMangaDetails(id: number): Promise<Manga | null> {
-  // Similar to anime, we can use a more detailed query later if needed.
   return getMangaById(id);
 }

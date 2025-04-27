@@ -2,7 +2,7 @@
 'use server';
 /**
  * @fileOverview This file defines a Genkit flow for generating a personalized anime/manga homepage
- * based on user browsing habits, fetching actual data from AniList.
+ * based on user browsing habits, fetching actual data from Jikan API.
  *
  * - aiDrivenHomepage - A function that generates a personalized homepage.
  * - AIDrivenHomepageInput - The input type for the aiDrivenHomepage function.
@@ -11,8 +11,9 @@
 
 import {ai} from '@/ai/ai-instance';
 import {z} from 'genkit';
-import { Anime, getAnimes } from '@/services/anime'; // Use updated service
-import { Manga, getMangas } from '@/services/manga'; // Use updated service
+// Use Jikan-based services
+import { Anime, getAnimes, AnimeResponse } from '@/services/anime';
+import { Manga, getMangas, MangaResponse } from '@/services/manga';
 
 const AIDrivenHomepageInputSchema = z.object({
   userProfile: z
@@ -24,11 +25,9 @@ const AIDrivenHomepageInputSchema = z.object({
 });
 export type AIDrivenHomepageInput = z.infer<typeof AIDrivenHomepageInputSchema>;
 
-// Output will now include the full objects fetched from the service
+// Output schema returns only titles and reasoning. Details are fetched separately.
 const AIDrivenHomepageOutputSchema = z.object({
   animeRecommendations: z.array(
-      // Using the Anime schema from the service directly might be too complex for the LLM.
-      // Let's keep the output simple (titles) and fetch details later.
        z.string().describe('Title of a recommended anime.')
   ).describe('A list of recommended anime titles.'),
   mangaRecommendations: z.array(
@@ -43,14 +42,14 @@ export async function aiDrivenHomepage(input: AIDrivenHomepageInput): Promise<AI
   return aiDrivenHomepageFlow(input);
 }
 
-// Prompt definition
+// Prompt definition (remains largely the same, asking for titles)
 const prompt = ai.definePrompt({
   name: 'aiDrivenHomepagePrompt',
   input: {
-    schema: AIDrivenHomepageInputSchema // Use the defined input schema
+    schema: AIDrivenHomepageInputSchema
   },
   output: {
-    schema: AIDrivenHomepageOutputSchema // Use the defined output schema
+    schema: AIDrivenHomepageOutputSchema
   },
   prompt: `You are Nami AI, personalizing the homepage for AniManga Stream.
 
@@ -91,16 +90,15 @@ const aiDrivenHomepageFlow = ai.defineFlow<
         throw new Error('Failed to get recommendations from AI model.');
       }
 
-      // The flow now directly returns the output from the prompt (titles + reasoning).
-      // The frontend (page.tsx) will be responsible for fetching the full details
-      // for these titles using getAnimes/getMangas.
+      // The flow directly returns the output from the prompt (titles + reasoning).
+      // The frontend (page.tsx) will fetch details using Jikan services.
       return {
           animeRecommendations: output.animeRecommendations || [],
           mangaRecommendations: output.mangaRecommendations || [],
           reasoning: output.reasoning || "Here are some recommendations you might like!", // Default reasoning
       };
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error in aiDrivenHomepageFlow:", error);
       // Provide a fallback or re-throw
       return {

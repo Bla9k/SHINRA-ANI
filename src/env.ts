@@ -13,12 +13,10 @@ export const env = {
   GOOGLE_GENAI_API_KEY: process.env.GOOGLE_GENAI_API_KEY,
 
   /**
-   * Optional AniList Access Token for authenticated requests (e.g., managing user lists).
-   * Public data fetching generally does not require a token.
-   * Obtain from AniList developer settings if needed.
+   * Optional Jikan API Key (if needed for higher rate limits, generally not required for public data).
+   * Jikan v4 API base URL: https://api.jikan.moe/v4
    */
-  ANILIST_ACCESS_TOKEN: process.env.ANILIST_ACCESS_TOKEN, // Optional: For authenticated actions
+  // JIKAN_API_KEY: process.env.JIKAN_API_KEY, // Add if needed later
 
-  // Removed ANILIST_API_KEY and ANILIST_SECRET as they are not standard AniList auth methods
-  // Removed RAPIDAPI_KEY as it's not used for AniList
+  // Removed ANILIST_ACCESS_TOKEN
 };

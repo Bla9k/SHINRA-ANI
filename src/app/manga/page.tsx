@@ -7,29 +7,26 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getMangas, Manga, MangaResponse } from '@/services/manga'; // Import updated manga service and response type
-import { BookText, Layers, Library, AlertCircle, Loader2 } from 'lucide-react'; // Icons
+import { getMangas, Manga, MangaResponse } from '@/services/manga'; // Import updated manga service (Jikan based)
+import { BookText, Layers, Library, AlertCircle, Loader2, Star } from 'lucide-react'; // Added Star icon
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
-// Helper function to format status
+// Helper function to format status (Jikan uses different strings)
 const formatStatus = (status: string | null): string => {
     if (!status) return 'N/A';
-    return status
-        .toLowerCase()
-        .replace(/_/g, ' ') // Replace underscores with spaces
-        .split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1)) // Capitalize each word
-        .join(' ');
+    // You might want to map Jikan statuses ("Finished", "Publishing", "On Hiatus", etc.)
+    // to more user-friendly terms if needed. For now, just return the status.
+    return status;
 };
 
 export default function MangaPage() {
   const [mangaList, setMangaList] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false); // State for loading more indicator
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [hasNextPage, setHasNextPage] = useState(true); // Track if more pages are available
+  const [hasNextPage, setHasNextPage] = useState(true);
 
   const fetchManga = useCallback(async (page: number, append = false) => {
       if (page === 1) {
@@ -40,15 +37,21 @@ export default function MangaPage() {
       setError(null);
 
       try {
-        // Fetch manga with the current page
-        const response: MangaResponse = await getMangas(undefined, undefined, undefined, undefined, undefined, page);
+        // Fetch manga using Jikan service
+        const response: MangaResponse = await getMangas(
+            undefined, // genre
+            undefined, // status
+            undefined, // search
+            undefined, // minScore
+            page       // page
+            // Default sort (popularity) will be used by the service
+        );
         setMangaList(prev => append ? [...prev, ...response.mangas] : response.mangas);
         setHasNextPage(response.hasNextPage);
         setCurrentPage(page);
       } catch (err: any) {
         console.error("Failed to fetch manga:", err);
         setError(err.message || "Couldn't load manga list. Please try again later.");
-        // Keep existing data on error when loading more
         if (!append) {
             setMangaList([]);
         }
@@ -59,24 +62,23 @@ export default function MangaPage() {
             setLoadingMore(false);
         }
       }
-  }, []); // No dependencies, fetchManga itself is stable
+  }, []);
 
   useEffect(() => {
-    // Initial fetch on component mount
     fetchManga(1);
-  }, [fetchManga]); // Depend on fetchManga
+  }, [fetchManga]);
 
   const loadMoreManga = () => {
     if (hasNextPage && !loadingMore) {
-      fetchManga(currentPage + 1, true); // Fetch next page and append
+      fetchManga(currentPage + 1, true);
     }
   };
 
-  // Reusable Card Component for Manga with enhanced details
+  // Adapt MangaCard for Jikan data structure
   const MangaCard = ({ item }: { item: Manga }) => (
      <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.03] group flex flex-col h-full">
-      <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden"> {/* Aspect ratio */}
-         {item.imageUrl ? (
+      <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
+         {item.imageUrl ? ( // Use derived imageUrl
            <Image
              src={item.imageUrl}
              alt={item.title}
@@ -98,26 +100,31 @@ export default function MangaPage() {
       </CardHeader>
       <CardContent className="p-3 flex flex-col flex-grow">
          <div className="flex gap-1.5 mb-2 flex-wrap">
-           {item.genre.slice(0, 3).map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
+           {/* Map Jikan genres */}
+           {item.genres?.slice(0, 3).map(g => <Badge key={g.mal_id} variant="secondary" className="text-xs">{g.name}</Badge>)}
          </div>
         <CardDescription className="text-xs text-muted-foreground line-clamp-3 mb-3 flex-grow">
-           {item.description || 'No description available.'}
+           {/* Use Jikan synopsis */}
+           {item.synopsis || 'No description available.'}
          </CardDescription>
-         {/* Additional Info Row */}
+         {/* Adapt Additional Info Row for Jikan data */}
          <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto">
             <span className="flex items-center gap-1" title={`Status: ${formatStatus(item.status)}`}>
                  <Badge
-                    variant={
-                        item.status === 'RELEASING' ? 'default' :
-                        item.status === 'FINISHED' ? 'secondary' :
-                        item.status === 'HIATUS' ? 'destructive' :
+                    variant={ // Adjust badge variants based on Jikan status strings
+                        item.status === 'Publishing' ? 'default' :
+                        item.status === 'Finished' ? 'secondary' :
+                        item.status === 'On Hiatus' ? 'destructive' :
                         'outline'
                     }
-                    className="text-xs px-1.5 py-0.5" // Smaller badge padding
+                    className="text-xs px-1.5 py-0.5"
                     >
                     {formatStatus(item.status)}
                  </Badge>
             </span>
+             <span className="flex items-center gap-1" title="Score">
+                <Star size={14} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}
+             </span>
             <span className="flex items-center gap-1" title="Chapters">
               <Layers size={14} /> {item.chapters ?? 'N/A'}
             </span>
@@ -128,8 +135,8 @@ export default function MangaPage() {
         {/* View Details Button */}
         <div className="flex justify-end mt-2">
            <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
-              {/* Link to manga details page */}
-              <Link href={`/manga/${item.id}-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+              {/* Link using MAL ID */}
+              <Link href={`/manga/${item.mal_id}`}>
                  View Details
               </Link>
            </Button>
@@ -138,7 +145,7 @@ export default function MangaPage() {
      </Card>
   );
 
- // Placeholder Skeleton Card
+ // Skeleton Card remains mostly the same structurally
  const SkeletonCard = () => (
     <Card className="overflow-hidden glass flex flex-col h-full">
        <CardHeader className="p-0 relative aspect-[2/3] w-full">
@@ -156,6 +163,7 @@ export default function MangaPage() {
           <div className="flex-grow" /> {/* Spacer */}
            <div className="flex justify-between items-center border-t border-border/50 pt-2 mt-auto"> {/* Info */}
                <Skeleton className="h-4 w-14" /> {/* Status Badge */}
+               <Skeleton className="h-3 w-8" /> {/* Score */}
                <Skeleton className="h-3 w-8" /> {/* Chapters */}
                <Skeleton className="h-3 w-8" /> {/* Volumes */}
            </div>
@@ -174,10 +182,10 @@ export default function MangaPage() {
              <BookText className="text-primary w-7 h-7" />
              Browse Manga
            </h1>
-            {/* TODO: Add Filtering/Sorting Options here */}
+            {/* TODO: Add Filtering/Sorting Options based on Jikan API parameters */}
             {/* <Button variant="outline">Filter</Button> */}
         </div>
-        {error && !loadingMore && ( // Show main error only if not loading more
+        {error && !loadingMore && (
            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Error Loading Manga</AlertTitle>
@@ -185,18 +193,17 @@ export default function MangaPage() {
            </Alert>
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
-           {loading && mangaList.length === 0 // Show initial skeletons only when completely loading
+           {loading && mangaList.length === 0
              ? Array.from({ length: 12 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />)
              : mangaList.length > 0
                ? mangaList.map((item) => (
-                 <MangaCard key={item.id} item={item} />
+                 <MangaCard key={item.mal_id} item={item} /> // Use MAL ID as key
                ))
-               : !error && !loading && ( // Show 'no results' only if not loading and no error
+               : !error && !loading && (
                  <div className="col-span-full text-center py-10">
                      <p className="text-muted-foreground">No manga found matching your criteria.</p>
                   </div>
                 )}
-            {/* Skeletons for loading more state */}
              {loadingMore && Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`skel-more-${index}`} />)}
          </div>
 
@@ -220,7 +227,6 @@ export default function MangaPage() {
                  </Button>
              </div>
           )}
-          {/* Optional: Message when all items loaded */}
           {!hasNextPage && mangaList.length > 0 && !loading && !error && (
               <p className="text-center text-muted-foreground mt-8">You've reached the end!</p>
           )}
@@ -236,7 +242,7 @@ const styles = `
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
   }
 `;
-// Inject styles (consider moving to globals.css for cleaner approach)
+// Inject styles
 if (typeof window !== 'undefined') {
   const styleSheet = document.createElement("style");
   styleSheet.type = "text/css";
