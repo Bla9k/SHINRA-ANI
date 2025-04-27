@@ -72,10 +72,11 @@ export interface Manga {
 
 /**
  * Represents the response structure for Jikan manga list fetch operations.
+ * Adding optional fields that might appear in error responses.
  */
 export interface JikanMangaListResponse {
-    data: any[]; // Array of Jikan manga objects
-    pagination: {
+    data?: any[]; // Array of Jikan manga objects (optional in case of error)
+    pagination?: {
         last_visible_page: number;
         has_next_page: boolean;
         current_page: number;
@@ -85,7 +86,14 @@ export interface JikanMangaListResponse {
             per_page: number;
         };
     };
+    // Potential error fields from Jikan
+    status?: number;
+    type?: string;
+    message?: string;
+    error?: string;
+    // Add other potential error fields if observed
 }
+
 
 /**
  * Represents the response structure for Jikan single manga fetch operations.
@@ -109,7 +117,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 400; // Increased delay (e.g., 400ms) - adjust as needed
+const JIKAN_DELAY = 600; // Increased delay again (was 400ms)
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -164,7 +172,7 @@ export async function getMangas(
   if (genre) params.append('genres', genre.toString());
   if (status) params.append('status', status);
   if (minScore && minScore > 0) params.append('min_score', minScore.toString()); // Add only if > 0
-  if (sort) params.append('sort', sort);
+  if (sort) params.append('sort', sort); // Jikan uses 'sort' ('asc', 'desc') and 'order_by'
   if (sort === 'score') params.append('order_by', 'score');
   if (sort === 'popularity') params.append('order_by', 'members');
 
@@ -185,6 +193,7 @@ export async function getMangas(
     response = await fetch(url, {
       method: 'GET',
       headers: headers,
+      // Consider shorter revalidation, or none if debugging rate limits
       next: { revalidate: 3600 }, // Cache for 1 hour
     });
 
@@ -193,19 +202,36 @@ export async function getMangas(
         console.error('Jikan API response not OK:', response.status, response.statusText);
         console.error('Jikan Error Body:', errorBody);
         console.error('Jikan Request URL:', url);
+        // Try to parse error body as JSON for more details
+        try {
+            const errorJson = JSON.parse(errorBody);
+            console.error('Parsed Jikan Error Body:', errorJson);
+        } catch {
+             // Ignore if parsing fails, already logged raw body
+        }
         throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}`);
     }
 
     const jsonResponse: JikanMangaListResponse = await response.json();
 
-     if (!jsonResponse.data) {
-         console.error('Jikan API error: Response missing data field.');
-         console.error('Jikan Response:', JSON.stringify(jsonResponse));
+     // Log the raw response *before* checking for the data field
+     // console.log('Raw Jikan Manga Response:', JSON.stringify(jsonResponse));
+
+     // Check if the data field is missing or not an array
+     if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+         console.error('Jikan API error: Response missing or invalid "data" field.');
+         console.error('Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
          console.error('Jikan Request URL:', url);
-         throw new Error('Jikan API response missing data field.');
+         // Check if it looks like a Jikan error structure
+         if (jsonResponse.status && jsonResponse.message) {
+             throw new Error(`Jikan API returned error ${jsonResponse.status}: ${jsonResponse.message}`);
+         } else {
+             throw new Error('Jikan API response missing or invalid data field.');
+         }
     }
 
     const pagination = jsonResponse.pagination;
+    // Map only if data exists and is an array
     const mangas = jsonResponse.data.map(mapJikanDataToManga);
 
     return {
@@ -220,6 +246,7 @@ export async function getMangas(
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
+    // Log detailed fetch error
     console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     throw new Error(`Failed to fetch manga data from Jikan: ${error.message || 'Unknown fetch error'}`);
   }
@@ -256,13 +283,17 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
             console.error('Jikan API response not OK:', response.status, response.statusText);
             console.error('Jikan Error Body:', errorBody);
             console.error('Jikan Request URL:', url);
+             try {
+                const errorJson = JSON.parse(errorBody);
+                console.error('Parsed Jikan Error Body:', errorJson);
+            } catch {}
             throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}`);
         }
 
         const jsonResponse: JikanSingleMangaResponse = await response.json();
 
          if (!jsonResponse.data) {
-             console.error('Jikan API error: Response missing data field.');
+             console.error('Jikan API error: Response missing data field for single manga.');
              console.error('Jikan Response:', JSON.stringify(jsonResponse));
              console.error('Jikan Request URL:', url);
              throw new Error('Jikan API response missing data field.');

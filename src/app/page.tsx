@@ -42,9 +42,9 @@ async function fetchDetailsByTitleWithDelay(
             // Fetch page 1, limit handled by service, sort by relevance (default for search)
             const response = await fetchFunction(undefined, undefined, undefined, title, undefined, 1);
             let firstMatch: Anime | Manga | null = null;
-            if ('animes' in response && response.animes.length > 0) {
+            if ('animes' in response && response.animes?.length > 0) { // Add null check
                 firstMatch = response.animes[0];
-            } else if ('mangas' in response && response.mangas.length > 0) {
+            } else if ('mangas' in response && response.mangas?.length > 0) { // Add null check
                 firstMatch = response.mangas[0];
             }
 
@@ -52,10 +52,12 @@ async function fetchDetailsByTitleWithDelay(
                 // Ensure id is mapped correctly from mal_id
                 results.push({ ...firstMatch, id: firstMatch.mal_id, type: itemType, description: firstMatch.synopsis });
             } else {
-                 console.warn(`Could not fetch details for ${itemType} "${title}" from Jikan.`);
+                 console.warn(`Could not fetch details for ${itemType} "${title}" from Jikan (no match found).`);
             }
         } catch (err) {
-            console.warn(`Error fetching details for ${itemType} "${title}" from Jikan:`, err);
+            // Log the error but don't throw, allow the loop to continue
+            console.error(`Error fetching details for ${itemType} "${title}" from Jikan:`, err);
+            // Optionally return a placeholder or skip this item entirely
         }
         await delay(delayMs); // Wait before the next call
     }
@@ -96,42 +98,49 @@ export default function Home() {
         } catch (aiError: any) {
             console.error("Failed to fetch AI recommendations:", aiError);
             setErrorRecommendations(aiError.message || "Nami couldn't generate recommendations right now.");
-            setLoadingRecommendations(false);
             // Continue to fetch trending even if AI fails
         }
 
         // --- 2. Fetch Details for AI Recommendations (Sequentially with Delays) ---
-        if (aiOutput && (aiOutput.animeRecommendations.length > 0 || aiOutput.mangaRecommendations.length > 0)) {
+        // Check if aiOutput and its recommendation arrays are valid before proceeding
+        if (aiOutput && (aiOutput.animeRecommendations?.length > 0 || aiOutput.mangaRecommendations?.length > 0)) {
              const animeTitles = aiOutput.animeRecommendations || [];
              const mangaTitles = aiOutput.mangaRecommendations || [];
 
-             // Fetch details
-             const animeResults = await fetchDetailsByTitleWithDelay(animeTitles, getAnimes, 'anime');
-             await delay(500); // Optional extra delay between fetching anime and manga details
-             const mangaResults = await fetchDetailsByTitleWithDelay(mangaTitles, getMangas, 'manga');
+            try {
+                 // Fetch details
+                 const animeResults = await fetchDetailsByTitleWithDelay(animeTitles, getAnimes, 'anime');
+                 await delay(500); // Optional extra delay between fetching anime and manga details
+                 const mangaResults = await fetchDetailsByTitleWithDelay(mangaTitles, getMangas, 'manga');
 
-             // Combine results
-             const combinedResults: RecommendationItem[] = [...animeResults, ...mangaResults];
+                 // Combine results
+                 const combinedResults: RecommendationItem[] = [...animeResults, ...mangaResults];
 
-             // --- Filter for unique items based on type and id ---
-             const uniqueResultsMap = new Map<string, RecommendationItem>();
-             combinedResults.forEach(item => {
-                 // Ensure item.id is defined before creating key
-                 if (item && typeof item.id !== 'undefined') {
-                     const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
-                     if (!uniqueResultsMap.has(uniqueKey)) {
-                         uniqueResultsMap.set(uniqueKey, item);
+                 // --- Filter for unique items based on type and id ---
+                 const uniqueResultsMap = new Map<string, RecommendationItem>();
+                 combinedResults.forEach(item => {
+                     // Ensure item.id is defined before creating key
+                     if (item && typeof item.id !== 'undefined') {
+                         const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
+                         if (!uniqueResultsMap.has(uniqueKey)) {
+                             uniqueResultsMap.set(uniqueKey, item);
+                         }
+                     } else {
+                        console.warn("Skipping item with undefined id during unique filtering:", item);
                      }
-                 } else {
-                    console.warn("Skipping item with undefined id:", item);
-                 }
-             });
-             const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
+                 });
+                 const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
 
-             // Shuffle results if desired (apply to unique results)
-             uniqueRecommendedContent.sort(() => Math.random() - 0.5);
+                 // Shuffle results if desired (apply to unique results)
+                 uniqueRecommendedContent.sort(() => Math.random() - 0.5);
 
-             setRecommendedContent(uniqueRecommendedContent.slice(0, 8)); // Limit displayed AI recommendations
+                 setRecommendedContent(uniqueRecommendedContent.slice(0, 8)); // Limit displayed AI recommendations
+             } catch (detailFetchError: any) {
+                  console.error("Error fetching details for AI recommendations:", detailFetchError);
+                  // Set error or leave recommendedContent empty
+                  setErrorRecommendations(errorRecommendations || "Failed to fetch details for some recommendations.");
+                  setRecommendedContent([]);
+             }
 
 
         } else if (!errorRecommendations) {
@@ -141,16 +150,20 @@ export default function Home() {
         setLoadingRecommendations(false); // AI Recommendations part is done
 
         // --- 3. Fetch Trending Data (After AI details) ---
-        await delay(800); // Increased delay before fetching trending data (was 500ms)
+        // Add delay even if AI part failed or had no results
+        await delay(800);
         try {
            // Fetch trending using Jikan services (default sort is popularity)
            // Fetch them sequentially to further reduce burst load
-           const trendingAnimeResponse = await getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
-           await delay(600); // Increased delay between trending fetches (was 400ms)
-           const trendingMangaResponse = await getMangas(undefined, undefined, undefined, undefined, 1, 'popularity');
+           const [trendingAnimeResponse, trendingMangaResponse] = await Promise.all([
+                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity'),
+                getMangas(undefined, undefined, undefined, undefined, undefined, 1, 'popularity')
+           ]);
 
-           setTrendingAnime(trendingAnimeResponse.animes.slice(0, 6));
-           setTrendingManga(trendingMangaResponse.mangas.slice(0, 6));
+           // Ensure data exists before slicing
+           setTrendingAnime(trendingAnimeResponse?.animes?.slice(0, 6) || []);
+           setTrendingManga(trendingMangaResponse?.mangas?.slice(0, 6) || []);
+
         } catch (trendingError: any) {
              console.error("Failed to fetch trending data from Jikan:", trendingError);
              setErrorTrending(trendingError.message || "Could not load trending content.");
@@ -187,6 +200,7 @@ export default function Home() {
              className="object-cover transition-transform duration-300 group-hover:scale-105"
              priority={false} // Keep false unless critical LCP element
              unoptimized={false} // Only set true if image host is explicitly NOT optimized
+             onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/400/600?grayscale'; }} // Fallback image on error
            />
           ) : (
            <div className="absolute inset-0 bg-muted flex items-center justify-center">
@@ -214,9 +228,14 @@ export default function Home() {
              </span>
              {/* Link using MAL ID (stored in item.id) */}
              <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
-                 <Link href={`/${item.type}/${item.id}`}> {/* Use item.id which is mal_id */}
-                     View Details
-                 </Link>
+                 {/* Ensure item.id is valid before creating Link */}
+                 {typeof item.id === 'number' ? (
+                    <Link href={`/${item.type}/${item.id}`}>
+                        View Details
+                    </Link>
+                 ) : (
+                    <span className="text-muted-foreground">Details Unavailable</span>
+                 )}
              </Button>
          </div>
       </CardContent>
@@ -359,5 +378,4 @@ if (typeof window !== 'undefined') {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 }
-
 
