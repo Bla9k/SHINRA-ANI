@@ -91,7 +91,7 @@ export default function MangaDetailPage() {
         <div className="relative flex flex-col md:flex-row gap-6 md:gap-8 p-4 md:p-8">
            {/* Left Column: Cover Image */}
            <div className="md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 -mt-12 md:-mt-16 z-10">
-             <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow">
+             <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow border-2 border-primary/50">
                 {manga.imageUrl ? (
                    <Image
                      src={manga.imageUrl}
@@ -99,6 +99,7 @@ export default function MangaDetailPage() {
                      fill
                      sizes="(max-width: 768px) 60vw, 25vw"
                      className="object-cover"
+                     priority // Prioritize loading the main image
                    />
                 ) : (
                    <div className="h-full w-full bg-muted flex items-center justify-center">
@@ -122,7 +123,7 @@ export default function MangaDetailPage() {
                  {/* Genres */}
                 <div className="flex flex-wrap gap-2">
                    {manga.genres?.map(g => (
-                     <Badge key={g.mal_id} variant="secondary">{g.name}</Badge>
+                     <Badge key={g.mal_id} variant="secondary" className="neon-glow-hover text-xs cursor-default">{g.name}</Badge>
                    ))}
                 </div>
 
@@ -140,6 +141,11 @@ export default function MangaDetailPage() {
                     <span className="flex items-center gap-1" title="Status">
                         <Clock size={16} /> {formatStatus(manga.status)}
                     </span>
+                    {manga.year && (
+                       <span className="flex items-center gap-1" title="Year">
+                         <CalendarDays size={16} /> {manga.year}
+                       </span>
+                    )}
                 </div>
 
                 <Separator className="my-4" />
@@ -184,15 +190,15 @@ export default function MangaDetailPage() {
   );
 }
 
-// Skeleton component for loading state
+// Skeleton component for loading state - Updated to match layout
 function MangaDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
-      <Card className="overflow-hidden glass">
+      <Card className="overflow-hidden glass border-primary/20">
          <div className="relative flex flex-col md:flex-row gap-6 md:gap-8 p-4 md:p-8">
            {/* Left Column: Cover Image */}
            <div className="md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 -mt-12 md:-mt-16 z-10">
-             <Card className="overflow-hidden aspect-[2/3] relative">
+             <Card className="overflow-hidden aspect-[2/3] relative border-2 border-primary/50">
                <Skeleton className="h-full w-full" />
              </Card>
            </div>
@@ -217,6 +223,7 @@ function MangaDetailSkeleton() {
                   <Skeleton className="h-5 w-20" />
                   <Skeleton className="h-5 w-20" />
                   <Skeleton className="h-5 w-24" />
+                  <Skeleton className="h-5 w-16" /> {/* Year Placeholder */}
                </div>
 
                <Separator className="my-4" />
@@ -230,17 +237,17 @@ function MangaDetailSkeleton() {
                </div>
 
                {/* Authors Placeholder */}
-               <div className="space-y-1 pt-2">
+               {/* <div className="space-y-1 pt-2">
                   <Skeleton className="h-5 w-24" />
                   <Skeleton className="h-4 w-40" />
-               </div>
+               </div> */}
 
              </CardContent>
 
              {/* Footer Actions */}
               <div className="flex gap-3 pt-6 mt-auto">
-                 <Skeleton className="h-10 w-36" />
-                 <Skeleton className="h-10 w-40" />
+                 <Skeleton className="h-10 w-36 rounded-md" />
+                 <Skeleton className="h-10 w-40 rounded-md" />
               </div>
            </div>
          </div>
@@ -248,3 +255,5 @@ function MangaDetailSkeleton() {
     </div>
   );
 }
+
+    

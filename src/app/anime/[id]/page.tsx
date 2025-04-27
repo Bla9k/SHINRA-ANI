@@ -88,7 +88,7 @@ export default function AnimeDetailPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <Card className="overflow-hidden glass border-primary/20 shadow-xl">
-         {/* Header Section with Background Image (Optional) */}
+         {/* Header Section with Background Image (Optional - subtle) */}
          {/* <div className="relative h-48 md:h-64 overflow-hidden">
              {anime.imageUrl && (
                  <Image
@@ -104,7 +104,7 @@ export default function AnimeDetailPage() {
         <div className="relative flex flex-col md:flex-row gap-6 md:gap-8 p-4 md:p-8">
            {/* Left Column: Cover Image */}
            <div className="md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 -mt-12 md:-mt-16 z-10">
-             <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow">
+             <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow border-2 border-primary/50">
                 {anime.imageUrl ? (
                    <Image
                      src={anime.imageUrl}
@@ -112,6 +112,7 @@ export default function AnimeDetailPage() {
                      fill
                      sizes="(max-width: 768px) 60vw, 25vw"
                      className="object-cover"
+                     priority // Prioritize loading the main image
                    />
                 ) : (
                     <div className="h-full w-full bg-muted flex items-center justify-center">
@@ -135,7 +136,7 @@ export default function AnimeDetailPage() {
                  {/* Genres */}
                 <div className="flex flex-wrap gap-2">
                    {anime.genres?.map(g => (
-                     <Badge key={g.mal_id} variant="secondary">{g.name}</Badge>
+                     <Badge key={g.mal_id} variant="secondary" className="neon-glow-hover text-xs cursor-default">{g.name}</Badge>
                    ))}
                 </div>
 
@@ -169,13 +170,14 @@ export default function AnimeDetailPage() {
                 {anime.trailer?.embed_url && (
                    <div className="space-y-2 pt-4">
                       <h3 className="text-lg font-semibold flex items-center gap-2"><Youtube size={20} className="text-red-600"/> Trailer</h3>
-                      <div className="aspect-video rounded-lg overflow-hidden border border-border glass">
+                      <div className="aspect-video rounded-lg overflow-hidden border border-border glass shadow-md">
                          <iframe
                             src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")} // Prevent autoplay
                             title={`${anime.title} Trailer`}
                             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
                             className="w-full h-full"
+                            loading="lazy" // Lazy load the iframe
                          ></iframe>
                       </div>
                    </div>
@@ -202,15 +204,15 @@ export default function AnimeDetailPage() {
   );
 }
 
-// Skeleton component for loading state
+// Skeleton component for loading state - Updated to match layout
 function AnimeDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
-      <Card className="overflow-hidden glass">
+      <Card className="overflow-hidden glass border-primary/20">
          <div className="relative flex flex-col md:flex-row gap-6 md:gap-8 p-4 md:p-8">
            {/* Left Column: Cover Image */}
            <div className="md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 -mt-12 md:-mt-16 z-10">
-             <Card className="overflow-hidden aspect-[2/3] relative">
+             <Card className="overflow-hidden aspect-[2/3] relative border-2 border-primary/50">
                <Skeleton className="h-full w-full" />
              </Card>
            </div>
@@ -250,14 +252,14 @@ function AnimeDetailSkeleton() {
                 {/* Trailer Placeholder */}
                <div className="space-y-2 pt-4">
                    <Skeleton className="h-6 w-28 mb-2" /> {/* Trailer Title */}
-                   <Skeleton className="aspect-video w-full rounded-lg" />
+                   <Skeleton className="aspect-video w-full rounded-lg glass" />
                </div>
              </CardContent>
 
              {/* Footer Actions */}
               <div className="flex gap-3 pt-6 mt-auto">
-                 <Skeleton className="h-10 w-36" />
-                 <Skeleton className="h-10 w-40" />
+                 <Skeleton className="h-10 w-36 rounded-md" />
+                 <Skeleton className="h-10 w-40 rounded-md" />
               </div>
            </div>
          </div>
@@ -265,3 +267,5 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
+
+    
