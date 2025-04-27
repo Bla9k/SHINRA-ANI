@@ -9,7 +9,6 @@ import {
   BookText, // Icon for Manga
   Users, // Icon for Community
   User, // Icon for Profile
-  Sparkles, // Icon for Nami AI Search Trigger
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -58,18 +57,12 @@ const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
 };
 
 
-// Interface for props including the search modal toggle
-interface BottomNavigationBarProps {
-  onSearchClick: () => void;
-}
-
-export default function BottomNavigationBar({ onSearchClick }: BottomNavigationBarProps) {
-  // Updated navigation items - remove search page link
-  const leftNavItems: NavItemProps[] = [
+// Remove onSearchClick prop
+export default function BottomNavigationBar() {
+  // Combine all navigation items
+  const navItems: NavItemProps[] = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/anime', icon: Tv, label: 'Anime' },
-  ];
-   const rightNavItems: NavItemProps[] = [
     { href: '/manga', icon: BookText, label: 'Manga' },
     { href: '/community', icon: Users, label: 'Community' },
     { href: '/profile', icon: User, label: 'Profile' },
@@ -77,43 +70,16 @@ export default function BottomNavigationBar({ onSearchClick }: BottomNavigationB
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass">
-      {/* Flex container for items */}
-      <div className="flex justify-around items-stretch h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative"> {/* Added relative positioning */}
-        {/* Left Items */}
-        {leftNavItems.map((item) => (
-          <NavItem key={item.href} {...item} />
-        ))}
+      {/* Flex container for items, use justify-around to distribute space */}
+      <div className="flex justify-around items-stretch h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative">
+        {/* Removed Central Nami AI Search Button */}
 
-        {/* Central Nami AI Search Button */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-[60%] z-20"> {/* Position centrally, slightly elevated */}
-            <TooltipProvider delayDuration={100}>
-             <Tooltip>
-                <TooltipTrigger asChild>
-                    <Button
-                        variant="default" // Make it stand out
-                        size="icon"
-                        className="rounded-full h-14 w-14 shadow-lg neon-glow neon-glow-hover border-2 border-background flex items-center justify-center bg-gradient-to-br from-primary to-purple-600 text-primary-foreground" // Larger, styled button
-                        onClick={onSearchClick}
-                        aria-label="Open AI Search"
-                    >
-                        <Sparkles className="h-7 w-7" />
-                    </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                   <p>Nami AI Search</p>
-                </TooltipContent>
-            </Tooltip>
-           </TooltipProvider>
-        </div>
-
-        {/* Right Items */}
-         {/* Add placeholder divs to balance the layout since the button is absolutely positioned */}
-         <div className="flex-1"></div> {/* Placeholder to push right items */}
-
-        {rightNavItems.map((item) => (
+        {/* Render all nav items */}
+        {navItems.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
       </div>
     </nav>
   );
 }
+

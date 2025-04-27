@@ -5,9 +5,9 @@ import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader, // Import DialogHeader
-  DialogTitle, // Import DialogTitle
-  VisuallyHidden, // Import VisuallyHidden
+  DialogHeader,
+  DialogTitle,
+  VisuallyHidden,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Search as SearchIcon, Loader2, Sparkles, AlertCircle, X, CalendarDays, Star, Layers, Library, Film, BookText, Tv, User, Heart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { aiPoweredSearch, AIPoweredSearchOutput, SearchResult } from '@/ai/flows/ai-powered-search';
+import { aiPoweredSearch, AIPoweredSearchOutput, SearchResult } from '@/ai/flows/ai-powered-search'; // Keep AI flow import
+import { getAnimes, getMangas } from '@/services'; // Import standard Jikan search
 import { Badge } from '@/components/ui/badge';
 import { useDebounce } from '@/hooks/use-debounce';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -26,6 +27,9 @@ import { cn } from '@/lib/utils';
 interface SearchPopupProps {
   isOpen: boolean;
   onClose: () => void;
+  isAiActive: boolean; // Receive AI state from parent
+  initialSearchTerm?: string; // Receive initial term
+  onAiToggle: () => void; // Function to toggle AI state in parent
 }
 
 // Helper function to format status
@@ -34,8 +38,8 @@ const formatStatus = (status: string | null): string => {
     return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
 };
 
-// Initial Nami suggestions
-const initialSuggestions = [
+// Initial Nami suggestions (only shown when AI is active)
+const initialAiSuggestions = [
     "Show me top rated romance anime",
     "Find anime similar to Attack on Titan",
     "Recommend me a short anime series",
@@ -43,37 +47,57 @@ const initialSuggestions = [
     "Find manga with strong female protagonists"
 ];
 
-export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
+export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearchTerm = '', onAiToggle }: SearchPopupProps) {
   const [isPending, startTransition] = useTransition();
-  const [searchTerm, setSearchTerm] = useState('');
+  const [searchTerm, setSearchTerm] = useState(initialSearchTerm);
   const [results, setResults] = useState<SearchResult[]>([]);
-  const [aiSuggestions, setAiSuggestions] = useState<string[]>(initialSuggestions); // Start with predefined suggestions
+  const [aiSuggestions, setAiSuggestions] = useState<string[]>(initialAiSuggestions);
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasSearched, setHasSearched] = useState(false); // Track if a search has been performed
+  const [hasSearched, setHasSearched] = useState(!!initialSearchTerm); // Track if a search has been performed
 
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
+  // Update internal search term if initial term changes while open
+  useEffect(() => {
+      if (isOpen && initialSearchTerm) {
+          setSearchTerm(initialSearchTerm);
+          setHasSearched(true);
+      }
+  }, [initialSearchTerm, isOpen]);
+
   // Reset state when popup opens/closes
   useEffect(() => {
-      if (!isOpen) {
+      if (isOpen) {
+          setSearchTerm(initialSearchTerm); // Set initial term when opening
+          setHasSearched(!!initialSearchTerm);
+          if (!initialSearchTerm) { // Clear results only if opening fresh
+              setResults([]);
+              setAiSuggestions(initialAiSuggestions);
+              setAiAnalysis(null);
+              setError(null);
+              setLoading(false);
+          }
+      } else {
+          // Optionally reset everything on close, or keep state?
+          // Resetting fully for now.
           setSearchTerm('');
           setResults([]);
-          setAiSuggestions(initialSuggestions);
+          setAiSuggestions(initialAiSuggestions);
           setAiAnalysis(null);
           setError(null);
           setLoading(false);
           setHasSearched(false);
       }
-  }, [isOpen]);
+  }, [isOpen, initialSearchTerm]);
 
 
   const handleSearch = useCallback(async (currentSearchTerm: string) => {
-      if (!currentSearchTerm.trim()) {
+      const term = currentSearchTerm.trim();
+      if (!term) {
           setResults([]);
-          // Keep initial suggestions if search is cleared
-          setAiSuggestions(initialSuggestions);
+          setAiSuggestions(initialAiSuggestions);
           setAiAnalysis(null);
           setError(null);
           setLoading(false);
@@ -83,44 +107,88 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
 
       setLoading(true);
       setError(null);
-      setAiAnalysis(null);
+      setAiAnalysis(null); // Clear previous analysis
       setHasSearched(true); // Mark that a search has occurred
 
       startTransition(async () => {
           try {
-              const searchInput = {
-                  searchTerm: currentSearchTerm.trim(),
-                  searchType: 'all' as const, // Always search 'all' types in this popup
-              };
+              let searchOutput: AIPoweredSearchOutput;
+              if (isAiActive) {
+                  // --- AI Search Logic ---
+                  const searchInput = {
+                      searchTerm: term,
+                      searchType: 'all' as const,
+                  };
+                  console.log("Performing AI Search with input:", searchInput);
+                  searchOutput = await aiPoweredSearch(searchInput);
+                  setResults(searchOutput.results || []);
+                  setAiSuggestions(searchOutput.suggestions || []); // Update suggestions from AI
+                  setAiAnalysis(searchOutput.aiAnalysis || null);
+                  console.log("AI Search successful, results:", searchOutput.results?.length, "suggestions:", searchOutput.suggestions?.length);
+              } else {
+                  // --- Standard Jikan Search Logic ---
+                  console.log("Performing Standard Jikan Search for:", term);
+                  // Fetch both anime and manga concurrently
+                  const [animeRes, mangaRes] = await Promise.all([
+                      getAnimes(undefined, undefined, undefined, term, undefined, 1, 'rank', 10), // Fetch top 10 anime by rank
+                      getMangas(undefined, undefined, term, undefined, 1, 'rank', 10)  // Fetch top 10 manga by rank
+                  ]);
 
-              console.log("Performing AI Search with input:", searchInput);
-              const searchOutput: AIPoweredSearchOutput = await aiPoweredSearch(searchInput);
+                  // Map results to the unified SearchResult format
+                  const combinedResults: SearchResult[] = [
+                      ...(animeRes.animes || []).map(a => ({
+                          id: a.mal_id,
+                          title: a.title,
+                          imageUrl: a.imageUrl,
+                          description: a.synopsis,
+                          type: 'anime' as const,
+                          genres: a.genres,
+                          year: a.year,
+                          score: a.score,
+                          episodes: a.episodes,
+                          status: a.status,
+                      })),
+                      ...(mangaRes.mangas || []).map(m => ({
+                          id: m.mal_id,
+                          title: m.title,
+                          imageUrl: m.imageUrl,
+                          description: m.synopsis,
+                          type: 'manga' as const,
+                          genres: m.genres,
+                          year: m.year,
+                          score: m.score,
+                          chapters: m.chapters,
+                          volumes: m.volumes,
+                          status: m.status,
+                      }))
+                  ].filter(item => item.id != null) // Filter out any potential nulls
+                   .sort((a, b) => (a.score && b.score ? b.score - a.score : (a.score ? -1 : 1))); // Simple score sort
 
-              setResults(searchOutput.results || []);
-              // Update suggestions based on AI response only *after* a search
-              setAiSuggestions(searchOutput.suggestions || []);
-              setAiAnalysis(searchOutput.aiAnalysis || null);
+                  setResults(combinedResults);
+                  setAiSuggestions([]); // No AI suggestions in standard mode
+                  setAiAnalysis(null); // No AI analysis
+                  console.log(`Standard Search successful, found ${combinedResults.length} items.`);
+              }
+
               setError(null);
 
-              console.log("Search successful, results:", searchOutput.results?.length, "suggestions:", searchOutput.suggestions?.length);
-
           } catch (err: any) {
-              console.error('Search failed:', err);
-              setError(err.message || `Nami encountered an issue searching. Please try again.`);
+              console.error(`Search failed (AI Active: ${isAiActive}):`, err);
+              const mode = isAiActive ? "Nami" : "Standard search";
+              setError(err.message || `${mode} encountered an issue. Please try again.`);
               setResults([]);
-              // Show error in suggestions area or keep previous/initial ones? Decide UX.
-              // setAiSuggestions([]);
-              setAiAnalysis(`Error during search: ${err.message}`);
+              setAiSuggestions([]); // Clear suggestions on error
+              setAiAnalysis(`${mode} Error: ${err.message}`);
           } finally {
               setLoading(false);
           }
       });
-  }, [startTransition]); // Dependencies for useCallback
+  }, [startTransition, isAiActive]); // Dependencies for useCallback
 
-  // Trigger search on debounced term change
+  // Trigger search on debounced term change or AI mode change while term exists
   useEffect(() => {
     handleSearch(debouncedSearchTerm);
-  }, [debouncedSearchTerm, handleSearch]);
+  }, [debouncedSearchTerm, isAiActive, handleSearch]);
 
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -129,14 +197,14 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
   };
 
 
- // Result Card component (copied and adapted from previous search page)
+ // Result Card component
  const ResultCard = ({ item }: { item: SearchResult }) => {
-      const linkHref = `/${item.type}/${item.id}`;
+      const linkHref = item.type !== 'character' ? `/${item.type}/${item.id}` : `https://myanimelist.net/character/${item.id}`;
+      const target = item.type === 'character' ? '_blank' : '_self';
 
      return (
-        // Reduced horizontal padding, added margin-bottom
         <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:bg-card/60 flex flex-col sm:flex-row group mb-3 mx-1">
-         <CardHeader className="p-0 relative h-36 w-full sm:h-auto sm:w-24 flex-shrink-0 overflow-hidden"> {/* Adjusted size */}
+         <CardHeader className="p-0 relative h-36 w-full sm:h-auto sm:w-24 flex-shrink-0 overflow-hidden">
             {item.imageUrl ? (
              <Image
                 src={item.imageUrl}
@@ -161,7 +229,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
         <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between">
            <div>
               <CardTitle className="text-sm font-semibold mb-0.5 line-clamp-1 group-hover:text-primary transition-colors">
-                <Link href={item.type === 'character' ? `https://myanimelist.net/character/${item.id}` : linkHref} target={item.type === 'character' ? '_blank' : '_self'} rel="noopener noreferrer" onClick={onClose}>
+                 <Link href={linkHref} target={target} rel="noopener noreferrer" onClick={onClose}>
                     {item.title}
                  </Link>
               </CardTitle>
@@ -179,7 +247,6 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
                  {item.description || 'No description available.'}
               </CardDescription>
            </div>
-           {/* Details Footer - simplified */}
            <div className="flex flex-wrap justify-start items-center text-[10px] text-muted-foreground border-t border-border/50 pt-1 mt-auto gap-x-2 gap-y-0.5">
               {item.type === 'anime' && item.score && <span className="flex items-center gap-0.5" title="Score"><Star size={10} className="text-yellow-400"/> {item.score.toFixed(1)}</span>}
               {item.type === 'anime' && item.episodes && <span className="flex items-center gap-0.5" title="Episodes"><Film size={10} /> {item.episodes} Ep</span>}
@@ -192,7 +259,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
      );
  };
 
-   // Skeleton card - simplified for popup
+   // Skeleton card
    const SkeletonCard = () => (
      <Card className="overflow-hidden glass flex flex-col sm:flex-row mb-3 mx-1 animate-pulse">
         <CardHeader className="p-0 h-36 w-full sm:h-auto sm:w-24 flex-shrink-0">
@@ -200,15 +267,15 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
         </CardHeader>
         <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between">
            <div>
-                <Skeleton className="h-4 w-3/4 mb-1" /> {/* Title */}
-                <div className="flex gap-1 mb-1 flex-wrap"> {/* Genres/Tags */}
+                <Skeleton className="h-4 w-3/4 mb-1" />
+                <div className="flex gap-1 mb-1 flex-wrap">
                     <Skeleton className="h-3 w-10 rounded-full" />
                     <Skeleton className="h-3 w-12 rounded-full" />
                 </div>
-                <Skeleton className="h-3 w-full mb-1" /> {/* Description */}
+                <Skeleton className="h-3 w-full mb-1" />
                 <Skeleton className="h-3 w-5/6 mb-2" />
             </div>
-            <div className="flex justify-start items-center border-t border-border/50 pt-1 mt-auto gap-2"> {/* Footer */}
+            <div className="flex justify-start items-center border-t border-border/50 pt-1 mt-auto gap-2">
                 <Skeleton className="h-3 w-8" />
                 <Skeleton className="h-3 w-10" />
             </div>
@@ -219,24 +286,30 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
 
   return (
       <Dialog open={isOpen} onOpenChange={onClose}>
-        {/* Removed DialogTrigger as it's controlled externally */}
         <DialogContent
-          className="glass p-0 pt-4 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl" // Adjusted max-width and height, removed padding, added flex
-          onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click initially
+          className="glass p-0 pt-4 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl"
+          // Don't prevent closing on outside click anymore
         >
-          {/* Add a visually hidden title for accessibility */}
            <DialogHeader className="sr-only">
-             <DialogTitle>Nami AI Search</DialogTitle>
+             <DialogTitle>Search</DialogTitle> {/* Generic Title */}
            </DialogHeader>
-           {/* Custom Header/Search Input Area */}
+          {/* Custom Header/Search Input Area */}
           <div className="relative px-4 pb-3 border-b border-border/50">
-            <SearchIcon className="absolute left-7 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
+            {/* Conditionally show Search or Sparkles icon based on AI state */}
+            {isAiActive ? (
+                <Sparkles className="absolute left-7 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary pointer-events-none z-10" />
+            ) : (
+                <SearchIcon className="absolute left-7 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
+            )}
             <Input
               type="search"
-              placeholder="Search anime, manga, characters..."
+              placeholder={isAiActive ? "Ask Nami anything..." : "Search anime, manga, characters..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 w-full glass neon-glow-focus text-base pr-16 h-12 rounded-full border-2 border-primary/40" // Rounded, taller, more padding
+              className={cn(
+                  "pl-10 w-full glass text-base pr-16 h-12 rounded-full border-2",
+                  isAiActive ? "border-primary/60 focus:border-primary" : "border-input focus:border-primary/50" // Dynamic border
+              )}
               aria-label="Search AniManga Stream"
             />
              {(loading || isPending) && (
@@ -257,8 +330,13 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
             <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-4 top-1/2 transform -translate-y-1/2 h-9 w-9 rounded-full text-primary hover:bg-primary/10 neon-glow-hover"
-                aria-label="AI Search Assistant"
+                className={cn(
+                    "absolute right-4 top-1/2 transform -translate-y-1/2 h-9 w-9 rounded-full text-primary hover:bg-primary/10 neon-glow-hover",
+                    isAiActive && "bg-primary/20 text-primary neon-glow" // Highlight if active
+                 )}
+                 onClick={onAiToggle} // Use handler from props
+                 aria-pressed={isAiActive}
+                 aria-label={isAiActive ? "Deactivate AI Search" : "Activate AI Search"}
             >
                 <Sparkles size={20} />
             </Button>
@@ -266,7 +344,7 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
 
 
           {/* Content Area: Suggestions or Results */}
-          <ScrollArea className="flex-grow overflow-y-auto px-2 pt-3"> {/* Added padding top */}
+          <ScrollArea className="flex-grow overflow-y-auto px-2 pt-3">
             {/* Loading State */}
             {loading && (
               <div className="space-y-3 px-2">
@@ -283,8 +361,8 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
                 </Alert>
             )}
 
-             {/* Initial State & AI Suggestions */}
-             {!loading && !error && !hasSearched && (
+             {/* Initial State & AI Suggestions (Only if AI is active and no search term) */}
+             {!loading && !error && !searchTerm && isAiActive && (
                  <div className="px-2 py-4">
                      <h3 className="text-sm font-semibold mb-3 text-muted-foreground px-1">AI Search Assistant - Try asking Nami:</h3>
                      <div className="space-y-2">
@@ -304,9 +382,9 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
 
             {/* Results State */}
             {!loading && !error && hasSearched && results.length > 0 && (
-                 <div className="space-y-0"> {/* Removed space-y-3, margin added to card */}
-                    {/* AI Analysis */}
-                     {aiAnalysis && (
+                 <div className="space-y-0">
+                    {/* AI Analysis (Only if AI is active) */}
+                     {isAiActive && aiAnalysis && (
                          <Alert className="m-2 glass border-primary/30 mb-3 text-xs">
                               <Sparkles className="h-3 w-3 text-primary" />
                               <AlertTitle className="text-primary text-xs font-semibold">Nami's Analysis</AlertTitle>
@@ -315,8 +393,8 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
                               </AlertDescription>
                          </Alert>
                      )}
-                     {/* AI Suggestions After Search */}
-                     {aiSuggestions.length > 0 && (
+                     {/* AI Suggestions After Search (Only if AI is active) */}
+                     {isAiActive && aiSuggestions.length > 0 && (
                        <div className="mb-3 px-2">
                          <h3 className="text-xs font-semibold mb-1 text-muted-foreground">Nami Suggests:</h3>
                          <div className="flex flex-wrap gap-1.5">
@@ -344,8 +422,9 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
              {/* No Results State */}
             {!loading && !error && hasSearched && results.length === 0 && (
                 <div className="text-center text-muted-foreground py-10 px-4">
-                    <p>Nami couldn't find anything matching "{searchTerm}".</p>
-                     {aiSuggestions.length > 0 && (
+                    <p>{isAiActive ? "Nami" : "Search"} couldn't find anything matching "{searchTerm}".</p>
+                     {/* AI Suggestions on No Results (Only if AI is active) */}
+                     {isAiActive && aiSuggestions.length > 0 && (
                          <div className="mt-4">
                             <p className="text-sm mb-2">Maybe try:</p>
                              <div className="flex flex-wrap gap-2 justify-center">
@@ -365,6 +444,14 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
                      )}
                 </div>
             )}
+
+             {/* Prompt to enter search if popup is open but no search */}
+             {!loading && !error && !hasSearched && !searchTerm && !isAiActive && (
+                 <div className="text-center text-muted-foreground py-10 px-4">
+                     <p>Enter a search term above.</p>
+                 </div>
+             )}
+
 
           </ScrollArea>
         </DialogContent>

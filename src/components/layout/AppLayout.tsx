@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useState, type ReactNode, useCallback } from 'react';
 import TopBar from './TopBar';
 import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup'; // Import the SearchPopup component
@@ -12,21 +12,55 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAiSearchActive, setIsAiSearchActive] = useState(false); // State for AI search mode
+  const [initialSearchTerm, setInitialSearchTerm] = useState(''); // State for initial search term
 
-  const handleSearchToggle = () => {
-    setIsSearchOpen(!isSearchOpen);
-  };
+  const handleSearchToggle = useCallback((term: string = '') => {
+    setInitialSearchTerm(term); // Set the initial term if provided
+    setIsSearchOpen(prev => !prev);
+    // Optionally, reset AI mode when opening search, or keep it sticky
+    // setIsAiSearchActive(false);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    setInitialSearchTerm(''); // Clear initial term on close
+    // Keep AI state potentially sticky? Or reset? Resetting for now.
+    // setIsAiSearchActive(false);
+  }, []);
+
+  const handleAiToggle = useCallback(() => {
+    setIsAiSearchActive(prev => !prev);
+    // Ensure search popup opens if AI is toggled
+    if (!isSearchOpen) {
+      setIsSearchOpen(true);
+    }
+  }, [isSearchOpen]);
 
   return (
     <div className="flex flex-col min-h-screen">
-      <TopBar onSearchClick={handleSearchToggle} /> {/* Pass handler to TopBar if needed */}
-      <main className="flex-1 pb-20 overflow-y-auto">
+      {/* Pass handlers and state to TopBar */}
+      <TopBar
+        onSearchIconClick={() => handleSearchToggle()} // Simple toggle for icon click
+        onSearchSubmit={handleSearchToggle} // Pass term on submit
+        onAiToggle={handleAiToggle}
+        isAiSearchActive={isAiSearchActive}
+      />
+      <main className="flex-1 pb-20 overflow-y-auto"> {/* Adjusted padding for bottom nav */}
         <div className="animate-in fade-in duration-500">
           {children}
         </div>
       </main>
-      <BottomNavigationBar onSearchClick={handleSearchToggle} /> {/* Pass handler to BottomNav */}
-      <SearchPopup isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} /> {/* Render SearchPopup */}
+      {/* BottomNav no longer needs search control */}
+      <BottomNavigationBar />
+      {/* Pass state to SearchPopup */}
+      <SearchPopup
+        isOpen={isSearchOpen}
+        onClose={handleCloseSearch}
+        isAiActive={isAiSearchActive} // Pass AI activation state
+        initialSearchTerm={initialSearchTerm} // Pass initial search term
+        onAiToggle={handleAiToggle} // Allow popup to toggle AI state
+      />
     </div>
   );
 }
