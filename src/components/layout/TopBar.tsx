@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -13,7 +14,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { SidebarTrigger } from '@/components/ui/sidebar'; // Use the sidebar trigger
+// SidebarTrigger is removed as we are using a bottom bar now.
+
 
 export default function TopBar() {
   // TODO: Replace with actual user data and authentication state
@@ -23,31 +25,38 @@ export default function TopBar() {
     avatarUrl: 'https://picsum.photos/40/40?random=1', // Placeholder avatar
   };
 
+  const handleSurpriseMe = () => {
+    // TODO: Implement surprise me logic using surpriseMeRecommendation flow
+    console.log('Surprise Me clicked!');
+    // Example: Call surpriseMeRecommendation({ userProfile: '...', mood: '...', recentInteractions: '...' })
+  };
+
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-background/80 px-4 backdrop-blur-md md:px-6 glass">
-       {/* Sidebar Trigger for mobile */}
-      <div className="md:hidden">
-        <SidebarTrigger />
-      </div>
 
-      {/* Spacer for Desktop */}
-      <div className="hidden md:block w-[var(--sidebar-width-icon)]"></div>
+      {/* Logo/Brand - Keep or adjust as needed */}
+      <Link href="/" className="flex items-center gap-2 mr-4">
+         <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
+            <path d="M50 0L61.226 30.9017H95.1056L69.9398 50L81.1658 80.9017H50L18.8342 80.9017L30.0602 50L4.89435 30.9017H38.774L50 0Z" fill="currentColor"/>
+         </svg>
+        <span className="font-bold text-lg hidden sm:inline">AniManga</span>
+      </Link>
 
-      {/* Search Bar */}
-      <div className="flex flex-1 items-center gap-4 md:ml-auto md:gap-2 lg:gap-4">
-        <form className="ml-auto flex-1 sm:flex-initial">
+      {/* Search Bar and Right Aligned Items */}
+      <div className="flex flex-1 items-center justify-end gap-4">
+        <form className="flex-1 sm:flex-initial max-w-xs sm:max-w-sm md:max-w-md">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
               placeholder="Search anime, manga..."
-              className="pl-8 sm:w-[300px] md:w-[200px] lg:w-[300px] bg-transparent focus:bg-card neon-glow-focus"
+              className="pl-8 w-full bg-transparent focus:bg-card neon-glow-focus"
             />
           </div>
         </form>
 
-        {/* AI Recommendations Button */}
-        <Button variant="ghost" size="icon" className="rounded-full neon-glow-hover">
+        {/* AI Recommendations Button - Visible on Desktop */}
+        <Button variant="ghost" size="icon" className="rounded-full neon-glow-hover hidden md:inline-flex" onClick={handleSurpriseMe}>
           <Sparkles className="h-5 w-5 text-primary" />
           <span className="sr-only">AI Recommendations</span>
         </Button>
