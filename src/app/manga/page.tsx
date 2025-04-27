@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
@@ -36,7 +37,7 @@ const statuses = [
     { value: "finished", label: "Finished" },
     { value: "on_hiatus", label: "On Hiatus" },
     { value: "discontinued", label: "Discontinued" },
-    { value: "upcoming", label: "Not Yet Published" }, // Jikan uses 'upcoming' for manga too
+    { value: "upcoming", label: "Upcoming" },
 ];
 
 const sortOptions = [
@@ -51,8 +52,11 @@ const sortOptions = [
 
 const ANY_GENRE_VALUE = "any-genre";
 const ANY_STATUS_VALUE = "any-status";
+const DEFAULT_SORT = "popularity";
 
 export default function MangaPage() {
+  const searchParams = useSearchParams(); // Get search params
+
   const [mangaList, setMangaList] = useState<Manga[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -60,11 +64,16 @@ export default function MangaPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
 
+  // Initialize filter state from URL search params or defaults
+  const initialGenre = searchParams.get('genre') || undefined;
+  const initialStatus = searchParams.get('status') || undefined;
+  const initialSort = searchParams.get('sort') || DEFAULT_SORT;
+
    // Filter State
-  const [selectedGenre, setSelectedGenre] = useState<string | undefined>(undefined);
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
-  const [selectedSort, setSelectedSort] = useState<string>('popularity'); // Default sort
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedGenre, setSelectedGenre] = useState<string | undefined>(initialGenre);
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(initialStatus);
+  const [selectedSort, setSelectedSort] = useState<string>(initialSort); // Default sort
+  const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialStatus); // Show filters if initially set
 
   const hasActiveFilters = useMemo(() => {
     return !!selectedGenre || !!selectedStatus;
@@ -85,6 +94,7 @@ export default function MangaPage() {
         const genreParam = selectedGenre === ANY_GENRE_VALUE ? undefined : selectedGenre;
         const statusParam = selectedStatus === ANY_STATUS_VALUE ? undefined : selectedStatus;
 
+        console.log(`Fetching manga page ${page} - Filters: Genre=${genreParam}, Status=${statusParam}, Sort=${selectedSort}`);
         // Fetch manga using Jikan service with filters
         const response: MangaResponse = await getMangas(
             genreParam,
@@ -97,6 +107,7 @@ export default function MangaPage() {
         setMangaList(prev => (page === 1 || filtersChanged) ? response.mangas : [...prev, ...response.mangas]);
         setHasNextPage(response.hasNextPage);
         setCurrentPage(page);
+         console.log(`Fetched ${response.mangas.length} manga. Has Next Page: ${response.hasNextPage}`);
       } catch (err: any) {
         console.error("Failed to fetch manga:", err);
         setError(err.message || "Couldn't load manga list. Please try again later.");
@@ -112,12 +123,24 @@ export default function MangaPage() {
 
   // Fetch on initial load and when filters change
   useEffect(() => {
+      // Update URL when filters change (optional, but good UX)
+      const params = new URLSearchParams();
+      if (selectedGenre && selectedGenre !== ANY_GENRE_VALUE) params.set('genre', selectedGenre);
+      if (selectedStatus && selectedStatus !== ANY_STATUS_VALUE) params.set('status', selectedStatus);
+      if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort);
+      // Only push if params changed
+      if (params.toString() !== searchParams.toString()) {
+          window.history.replaceState(null, '', `?${params.toString()}`);
+      }
+
       fetchManga(1, true); // Reset page to 1 and indicate filters changed
-  }, [fetchManga]); // fetchManga dependency includes all filter states
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGenre, selectedStatus, selectedSort]); // Trigger fetch when filters change
 
 
   const loadMoreManga = () => {
     if (hasNextPage && !loadingMore && !loading) {
+       console.log("Loading more manga...");
       fetchManga(currentPage + 1, false);
     }
   };
@@ -125,8 +148,9 @@ export default function MangaPage() {
    const resetFilters = () => {
       setSelectedGenre(undefined);
       setSelectedStatus(undefined);
-      setSelectedSort('popularity'); // Reset sort to default
+      setSelectedSort(DEFAULT_SORT); // Reset sort to default
       // Fetching will be triggered by useEffect
+       window.history.replaceState(null, '', window.location.pathname); // Clear URL params
   };
 
 

@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation'; // Import useSearchParams
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
@@ -26,9 +27,9 @@ const genres = [
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 const statuses = [
-    { value: "airing", label: "Currently Airing" },
+    { value: "airing", label: "Airing Now" },
     { value: "complete", label: "Finished Airing" },
-    { value: "upcoming", label: "Not Yet Aired" },
+    { value: "upcoming", label: "Upcoming" },
 ];
 
 const sortOptions = [
@@ -42,8 +43,11 @@ const sortOptions = [
 
 const ANY_GENRE_VALUE = "any-genre";
 const ANY_STATUS_VALUE = "any-status";
+const DEFAULT_SORT = "popularity";
 
 export default function AnimePage() {
+  const searchParams = useSearchParams(); // Get search params
+
   const [animeList, setAnimeList] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -51,12 +55,19 @@ export default function AnimePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
 
+  // Initialize filter state from URL search params or defaults
+  const initialGenre = searchParams.get('genre') || undefined;
+  const initialYear = searchParams.get('year') || '';
+  const initialStatus = searchParams.get('status') || undefined;
+  const initialSort = searchParams.get('sort') || DEFAULT_SORT;
+
+
   // Filter State
-  const [selectedGenre, setSelectedGenre] = useState<string | undefined>(undefined);
-  const [selectedYear, setSelectedYear] = useState<string>(''); // Use string for input
-  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined);
-  const [selectedSort, setSelectedSort] = useState<string>('popularity'); // Default sort
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedGenre, setSelectedGenre] = useState<string | undefined>(initialGenre);
+  const [selectedYear, setSelectedYear] = useState<string>(initialYear); // Use string for input
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(initialStatus);
+  const [selectedSort, setSelectedSort] = useState<string>(initialSort);
+  const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialYear || !!initialStatus); // Show filters if any are set initially
 
   const debouncedYear = useDebounce(selectedYear, 500); // Debounce year input
 
@@ -82,6 +93,7 @@ export default function AnimePage() {
           const genreParam = selectedGenre === ANY_GENRE_VALUE ? undefined : selectedGenre;
           const statusParam = selectedStatus === ANY_STATUS_VALUE ? undefined : selectedStatus;
 
+          console.log(`Fetching anime page ${page} - Filters: Genre=${genreParam}, Year=${validYear}, Status=${statusParam}, Sort=${selectedSort}`);
           const response: AnimeResponse = await getAnimes(
               genreParam,
               validYear,
@@ -95,6 +107,7 @@ export default function AnimePage() {
           setAnimeList(prev => (page === 1 || filtersChanged) ? response.animes : [...prev, ...response.animes]);
           setHasNextPage(response.hasNextPage);
           setCurrentPage(page);
+          console.log(`Fetched ${response.animes.length} anime. Has Next Page: ${response.hasNextPage}`);
       } catch (err: any) {
           console.error("Failed to fetch anime:", err);
           setError(err.message || "Couldn't load anime list. Please try again later.");
@@ -110,11 +123,25 @@ export default function AnimePage() {
 
   // Fetch on initial load and when filters change
   useEffect(() => {
+      // Update URL when filters change (optional, but good UX)
+      const params = new URLSearchParams();
+      if (selectedGenre && selectedGenre !== ANY_GENRE_VALUE) params.set('genre', selectedGenre);
+      if (debouncedYear) params.set('year', debouncedYear);
+      if (selectedStatus && selectedStatus !== ANY_STATUS_VALUE) params.set('status', selectedStatus);
+      if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort);
+      // Only push if params changed to avoid unnecessary history entries
+      if (params.toString() !== searchParams.toString()) {
+         window.history.replaceState(null, '', `?${params.toString()}`);
+      }
+
       fetchAnime(1, true); // Reset page to 1 and indicate filters changed
-  }, [fetchAnime]); // fetchAnime dependency includes all filter states
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedGenre, debouncedYear, selectedStatus, selectedSort]); // Trigger fetch when filters change
+
 
   const loadMoreAnime = () => {
       if (hasNextPage && !loadingMore && !loading) { // Prevent loading more if already loading
+          console.log("Loading more anime...");
           fetchAnime(currentPage + 1, false); // Fetch next page, filters didn't change
       }
   };
@@ -123,8 +150,10 @@ export default function AnimePage() {
       setSelectedGenre(undefined);
       setSelectedYear('');
       setSelectedStatus(undefined);
-      setSelectedSort('popularity'); // Reset sort to default
+      setSelectedSort(DEFAULT_SORT); // Reset sort to default
       // Fetching will be triggered by useEffect due to state changes
+      // Also clear URL params
+       window.history.replaceState(null, '', window.location.pathname);
   };
 
 
