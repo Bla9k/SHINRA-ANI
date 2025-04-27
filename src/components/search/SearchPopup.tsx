@@ -7,7 +7,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  VisuallyHidden,
+  VisuallyHidden, // Import VisuallyHidden for accessibility
+  DialogClose, // Import DialogClose
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -80,8 +81,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
               setLoading(false);
           }
       } else {
-          // Optionally reset everything on close, or keep state?
-          // Resetting fully for now.
+          // Reset everything on close.
           setSearchTerm('');
           setResults([]);
           setAiSuggestions(initialAiSuggestions);
@@ -187,8 +187,11 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
   // Trigger search on debounced term change or AI mode change while term exists
   useEffect(() => {
-    handleSearch(debouncedSearchTerm);
-  }, [debouncedSearchTerm, isAiActive, handleSearch]);
+    // Avoid searching if the term is empty and the popup just opened without an initial term
+    if (debouncedSearchTerm || (isOpen && initialSearchTerm)) {
+        handleSearch(debouncedSearchTerm);
+    }
+  }, [debouncedSearchTerm, isAiActive, handleSearch, isOpen, initialSearchTerm]);
 
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -229,6 +232,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
         <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between">
            <div>
               <CardTitle className="text-sm font-semibold mb-0.5 line-clamp-1 group-hover:text-primary transition-colors">
+                 {/* Use onClick={onClose} on the Link to close the popup when a result is clicked */}
                  <Link href={linkHref} target={target} rel="noopener noreferrer" onClick={onClose}>
                     {item.title}
                  </Link>
@@ -287,14 +291,17 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
   return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent
-          className="glass p-0 pt-4 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl"
-          // Don't prevent closing on outside click anymore
+          className="glass p-0 pt-6 sm:p-0 sm:pt-6 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl"
+          // Allow closing on outside click
         >
+           {/* Use VisuallyHidden for the DialogTitle for accessibility */}
            <DialogHeader className="sr-only">
-             <DialogTitle>Search</DialogTitle> {/* Generic Title */}
-           </DialogHeader>
+               <DialogTitle>Search AniManga Stream</DialogTitle>
+               <VisuallyHidden><DialogTitle>Search AniManga Stream</DialogTitle></VisuallyHidden>
+            </DialogHeader>
           {/* Custom Header/Search Input Area */}
-          <div className="relative px-4 pb-3 border-b border-border/50">
+          {/* Added px-4 pb-3 padding to match content area */}
+           <div className="relative px-4 pb-3 border-b border-border/50">
             {/* Conditionally show Search or Sparkles icon based on AI state */}
             {isAiActive ? (
                 <Sparkles className="absolute left-7 top-1/2 transform -translate-y-1/2 h-5 w-5 text-primary pointer-events-none z-10" />
@@ -307,7 +314,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={cn(
-                  "pl-10 w-full glass text-base pr-16 h-12 rounded-full border-2",
+                  "pl-10 w-full glass text-base pr-16 h-12 rounded-full border-2", // Keep pr-16 for buttons
                   isAiActive ? "border-primary/60 focus:border-primary" : "border-input focus:border-primary/50" // Dynamic border
               )}
               aria-label="Search AniManga Stream"
@@ -315,17 +322,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
              {(loading || isPending) && (
                   <Loader2 className="absolute right-14 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-spin"/>
              )}
-             {searchTerm && !(loading || isPending) && (
-                <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-14 top-1/2 transform -translate-y-1/2 h-7 w-7 text-muted-foreground hover:text-foreground"
-                    onClick={() => setSearchTerm('')}
-                    aria-label="Clear search"
-                >
-                    <X size={16} />
-                </Button>
-            )}
+             {/* Removed explicit clear button - let the default DialogClose handle closing */}
              {/* Nami AI toggle button */}
             <Button
                 variant="ghost"
@@ -340,6 +337,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
             >
                 <Sparkles size={20} />
             </Button>
+             {/* The default DialogClose button is positioned by DialogContent styles */}
           </div>
 
 
@@ -458,3 +456,4 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
       </Dialog>
   );
 }
+

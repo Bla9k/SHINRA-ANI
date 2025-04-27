@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -39,11 +40,14 @@ const DialogContent = React.forwardRef<
       ref={ref}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        // Ensure padding doesn't interfere with close button visibility if needed
+        // Example: "p-6" or adjust based on where the close button is rendered
         className
       )}
       {...props}
     >
       {children}
+      {/* Default Close Button - positioned absolutely by Radix */}
       <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
         <X className="h-4 w-4" />
         <span className="sr-only">Close</span>
@@ -109,6 +113,7 @@ const DialogDescription = React.forwardRef<
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
 // Add VisuallyHidden for accessibility when title is not needed visually
+// Ensure this component is defined or imported if used elsewhere
 const VisuallyHidden = React.forwardRef<
   HTMLSpanElement,
   React.HTMLAttributes<HTMLSpanElement>
@@ -117,7 +122,7 @@ const VisuallyHidden = React.forwardRef<
     <span
       ref={ref}
       className={cn(
-        "absolute border-0 w-px h-px -m-px p-0 overflow-hidden whitespace-nowrap", // Tailwind equivalent of sr-only
+        "absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0", // Tailwind equivalent of sr-only
         className
       )}
       {...props}
@@ -140,3 +145,4 @@ export {
   DialogDescription,
   VisuallyHidden, // Export VisuallyHidden
 }
+
