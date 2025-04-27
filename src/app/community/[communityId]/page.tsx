@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Users, MessageSquare, Hash, Settings } from 'lucide-react';
+import { Users, MessageSquare, Hash, Settings, Mic } from 'lucide-react'; // Added Mic import
 import Link from 'next/link';
 
 // Dummy data for a single community (replace with actual fetch)
@@ -144,3 +144,4 @@ export default function CommunityDetailPage() {
     </div>
   );
 }
+
