@@ -14,7 +14,7 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname(); // Get the current path
-  const isCommunityPage = pathname === '/community'; // Check if it's the community page
+  // const isCommunityPage = pathname === '/community'; // No longer needed
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiSearchActive, setIsAiSearchActive] = useState(false); // State for AI search mode
@@ -80,20 +80,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
       />
 
       {/* Main content area */}
-      {/* Apply flex-grow and conditionally adjust padding */}
-      <main className={cn(
-        "flex-1 overflow-y-auto", // Allow content to scroll internally
-        !isCommunityPage && "pb-20" // Only add bottom padding if NOT the community page
-      )}>
+      {/* Apply flex-grow and add bottom padding to prevent overlap with bottom nav */}
+      <main className="flex-1 overflow-y-auto pb-20"> {/* Allow content to scroll internally */}
         <div className="animate-fade-in duration-500">
           {children}
         </div>
       </main>
 
-      {/* BottomNav shown conditionally */}
-       {!isCommunityPage && (
-          <BottomNavigationBar onSearchClick={handleSearchToggle} onAiClick={handleAiToggle} isAiActive={isAiSearchActive} />
-       )}
+      {/* BottomNav is always shown */}
+      <BottomNavigationBar onSearchClick={handleSearchToggle} onAiClick={handleAiToggle} isAiActive={isAiSearchActive} />
 
       {/* SearchPopup remains outside the main scroll */}
       <SearchPopup

@@ -25,6 +25,7 @@ import {
   Bot,
   Palette,
   Upload,
+  X
 } from 'lucide-react'; // Import icons
 import Image from 'next/image';
 import Link from 'next/link';
@@ -109,7 +110,7 @@ type IndieManga = typeof dummyIndieManga[0];
 
 // --- Components ---
 
-// Server Icon Button
+// Server Icon Button - Adjusted Sizing and Spacing
 const ServerButton = ({ server, onClick, isActive }: { server: any, onClick: () => void, isActive: boolean }) => (
   <TooltipProvider delayDuration={100}>
     <Tooltip>
@@ -118,7 +119,7 @@ const ServerButton = ({ server, onClick, isActive }: { server: any, onClick: () 
           variant="ghost"
           size="icon"
           className={cn(
-            "w-12 h-12 rounded-full transition-all duration-200 ease-in-out relative group overflow-hidden mb-2 flex-shrink-0",
+            "w-12 h-12 rounded-full transition-all duration-200 ease-in-out relative group overflow-hidden mb-2 flex-shrink-0", // Fixed size w-12 h-12
             isActive ? "rounded-2xl bg-primary neon-glow" : "rounded-3xl bg-background/50 hover:rounded-2xl hover:bg-primary",
             server.type === 'separator' && "h-0.5 w-8 bg-border mx-auto cursor-default pointer-events-none p-0",
              server.type === 'action' && "bg-muted hover:bg-primary text-primary hover:text-primary-foreground"
@@ -133,9 +134,9 @@ const ServerButton = ({ server, onClick, isActive }: { server: any, onClick: () 
           )} />
 
           {server.iconUrl ? (
-             <Image src={server.iconUrl} alt={server.name} fill className={cn("object-cover", isActive ? "" : "")} sizes="48px" />
+             <Image src={server.iconUrl} alt={server.name} fill className={cn("object-cover rounded-full")} sizes="48px" /> // Ensure image covers and is rounded
           ) : server.icon ? (
-             <div className={cn(isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary-foreground")}>
+             <div className={cn("flex items-center justify-center w-full h-full", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary-foreground")}>
                 {server.icon}
              </div>
           ) : (
@@ -174,7 +175,7 @@ const UserInfoBar = () => {
     const user = dummyUsers[0]; // Use the first user as current user
 
     return (
-        <div className="p-2 bg-muted/30 flex items-center justify-between">
+        <div className="p-2 bg-muted/30 flex items-center justify-between mt-auto flex-shrink-0"> {/* Added mt-auto */}
             <div className="flex items-center gap-2 overflow-hidden">
                 <Avatar className="w-8 h-8">
                     <AvatarImage src={user.avatarUrl} alt={user.name} />
@@ -490,10 +491,11 @@ export default function CommunityPage() {
 
   return (
     // Main flex container mimicking Discord layout
-    <div className="flex h-screen max-h-screen overflow-hidden bg-background text-foreground">
+    // Adjusted flex-grow and heights for better responsiveness
+    <div className="flex h-full max-h-full overflow-hidden bg-background text-foreground">
 
       {/* Server List Sidebar */}
-      <nav className="w-18 bg-background/70 glass flex flex-col items-center py-3 flex-shrink-0 overflow-y-auto scrollbar-thin">
+      <nav className="w-16 md:w-18 bg-background/70 glass flex flex-col items-center py-3 flex-shrink-0 overflow-y-auto scrollbar-thin"> {/* Fixed width w-16/w-18 */}
         {dummyServers.map((server) => (
            server.type === 'separator'
             ? <Separator key={server.id} className="w-8 my-2 bg-border" />
@@ -510,13 +512,13 @@ export default function CommunityPage() {
        {(activeServerId && activeServerId !== 'home' && activeServerId !== 'nami' && activeServerId !== 'indie' && activeServerId !== 'add' && activeServerId !== 'discover') ? (
           <nav className="w-60 bg-muted/30 glass flex flex-col flex-shrink-0 border-r border-border/50">
               {/* Server Header */}
-              <div className="h-12 border-b border-border/50 flex items-center px-3 shadow-sm">
+              <div className="h-12 border-b border-border/50 flex items-center px-3 shadow-sm flex-shrink-0">
                   <h2 className="font-bold text-foreground truncate">
                       {dummyServers.find(s => s.id === activeServerId)?.name || 'Server'}
                   </h2>
                    {/* Add dropdown for server settings */}
               </div>
-              {/* Channel List */}
+              {/* Channel List - Allow scroll */}
               <ScrollArea className="flex-grow p-2">
                   {channels.length > 0 ? (
                      channels.map((channel) => (
@@ -531,29 +533,30 @@ export default function CommunityPage() {
                      <p className="text-xs text-muted-foreground text-center py-4">No channels here.</p>
                   )}
               </ScrollArea>
-              {/* User Info Bar */}
+              {/* User Info Bar - Fixed at bottom */}
               <UserInfoBar />
           </nav>
        ) : (
-           // Placeholder or different sidebar for special sections if needed
+           // Placeholder or different sidebar for special sections
            <div className="w-60 bg-muted/30 glass flex flex-col flex-shrink-0 border-r border-border/50">
-               <div className="h-12 border-b border-border/50 flex items-center px-3 shadow-sm">
+               <div className="h-12 border-b border-border/50 flex items-center px-3 shadow-sm flex-shrink-0">
                  <h2 className="font-bold text-foreground truncate">
                      {dummyServers.find(s => s.id === activeServerId)?.name || 'Section'}
                  </h2>
                </div>
                <div className="flex-grow p-2 text-center text-xs text-muted-foreground">
-                  {/* Content for special sections like Nami or Indie */}
+                  {/* Content for special sections */}
                   {activeServerId === 'nami' && 'Talk to Nami directly!'}
                   {activeServerId === 'indie' && 'Discover and upload manga.'}
                    {activeServerId === 'home' && 'Your central hub.'}
                </div>
+                {/* User Info Bar - Fixed at bottom */}
                 <UserInfoBar />
            </div>
        )}
 
       {/* Main Content Area */}
-      <main className="flex-grow flex flex-col bg-card/50">
+      <main className="flex-grow flex flex-col bg-card/50 overflow-hidden"> {/* Allow main content to grow and manage its own overflow */}
         {renderMainContent()}
       </main>
 
@@ -565,3 +568,4 @@ export default function CommunityPage() {
     </div>
   );
 }
+
