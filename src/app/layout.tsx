@@ -1,19 +1,20 @@
+
 import type { Metadata } from 'next';
-import { Poppins } from 'next/font/google'; // Changed from Geist to Poppins
+import { Poppins } from 'next/font/google';
 import './globals.css';
 import { cn } from '@/lib/utils';
-import { Toaster } from "@/components/ui/toaster"; // Import Toaster
-import AppLayout from '@/components/layout/AppLayout'; // Import AppLayout
+import { Toaster } from "@/components/ui/toaster";
+import AppLayout from '@/components/layout/AppLayout';
 
 const poppins = Poppins({
-  weight: ['300', '400', '500', '600', '700'], // Include desired weights
+  weight: ['300', '400', '500', '600', '700'],
   subsets: ['latin'],
-  variable: '--font-poppins', // Define CSS variable
+  variable: '--font-poppins',
 });
 
 export const metadata: Metadata = {
   title: 'Shinra-Ani', // Updated App Name
-  description: 'Ultimate Anime & Manga Platform with Nami AI Integration', // Updated description
+  description: 'Ultimate Anime & Manga Platform with Nami AI Integration',
 };
 
 export default function RootLayout({
