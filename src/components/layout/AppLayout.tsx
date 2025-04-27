@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, type ReactNode, useCallback } from 'react';
@@ -15,36 +14,49 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isAiSearchActive, setIsAiSearchActive] = useState(false); // State for AI search mode
   const [initialSearchTerm, setInitialSearchTerm] = useState(''); // State for initial search term
 
+  // Opens search, optionally with a term. Resets AI mode.
   const handleSearchToggle = useCallback((term: string = '') => {
-    setInitialSearchTerm(term); // Set the initial term if provided
+    setInitialSearchTerm(term);
     setIsSearchOpen(prev => !prev);
-    // Optionally, reset AI mode when opening search, or keep it sticky
-    // setIsAiSearchActive(false);
+    // Reset AI mode when opening via normal search icon/submit
+    // setIsAiSearchActive(false); // Let's keep AI mode sticky for now unless explicitly toggled
   }, []);
 
   const handleCloseSearch = useCallback(() => {
     setIsSearchOpen(false);
     setInitialSearchTerm(''); // Clear initial term on close
-    // Keep AI state potentially sticky? Or reset? Resetting for now.
-    // setIsAiSearchActive(false);
+    // Keep AI state sticky
   }, []);
 
+  // Toggles AI mode. Ensures popup is open if toggling AI on.
   const handleAiToggle = useCallback(() => {
-    setIsAiSearchActive(prev => !prev);
-    // Ensure search popup opens if AI is toggled
-    if (!isSearchOpen) {
-      setIsSearchOpen(true);
-    }
+    setIsAiSearchActive(prev => {
+        const nextState = !prev;
+        // If turning AI mode ON, ensure the popup is open
+        if (nextState && !isSearchOpen) {
+            setIsSearchOpen(true);
+        }
+        return nextState;
+    });
   }, [isSearchOpen]);
+
+  // Opens search popup specifically in AI mode with a given term
+  const handleOpenAiSearch = useCallback((term: string) => {
+    setInitialSearchTerm(term);
+    setIsAiSearchActive(true); // Force AI mode active
+    setIsSearchOpen(true);     // Ensure popup is open
+  }, []);
+
 
   return (
     <div className="flex flex-col min-h-screen">
       {/* Pass handlers and state to TopBar */}
       <TopBar
         onSearchIconClick={() => handleSearchToggle()} // Simple toggle for icon click
-        onSearchSubmit={handleSearchToggle} // Pass term on submit
+        onSearchSubmit={handleSearchToggle} // Pass term on submit (opens popup)
         onAiToggle={handleAiToggle}
         isAiSearchActive={isAiSearchActive}
+        onOpenAiSearch={handleOpenAiSearch} // Pass the new handler
       />
       <main className="flex-1 pb-20 overflow-y-auto"> {/* Adjusted padding for bottom nav */}
         <div className="animate-in fade-in duration-500">
