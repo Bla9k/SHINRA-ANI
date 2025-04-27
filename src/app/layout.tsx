@@ -23,7 +23,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark h-full"> {/* Ensure html takes full height */}
+    <html lang="en" className="dark h-full"> {/* Ensure html takes full height and remove whitespace */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
@@ -32,7 +32,6 @@ export default function RootLayout({
       >
         {/* AppLayout now handles the core layout structure */}
         <AppLayout>
-          {/* Removed fade-in animation wrapper here, apply within AppLayout if needed */}
           {children}
         </AppLayout>
         <Toaster /> {/* Add Toaster component */}
