@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'; // Use Tabs
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Users,
@@ -25,7 +26,8 @@ import {
   Bot,
   Palette,
   Upload,
-  X
+  X,
+  Search
 } from 'lucide-react'; // Import icons
 import Image from 'next/image';
 import Link from 'next/link';
@@ -33,25 +35,19 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-// --- Dummy Data ---
+// --- Dummy Data (Keep for structure, simplify if needed) ---
 const dummyServers = [
-  { id: 'home', name: 'Home', icon: <Compass size={20}/>, type: 'special' },
-  { id: 'nami', name: 'Nami AI Chat', icon: <Bot size={20}/>, type: 'special' },
-  { id: 'indie', name: 'Indie Manga Hub', icon: <BookText size={20}/>, type: 'special' },
-  { id: 'separator', type: 'separator'},
-  { id: '1', name: 'Action Fanatics', iconUrl: 'https://picsum.photos/seed/action/48/48' },
-  { id: '2', name: 'Berserk Enjoyers', iconUrl: 'https://picsum.photos/seed/berserk/48/48' },
-  { id: '3', name: 'Isekai World', iconUrl: 'https://picsum.photos/seed/isekai/48/48' },
-  { id: '4', name: 'Romance Readers', iconUrl: 'https://picsum.photos/seed/romance/48/48' },
-  { id: 'add', name: 'Add a Server', icon: <Plus size={20}/>, type: 'action' },
-  { id: 'discover', name: 'Explore Servers', icon: <Compass size={20}/>, type: 'action' },
+  // Simplified: maybe just represent communities/topics
+  { id: '1', name: 'Action Hub' },
+  { id: '2', name: 'Berserk Fans' },
+  { id: '3', name: 'Isekai Tavern' },
+  { id: '4', name: 'Romance Corner' },
 ];
 
 const dummyChannels = {
   '1': [
-    { id: '1-general', name: 'general-chat', type: 'text' },
-    { id: '1-spoilers', name: 'spoilers-beware', type: 'text' },
-    { id: '1-recommendations', name: 'action-recs', type: 'text' },
+    { id: '1-general', name: 'general-action', type: 'text' },
+    { id: '1-recommendations', name: 'recs', type: 'text' },
     { id: '1-voice', name: 'Action Hangout', type: 'voice' },
   ],
   '2': [
@@ -59,9 +55,8 @@ const dummyChannels = {
     { id: '2-art', name: 'fan-art', type: 'text' },
     { id: '2-voice', name: 'Eclipse Watch Party', type: 'voice' },
   ],
-  '3': [
+   '3': [
     { id: '3-general', name: 'isekai-lounge', type: 'text' },
-    { id: '3-op-mcs', name: 'overpowered-mcs', type: 'text' },
     { id: '3-memes', name: 'isekai-memes', type: 'text' },
     { id: '3-voice', name: 'Truck-kun Fanclub', type: 'voice' },
   ],
@@ -70,12 +65,6 @@ const dummyChannels = {
     { id: '4-new-reads', name: 'new-releases', type: 'text' },
     { id: '4-voice', name: 'Heart-to-Heart', type: 'voice' },
   ],
-  // No channels for special/action servers
-  'home': [],
-  'nami': [],
-  'indie': [],
-  'add': [],
-  'discover': [],
 };
 
 const dummyUsers = [
@@ -97,6 +86,12 @@ const dummyMessages = {
         { id: 'm5', userId: 'u4', content: 'It truly is!', timestamp: 'Yesterday' },
     ],
     // Add more messages for other channels
+     '3-general': [
+        { id: 'm6', userId: 'u3', content: 'Just got reincarnated as a vending machine, AMA.', timestamp: '11:00 AM' },
+     ],
+      '4-general': [
+        { id: 'm7', userId: 'u4', content: 'Any good fluffy romance recommendations?', timestamp: 'Yesterday PM' },
+     ]
 };
 
 const dummyIndieManga = [
@@ -108,299 +103,56 @@ const dummyIndieManga = [
 
 type IndieManga = typeof dummyIndieManga[0];
 
-// --- Components ---
+// --- Redesigned Components ---
 
-// Server Icon Button - Adjusted Sizing and Spacing
-const ServerButton = ({ server, onClick, isActive }: { server: any, onClick: () => void, isActive: boolean }) => (
-  <TooltipProvider delayDuration={100}>
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "w-12 h-12 rounded-full transition-all duration-200 ease-in-out relative group overflow-hidden mb-2 flex-shrink-0", // Fixed size w-12 h-12
-            isActive ? "rounded-2xl bg-primary neon-glow" : "rounded-3xl bg-background/50 hover:rounded-2xl hover:bg-primary",
-            server.type === 'separator' && "h-0.5 w-8 bg-border mx-auto cursor-default pointer-events-none p-0",
-             server.type === 'action' && "bg-muted hover:bg-primary text-primary hover:text-primary-foreground"
-          )}
-          onClick={server.type !== 'separator' ? onClick : undefined}
-          disabled={server.type === 'separator'}
-        >
-          {/* Active Indicator */}
-           <div className={cn(
-              "absolute left-0 top-1/2 transform -translate-y-1/2 h-0 w-1 bg-white rounded-r-full transition-all duration-200",
-              isActive ? "h-10" : "group-hover:h-5 h-2"
-          )} />
-
-          {server.iconUrl ? (
-             <Image src={server.iconUrl} alt={server.name} fill className={cn("object-cover rounded-full")} sizes="48px" /> // Ensure image covers and is rounded
-          ) : server.icon ? (
-             <div className={cn("flex items-center justify-center w-full h-full", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary-foreground")}>
-                {server.icon}
-             </div>
-          ) : (
-            <span className={cn("font-bold text-xs", isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary-foreground")}>
-              {server.name.substring(0, 2).toUpperCase()}
-            </span>
-          )}
-        </Button>
-      </TooltipTrigger>
-       <TooltipContent side="right">
-         <p>{server.name}</p>
-       </TooltipContent>
-    </Tooltip>
-  </TooltipProvider>
-);
-
-// Channel List Item
-const ChannelItem = ({ channel, onClick, isActive }: { channel: any, onClick: () => void, isActive: boolean }) => (
-  <Button
-    variant="ghost"
-    size="sm"
-    className={cn(
-      "w-full justify-start px-2 text-left h-7 mb-0.5",
-      isActive ? "bg-accent/80 text-foreground font-semibold" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-    )}
-    onClick={onClick}
-  >
-    {channel.type === 'text' ? <Hash size={16} className="mr-1.5 flex-shrink-0" /> : <Mic size={16} className="mr-1.5 flex-shrink-0" />}
-    <span className="truncate flex-grow">{channel.name}</span>
-    {/* Add indicators like unread count here if needed */}
-  </Button>
-);
-
-// User Info Bar at bottom left
-const UserInfoBar = () => {
-    const user = dummyUsers[0]; // Use the first user as current user
-
-    return (
-        <div className="p-2 bg-muted/30 flex items-center justify-between mt-auto flex-shrink-0"> {/* Added mt-auto */}
-            <div className="flex items-center gap-2 overflow-hidden">
-                <Avatar className="w-8 h-8">
-                    <AvatarImage src={user.avatarUrl} alt={user.name} />
-                    <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                </Avatar>
-                <div className="text-xs overflow-hidden">
-                    <p className="font-semibold text-foreground truncate">{user.name}</p>
-                    <p className="text-muted-foreground truncate">{user.status}</p>
-                </div>
-            </div>
-            <div className="flex items-center">
-                <TooltipProvider delayDuration={100}>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <Button variant="ghost" size="icon" className="w-7 h-7">
-                                <Mic size={16} />
-                            </Button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top"><p>Mute</p></TooltipContent>
-                    </Tooltip>
-                     <Tooltip>
-                        <TooltipTrigger asChild>
-                             <Button variant="ghost" size="icon" className="w-7 h-7">
-                                 <Headphones size={16} />
-                             </Button>
-                        </TooltipTrigger>
-                         <TooltipContent side="top"><p>Deafen</p></TooltipContent>
-                    </Tooltip>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                           <Button variant="ghost" size="icon" className="w-7 h-7" asChild>
-                               <Link href="/settings">
-                                  <Settings size={16} />
-                               </Link>
-                           </Button>
-                        </TooltipTrigger>
-                         <TooltipContent side="top"><p>User Settings</p></TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-            </div>
-        </div>
-    );
-};
-
-// Message Component
-const Message = ({ message }: { message: any }) => {
+// Minimalist Chat Message
+const ChatMessage = ({ message }: { message: any }) => {
     const user = dummyUsers.find(u => u.id === message.userId);
     if (!user) return null; // Don't render if user not found
 
     return (
-        <div className="flex items-start gap-3 p-2 hover:bg-accent/5 rounded-sm transition-colors">
-            <Avatar className="w-9 h-9 mt-0.5 flex-shrink-0">
+        <div className="flex items-start gap-3 p-2 rounded-sm group hover:bg-accent/10 transition-colors">
+            <Avatar className="w-8 h-8 mt-0.5 flex-shrink-0 group-hover:scale-105 transition-transform">
                  <AvatarImage src={user.avatarUrl} alt={user.name} />
-                 <AvatarFallback>{user.name.substring(0, 2).toUpperCase()}</AvatarFallback>
+                 <AvatarFallback>{user.name.substring(0, 1).toUpperCase()}</AvatarFallback>
              </Avatar>
              <div className="flex-grow">
                  <div className="flex items-baseline gap-2 mb-0.5">
-                     <span className="font-semibold text-sm text-primary">{user.name}</span>
+                     <span className="font-semibold text-sm text-primary group-hover:text-primary-foreground transition-colors">{user.name}</span>
                      <span className="text-xs text-muted-foreground">{message.timestamp}</span>
                  </div>
-                 <p className="text-sm text-foreground leading-relaxed">{message.content}</p>
+                 <p className="text-sm text-foreground/90 leading-normal">{message.content}</p>
              </div>
         </div>
     );
 };
 
-// Main Chat Area Component
-const ChatArea = ({ activeChannelId, activeServerId }: { activeChannelId: string | null, activeServerId: string | null}) => {
-    const messages = activeChannelId ? dummyMessages[activeChannelId as keyof typeof dummyMessages] || [] : [];
-    const channel = activeServerId && activeChannelId ? (dummyChannels[activeServerId as keyof typeof dummyChannels] || []).find(c => c.id === activeChannelId) : null;
-
-    if (!channel) {
-        return <div className="flex-grow flex items-center justify-center text-muted-foreground">Select a channel</div>;
-    }
-
-    return (
-        <div className="flex flex-col flex-grow h-full">
-             {/* Channel Header */}
-             <div className="h-12 border-b border-border/50 flex items-center px-4 flex-shrink-0">
-                 <div className="flex items-center gap-1.5 text-lg font-semibold">
-                     {channel.type === 'text' ? <Hash size={20} className="text-muted-foreground" /> : <Mic size={20} className="text-muted-foreground" />}
-                     <span className="truncate">{channel.name}</span>
-                 </div>
-                 {/* Add topic or other header elements here */}
-                 <div className="ml-auto flex items-center gap-2">
-                     <TooltipProvider delayDuration={100}>
-                         <Tooltip>
-                             <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-muted-foreground w-8 h-8">
-                                     <HelpCircle size={18}/>
-                                  </Button>
-                             </TooltipTrigger>
-                             <TooltipContent side="bottom"><p>Help</p></TooltipContent>
-                         </Tooltip>
-                         <Tooltip>
-                             <TooltipTrigger asChild>
-                                  <Button variant="ghost" size="icon" className="text-muted-foreground w-8 h-8">
-                                      <Users size={18}/>
-                                  </Button>
-                             </TooltipTrigger>
-                             <TooltipContent side="bottom"><p>Member List</p></TooltipContent>
-                         </Tooltip>
-                     </TooltipProvider>
-                     {/* Search in Channel */}
-                     <Input type="search" placeholder="Search" className="h-7 w-36 text-xs glass hidden md:block"/>
-                 </div>
-             </div>
-
-            {/* Messages Area */}
-             <ScrollArea className="flex-grow p-2">
-                 {messages.length > 0 ? (
-                     messages.map(msg => <Message key={msg.id} message={msg} />)
-                 ) : (
-                     <div className="text-center text-muted-foreground py-10">No messages yet in #{channel.name}.</div>
-                 )}
-             </ScrollArea>
-
-             {/* Message Input Area */}
-             <div className="p-3 border-t border-border/50 flex-shrink-0">
-                 <div className="relative">
-                     <Input
-                         type="text"
-                         placeholder={`Message #${channel.name}`}
-                         className="w-full glass pr-10 h-10" // Add padding for button
-                         // Add state and handlers for sending messages
-                     />
-                     <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 transform -translate-y-1/2 w-8 h-8">
-                         <Plus size={18}/>
-                     </Button>
-                 </div>
-             </div>
-        </div>
-    );
-};
-
-// Nami AI Chat Component Placeholder
- const NamiAIChat = () => (
-     <div className="flex-grow flex flex-col h-full bg-gradient-to-br from-background to-indigo-900/20">
-         <div className="h-12 border-b border-border/50 flex items-center px-4 flex-shrink-0">
-             <div className="flex items-center gap-2 text-lg font-semibold text-primary">
-                 <Bot size={20} /> Nami AI Chat
-             </div>
-         </div>
-        <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground p-4 text-center">
-            <Bot size={48} className="mb-4 text-primary opacity-80"/>
-            <h2 className="text-xl font-semibold mb-2 text-foreground">Chat with Nami AI</h2>
-            <p className="text-sm mb-6">Ask Nami for recommendations, anime/manga info, or just chat!</p>
-            <p className="text-xs italic">Nami AI Chat Interface - Coming Soon!</p>
-            {/* TODO: Implement AI Chat interface here */}
-        </div>
-         <div className="p-3 border-t border-border/50 flex-shrink-0">
-             <div className="relative">
-                 <Input type="text" placeholder="Type your message to Nami..." className="w-full glass pr-10 h-10" disabled />
-                 <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 transform -translate-y-1/2 w-8 h-8" disabled>
-                    <Plus size={18}/>
-                 </Button>
-             </div>
-        </div>
-     </div>
- );
-
-
-// Indie Manga Hub Component
-const IndieMangaHub = () => {
-    const [loadingIndie, setLoadingIndie] = useState(false);
-
-    return (
-        <div className="flex-grow flex flex-col h-full bg-gradient-to-br from-background to-blue-900/20">
-             <div className="h-12 border-b border-border/50 flex items-center justify-between px-4 flex-shrink-0">
-                 <div className="flex items-center gap-2 text-lg font-semibold text-primary">
-                     <BookText size={20} /> Indie Manga Hub
-                 </div>
-                  <Button asChild variant="outline" size="sm" className="neon-glow-hover">
-                     <Link href="/upload">
-                        <Upload size={16} className="mr-1.5" /> Upload Manga
-                     </Link>
-                 </Button>
-             </div>
-             <ScrollArea className="flex-grow p-4">
-                 {loadingIndie ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                         {Array.from({ length: 4 }).map((_, index) => <IndieMangaSkeletonCard key={`skel-${index}`} />)}
-                     </div>
-                 ) : dummyIndieManga.length > 0 ? (
-                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                         {dummyIndieManga.map((manga) => (
-                             <IndieMangaCard key={manga.id} manga={manga} />
-                         ))}
-                     </div>
-                 ) : (
-                     <div className="text-center text-muted-foreground py-10">
-                        <p>No indie manga found yet. Be the first to upload!</p>
-                     </div>
-                 )}
-             </ScrollArea>
-        </div>
-    );
-};
-
-// Indie Manga Card Component
+// Simplified Indie Manga Card
 const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
-    <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group h-full flex flex-col">
+    <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group h-full flex flex-col border-primary/10 hover:border-primary/30">
       <CardHeader className="p-0 relative aspect-[2/3] w-full">
         <Image
           src={manga.imageUrl || 'https://picsum.photos/200/300?grayscale'}
           alt={manga.title}
           fill
           sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-110"
+          className="object-cover transition-transform duration-300 group-hover:scale-105"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
          <div className="absolute bottom-2 left-2 right-2 z-10">
-           <CardTitle className="text-base font-semibold text-primary-foreground line-clamp-1 shadow-text">{manga.title}</CardTitle>
-           <p className="text-xs text-muted-foreground shadow-text">by {manga.author}</p>
+           <CardTitle className="text-sm font-semibold text-primary-foreground line-clamp-1 shadow-text group-hover:text-primary transition-colors">{manga.title}</CardTitle>
          </div>
       </CardHeader>
       <CardContent className="p-3 flex flex-col flex-grow">
+        <p className="text-xs text-muted-foreground mb-1">by {manga.author}</p>
         <div className="flex gap-1 mb-2 flex-wrap">
-           {manga.genre.map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)}
+           {manga.genre.map(g => <Badge key={g} variant="secondary" className="text-[10px]">{g}</Badge>)}
         </div>
         <CardDescription className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-grow">
            {manga.description}
          </CardDescription>
         <div className="mt-auto flex justify-end">
-            <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto group-hover:underline">
+            <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto group-hover:underline text-primary">
                {/* TODO: Update link to actual indie manga reader page */}
                <Link href={`/community/manga/${manga.id}`}>
                   Read Now
@@ -411,161 +163,240 @@ const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
      </Card>
 );
 
-// Indie Manga Skeleton Card
+// Indie Manga Skeleton Card (Simplified)
 const IndieMangaSkeletonCard = () => (
-    <Card className="overflow-hidden glass h-full flex flex-col">
+    <Card className="overflow-hidden glass h-full flex flex-col border-primary/10">
        <CardHeader className="p-0 relative aspect-[2/3] w-full">
           <Skeleton className="h-full w-full" />
        </CardHeader>
        <CardContent className="p-3 space-y-2 flex flex-col flex-grow">
           <Skeleton className="h-4 w-3/4" /> {/* Title */}
-          <Skeleton className="h-3 w-1/2" /> {/* Author */}
-           <div className="flex gap-1 mb-1 flex-wrap"> {/* Genres */}
+          <Skeleton className="h-3 w-1/2 mb-1" /> {/* Author */}
+           <div className="flex gap-1 flex-wrap"> {/* Genres */}
+              <Skeleton className="h-4 w-10 rounded-full" />
               <Skeleton className="h-4 w-12 rounded-full" />
-              <Skeleton className="h-4 w-14 rounded-full" />
            </div>
           <Skeleton className="h-3 w-full" /> {/* Desc line 1 */}
-          <Skeleton className="h-3 w-5/6" /> {/* Desc line 2 */}
+          <Skeleton className="h-3 w-5/6 mb-2" /> {/* Desc line 2 */}
           <div className="flex-grow" /> {/* Spacer */}
            <div className="flex justify-end mt-auto"> {/* Button */}
-              <Skeleton className="h-5 w-1/4" />
+              <Skeleton className="h-5 w-16" />
            </div>
        </CardContent>
     </Card>
  );
 
-// Community Home Placeholder
-const CommunityHome = () => (
-    <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground p-6 text-center bg-gradient-to-br from-background to-green-900/20">
-         <Compass size={48} className="mb-4 text-primary opacity-80"/>
-        <h2 className="text-xl font-semibold mb-2 text-foreground">Welcome Home!</h2>
-        <p className="text-sm mb-6">Explore servers, discover indie manga, or chat with Nami AI.</p>
-        {/* Add quick links or recent activity here */}
-        <Button variant="outline" className="neon-glow-hover">Explore Servers</Button>
-    </div>
-);
-
-
-// --- Main Community Page ---
+// --- New Page Structure ---
 
 export default function CommunityPage() {
-  const [activeServerId, setActiveServerId] = useState<string>('home'); // Default to Home
-  const [activeChannelId, setActiveChannelId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('servers'); // Default tab
+  const [selectedServer, setSelectedServer] = useState<any>(dummyServers[0]); // Default to first server
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
+      dummyChannels[dummyServers[0]?.id as keyof typeof dummyChannels]?.[0]?.id || null // Default to first channel of first server
+  );
 
-  const channels = dummyChannels[activeServerId as keyof typeof dummyChannels] || [];
+  const channels = selectedServer ? dummyChannels[selectedServer.id as keyof typeof dummyChannels] || [] : [];
+  const messages = selectedChannelId ? dummyMessages[selectedChannelId as keyof typeof dummyMessages] || [] : [];
 
-  const handleServerClick = (serverId: string) => {
-    setActiveServerId(serverId);
-    setActiveChannelId(null); // Reset channel when server changes
-    // Automatically select the first text channel if available
-    if (serverId !== 'home' && serverId !== 'nami' && serverId !== 'indie' && serverId !== 'add' && serverId !== 'discover') {
-        const firstTextChannel = (dummyChannels[serverId as keyof typeof dummyChannels] || []).find(c => c.type === 'text');
-        if (firstTextChannel) {
-            setActiveChannelId(firstTextChannel.id);
-        }
+  const handleServerSelect = (serverId: string) => {
+    const server = dummyServers.find(s => s.id === serverId);
+    if (server) {
+      setSelectedServer(server);
+      // Select the first channel of the new server
+      const firstChannel = dummyChannels[serverId as keyof typeof dummyChannels]?.[0];
+      setSelectedChannelId(firstChannel?.id || null);
     }
   };
 
-  const handleChannelClick = (channelId: string) => {
-    setActiveChannelId(channelId);
+  const handleChannelSelect = (channelId: string) => {
+    setSelectedChannelId(channelId);
   };
 
-   const renderMainContent = () => {
-        switch (activeServerId) {
-            case 'home':
-                return <CommunityHome />;
-            case 'nami':
-                return <NamiAIChat />;
-            case 'indie':
-                return <IndieMangaHub />;
-            case 'add':
-            case 'discover':
-                // Placeholder for Add/Discover server flows
-                return <div className="flex-grow flex items-center justify-center text-muted-foreground">Server Discovery/Creation - Coming Soon!</div>;
-            default:
-                // Render Chat Area for regular servers
-                return <ChatArea activeChannelId={activeChannelId} activeServerId={activeServerId} />;
-        }
-    };
+  // Tab Content Components (simplified)
+  const ServersTabContent = () => (
+    <div className="flex h-full">
+      {/* Server/Community List */}
+      <ScrollArea className="w-72 border-r border-border/50 p-2 flex-shrink-0">
+        <div className="flex items-center justify-between mb-2">
+            <h3 className="text-lg font-semibold px-2">Communities</h3>
+            <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground hover:text-primary">
+               <Plus size={18}/>
+               <span className="sr-only">Create Community</span>
+            </Button>
+        </div>
+        <Input placeholder="Find a community..." className="glass mb-2 h-8 text-xs"/>
+        <div className="space-y-1">
+          {dummyServers.map((server) => (
+            <Button
+              key={server.id}
+              variant={selectedServer?.id === server.id ? "secondary" : "ghost"}
+              className="w-full justify-start h-9 text-sm"
+              onClick={() => handleServerSelect(server.id)}
+            >
+              {/* Add an icon based on community type maybe? */}
+              <Hash size={16} className="mr-2 text-muted-foreground" />
+              <span className="truncate">{server.name}</span>
+            </Button>
+          ))}
+        </div>
+      </ScrollArea>
+
+      {/* Channel & Chat Area */}
+      <div className="flex flex-col flex-grow h-full">
+         {selectedServer ? (
+             <>
+                {/* Channel List */}
+                <div className="h-12 border-b border-border/50 flex items-center px-4 flex-shrink-0 bg-muted/30">
+                    <h2 className="text-lg font-semibold truncate mr-auto">{selectedServer.name}</h2>
+                    {/* Add server actions/settings icon */}
+                    <Button variant="ghost" size="icon" className="w-8 h-8 text-muted-foreground"><Settings size={18}/></Button>
+                 </div>
+
+                {/* Chat/Content Area */}
+                <div className="flex flex-grow overflow-hidden">
+                    {/* Channels Sidebar */}
+                    <ScrollArea className="w-56 border-r border-border/50 p-2 flex-shrink-0 bg-muted/20">
+                        {channels.length > 0 ? channels.map((channel) => (
+                             <Button
+                                key={channel.id}
+                                variant={selectedChannelId === channel.id ? "secondary" : "ghost"}
+                                size="sm"
+                                className="w-full justify-start px-2 text-left h-7 mb-0.5"
+                                onClick={() => handleChannelSelect(channel.id)}
+                            >
+                                {channel.type === 'text' ? <Hash size={16} className="mr-1.5 flex-shrink-0" /> : <Mic size={16} className="mr-1.5 flex-shrink-0" />}
+                                <span className="truncate flex-grow">{channel.name}</span>
+                            </Button>
+                        )) : (
+                            <p className="text-xs text-muted-foreground text-center py-4">No channels.</p>
+                        )}
+                    </ScrollArea>
+
+                    {/* Main Chat View */}
+                     <div className="flex flex-col flex-grow h-full overflow-hidden">
+                        {selectedChannelId ? (
+                             <>
+                                <ScrollArea className="flex-grow p-3">
+                                   {messages.length > 0 ? (
+                                       messages.map(msg => <ChatMessage key={msg.id} message={msg} />)
+                                   ) : (
+                                       <div className="text-center text-muted-foreground py-10">No messages yet.</div>
+                                   )}
+                                </ScrollArea>
+                                <div className="p-3 border-t border-border/50 flex-shrink-0 bg-muted/30">
+                                    <div className="relative">
+                                        <Input
+                                            type="text"
+                                            placeholder={`Message #${channels.find(c=>c.id === selectedChannelId)?.name || 'channel'}`}
+                                            className="w-full glass pr-10 h-10"
+                                        />
+                                        <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 transform -translate-y-1/2 w-8 h-8 text-primary">
+                                            <PlusCircle size={18}/>
+                                        </Button>
+                                    </div>
+                                </div>
+                             </>
+                         ) : (
+                            <div className="flex-grow flex items-center justify-center text-muted-foreground">Select a channel</div>
+                         )}
+                     </div>
+                </div>
+             </>
+         ) : (
+             <div className="flex-grow flex items-center justify-center text-muted-foreground">Select a community</div>
+         )}
+      </div>
+    </div>
+  );
+
+  const NamiChatTabContent = () => (
+     <div className="flex-grow flex flex-col h-full bg-gradient-to-br from-background to-indigo-900/20 p-6">
+        <div className="flex items-center gap-2 text-2xl font-semibold text-primary mb-4">
+             <Bot size={24} /> Nami AI Chat
+        </div>
+        <div className="flex-grow flex flex-col items-center justify-center text-muted-foreground text-center">
+            <Bot size={56} className="mb-4 text-primary opacity-70"/>
+            <h2 className="text-xl font-semibold mb-2 text-foreground">Chat with Nami AI</h2>
+            <p className="text-sm mb-6 max-w-md">Get recommendations, search for anime/manga using natural language, or just talk about your favorite series!</p>
+            <p className="text-xs italic">(Chat Interface Coming Soon)</p>
+        </div>
+         <div className="p-3 border-t border-border/50 flex-shrink-0 mt-4">
+             <div className="relative">
+                 <Input type="text" placeholder="Ask Nami anything..." className="w-full glass pr-10 h-10" disabled />
+                 <Button size="icon" variant="ghost" className="absolute right-1 top-1/2 transform -translate-y-1/2 w-8 h-8" disabled>
+                    <Plus size={18}/>
+                 </Button>
+             </div>
+        </div>
+     </div>
+ );
+
+  const IndieMangaTabContent = () => (
+     <div className="flex-grow flex flex-col h-full bg-gradient-to-br from-background to-blue-900/20 p-4 md:p-6">
+        <div className="flex items-center justify-between mb-4 flex-shrink-0">
+            <div className="flex items-center gap-2 text-2xl font-semibold text-primary">
+                <BookText size={24} /> Indie Manga Hub
+            </div>
+             <Button asChild variant="outline" size="sm" className="neon-glow-hover">
+                <Link href="/upload">
+                   <Upload size={16} className="mr-1.5" /> Upload Manga
+                </Link>
+            </Button>
+        </div>
+        <ScrollArea className="flex-grow -mx-4 md:-mx-6 px-4 md:px-6"> {/* Allow scroll within tab */}
+             {dummyIndieManga.length > 0 ? (
+                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                     {dummyIndieManga.map((manga) => (
+                         <IndieMangaCard key={manga.id} manga={manga} />
+                     ))}
+                 </div>
+             ) : (
+                 <div className="text-center text-muted-foreground py-10">
+                    <p>No indie manga found yet. Be the first to upload!</p>
+                 </div>
+             )}
+        </ScrollArea>
+     </div>
+  );
 
 
   return (
-    // Main flex container mimicking Discord layout
-    // Adjusted flex-grow and heights for better responsiveness
-    <div className="flex h-full max-h-full overflow-hidden bg-background text-foreground">
+    // Main container using full height and flex column
+    <div className="flex flex-col h-full max-h-full overflow-hidden bg-background text-foreground">
+        {/* Page Header */}
+        <div className="p-4 md:p-6 border-b border-border/50 flex-shrink-0">
+             <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                 <Users className="text-primary w-7 h-7" />
+                 Community Hub
+             </h1>
+             <p className="text-muted-foreground text-sm mt-1">Connect, discuss, and discover user-created manga.</p>
+        </div>
 
-      {/* Server List Sidebar */}
-      <nav className="w-16 md:w-18 bg-background/70 glass flex flex-col items-center py-3 flex-shrink-0 overflow-y-auto scrollbar-thin"> {/* Fixed width w-16/w-18 */}
-        {dummyServers.map((server) => (
-           server.type === 'separator'
-            ? <Separator key={server.id} className="w-8 my-2 bg-border" />
-            : <ServerButton
-                key={server.id}
-                server={server}
-                onClick={() => handleServerClick(server.id)}
-                isActive={activeServerId === server.id}
-              />
-        ))}
-      </nav>
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-grow overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border/50 h-12 flex-shrink-0 px-4 md:px-6 bg-background">
+            <TabsTrigger value="servers" className="text-sm data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none data-[state=active]:shadow-none data-[state=active]:bg-transparent h-full">
+              <MessageSquare className="w-4 h-4 mr-1.5"/> Communities
+            </TabsTrigger>
+            <TabsTrigger value="nami" className="text-sm data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none data-[state=active]:shadow-none data-[state=active]:bg-transparent h-full">
+               <Bot className="w-4 h-4 mr-1.5"/> Nami Chat
+            </TabsTrigger>
+            <TabsTrigger value="indie" className="text-sm data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:text-primary rounded-none data-[state=active]:shadow-none data-[state=active]:bg-transparent h-full">
+               <BookText className="w-4 h-4 mr-1.5"/> Indie Manga
+            </TabsTrigger>
+          </TabsList>
 
-       {/* Channel List & User Info Sidebar */}
-       {(activeServerId && activeServerId !== 'home' && activeServerId !== 'nami' && activeServerId !== 'indie' && activeServerId !== 'add' && activeServerId !== 'discover') ? (
-          <nav className="w-60 bg-muted/30 glass flex flex-col flex-shrink-0 border-r border-border/50">
-              {/* Server Header */}
-              <div className="h-12 border-b border-border/50 flex items-center px-3 shadow-sm flex-shrink-0">
-                  <h2 className="font-bold text-foreground truncate">
-                      {dummyServers.find(s => s.id === activeServerId)?.name || 'Server'}
-                  </h2>
-                   {/* Add dropdown for server settings */}
-              </div>
-              {/* Channel List - Allow scroll */}
-              <ScrollArea className="flex-grow p-2">
-                  {channels.length > 0 ? (
-                     channels.map((channel) => (
-                        <ChannelItem
-                          key={channel.id}
-                          channel={channel}
-                          onClick={() => handleChannelClick(channel.id)}
-                          isActive={activeChannelId === channel.id}
-                        />
-                     ))
-                  ) : (
-                     <p className="text-xs text-muted-foreground text-center py-4">No channels here.</p>
-                  )}
-              </ScrollArea>
-              {/* User Info Bar - Fixed at bottom */}
-              <UserInfoBar />
-          </nav>
-       ) : (
-           // Placeholder or different sidebar for special sections
-           <div className="w-60 bg-muted/30 glass flex flex-col flex-shrink-0 border-r border-border/50">
-               <div className="h-12 border-b border-border/50 flex items-center px-3 shadow-sm flex-shrink-0">
-                 <h2 className="font-bold text-foreground truncate">
-                     {dummyServers.find(s => s.id === activeServerId)?.name || 'Section'}
-                 </h2>
-               </div>
-               <div className="flex-grow p-2 text-center text-xs text-muted-foreground">
-                  {/* Content for special sections */}
-                  {activeServerId === 'nami' && 'Talk to Nami directly!'}
-                  {activeServerId === 'indie' && 'Discover and upload manga.'}
-                   {activeServerId === 'home' && 'Your central hub.'}
-               </div>
-                {/* User Info Bar - Fixed at bottom */}
-                <UserInfoBar />
-           </div>
-       )}
-
-      {/* Main Content Area */}
-      <main className="flex-grow flex flex-col bg-card/50 overflow-hidden"> {/* Allow main content to grow and manage its own overflow */}
-        {renderMainContent()}
-      </main>
-
-       {/* Optional: Member List Sidebar (conditionally rendered) */}
-       {/* <aside className="w-60 bg-muted/30 glass flex-shrink-0 border-l border-border/50">
-           {/* Member list content *\/}
-       </aside> */}
-
+          {/* Tab Content Area */}
+          <TabsContent value="servers" className="mt-0 flex-grow overflow-hidden">
+            <ServersTabContent />
+          </TabsContent>
+          <TabsContent value="nami" className="mt-0 flex-grow overflow-hidden">
+            <NamiChatTabContent />
+          </TabsContent>
+          <TabsContent value="indie" className="mt-0 flex-grow overflow-hidden">
+             <IndieMangaTabContent />
+          </TabsContent>
+        </Tabs>
     </div>
   );
 }
-
