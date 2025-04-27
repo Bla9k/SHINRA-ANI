@@ -74,9 +74,11 @@ export default function BottomNavigationBar() {
 
   return (
     // Fixed position at bottom, full width, z-index, background with blur
-    <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass md:hidden"> {/* Hide on md and larger screens */}
+    // Removed md:hidden to make it visible on all screen sizes
+    <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass">
       {/* Flex container for items, centered content */}
-      <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-1"> {/* items-stretch for full height buttons, reduced padding */}
+      {/* Adjust max-w-* if you want to limit width on larger screens */}
+      <div className="flex justify-around items-stretch h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1"> {/* items-stretch for full height buttons, reduced padding */}
         {navItems.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
