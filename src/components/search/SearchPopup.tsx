@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
@@ -212,7 +213,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                   const searchOutput = await aiPoweredSearch(searchInput);
                   console.log("[SearchPopup] AI Search Response:", searchOutput);
                    // Deduplicate AI results based on type and id
-                   const uniqueAiResults = Array.from(new Map((searchOutput.results || []).map(item => [`${item.type}-${item.id}`, item])).values());
+                   const uniqueAiResults = Array.from(new Map((searchOutput.results || []).map((item, index) => [`${item.type}-${item.id}-${index}`, item])).values()); // Add index for true uniqueness
                   setResults(uniqueAiResults);
                   setAiSuggestions(searchOutput.suggestions || []);
                   setAiAnalysis(searchOutput.aiAnalysis || null);
@@ -292,7 +293,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                    });
 
                   // Deduplicate combined results
-                  const uniqueResults = Array.from(new Map(combinedResults.map(item => [`${item.type}-${item.id}`, item])).values());
+                  const uniqueResults = Array.from(new Map(combinedResults.map((item, index) => [`${item.type}-${item.id}-${index}`, item])).values()); // Add index for uniqueness
                   const finalResults = uniqueResults.slice(0, searchLimit * 2); // Ensure we don't exceed limits post-combination
 
 
@@ -433,7 +434,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
           className="glass p-0 sm:p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl"
            onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click if needed
         >
-           <VisuallyHidden><DialogTitle>Search AniManga Stream</DialogTitle></VisuallyHidden>
+           <VisuallyHidden><DialogTitle>Search Shinra-Ani</DialogTitle></VisuallyHidden>
             <DialogHeader className="p-4 pb-3 border-b border-border/50 flex-shrink-0">
                 {/* Input and Buttons Container */}
                 <div className="flex items-center gap-2 w-full">
@@ -455,12 +456,12 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                                "pl-10 pr-4 w-full glass text-base h-11 rounded-full border-2",
                                isAiActive ? "border-primary/60 focus:border-primary" : "border-input focus:border-primary/50"
                            )}
-                           aria-label="Search AniManga Stream"
+                           aria-label="Search Shinra-Ani"
                            autoFocus
                        />
                        {/* Loader inside input area */}
                         {(loading || isPending) && (
-                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-spin">
+                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-pulse"> {/* Changed spin to pulse */}
                                 <Loader2 />
                              </div>
                         )}
@@ -690,3 +691,4 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
       </Dialog>
   );
 }
+

@@ -355,7 +355,7 @@ export default function MangaPage() {
                      >
                      {loadingMore ? (
                          <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          <Loader2 className="mr-2 h-4 w-4 animate-pulse" /> {/* Changed spin to pulse */}
                           Loading...
                          </>
                       ) : (
@@ -386,3 +386,4 @@ if (typeof window !== 'undefined') {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 }
+
