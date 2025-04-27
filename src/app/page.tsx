@@ -8,8 +8,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import { aiDrivenHomepage, AIDrivenHomepageOutput } from '@/ai/flows/ai-driven-homepage'; // Import the Genkit flow
-import { getAnimes, Anime } from '@/services/anime'; // Import anime service
-import { getMangas, Manga } from '@/services/manga'; // Import manga service
+import { getAnimes, Anime, AnimeResponse } from '@/services/anime'; // Import anime service and response type
+import { getMangas, Manga, MangaResponse } from '@/services/manga'; // Import manga service and response type
 import { Sparkles, AlertCircle, Tv, BookText } from 'lucide-react'; // Import icons
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
 import { Badge } from '@/components/ui/badge'; // Import Badge component
@@ -56,8 +56,23 @@ export default function Home() {
              const mangaTitles = aiOutput.mangaRecommendations || [];
 
              // Fetch details using the services (which now have better error handling)
-             const animePromises = animeTitles.map(title => getAnimes(undefined, undefined, undefined, title).then(results => results[0]).catch(err => { console.warn(`Could not fetch details for anime "${title}":`, err); return null; }));
-             const mangaPromises = mangaTitles.map(title => getMangas(undefined, undefined, title).then(results => results[0]).catch(err => { console.warn(`Could not fetch details for manga "${title}":`, err); return null; }));
+             // Modify the promise structure slightly to handle AnimeResponse/MangaResponse
+             const animePromises = animeTitles.map(title =>
+                 getAnimes(undefined, undefined, undefined, title)
+                     .then(response => response.animes[0] ?? null) // Extract the first anime or null
+                     .catch(err => {
+                         console.warn(`Could not fetch details for anime "${title}":`, err);
+                         return null;
+                     })
+             );
+             const mangaPromises = mangaTitles.map(title =>
+                 getMangas(undefined, undefined, title)
+                     .then(response => response.mangas[0] ?? null) // Extract the first manga or null
+                     .catch(err => {
+                         console.warn(`Could not fetch details for manga "${title}":`, err);
+                         return null;
+                     })
+             );
 
 
              const [animeResults, mangaResults] = await Promise.all([
@@ -101,12 +116,14 @@ export default function Home() {
 
         // Fetch trending data separately
         try {
-           const [initialAnime, initialManga] = await Promise.all([
-               getAnimes(), // Fetch trending anime
-               getMangas(), // Fetch trending manga
+           // Fetch AnimeResponse and MangaResponse
+           const [initialAnimeResponse, initialMangaResponse] = await Promise.all([
+               getAnimes(), // Fetch trending anime (returns AnimeResponse)
+               getMangas(), // Fetch trending manga (returns MangaResponse)
            ]);
-           setTrendingAnime(initialAnime.slice(0, 6)); // Show 6 trending anime
-           setTrendingManga(initialManga.slice(0, 6)); // Show 6 trending manga
+           // Extract the arrays from the responses
+           setTrendingAnime(initialAnimeResponse.animes.slice(0, 6)); // Access .animes property
+           setTrendingManga(initialMangaResponse.mangas.slice(0, 6)); // Access .mangas property
         } catch (trendingError: any) {
              console.error("Failed to fetch trending data:", trendingError);
              setErrorTrending(trendingError.message || "Could not load trending content.");
@@ -138,6 +155,7 @@ export default function Home() {
              sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
              className="object-cover transition-transform duration-300 group-hover:scale-105"
              priority={false} // Lower priority for items further down
+             unoptimized={false} // Let Next.js optimize images
            />
           ) : (
            <div className="absolute inset-0 bg-muted flex items-center justify-center">
