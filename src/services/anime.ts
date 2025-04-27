@@ -42,16 +42,32 @@ export interface Anime {
     * Number of episodes.
     */
    episodes: number | null;
+   /**
+    * Banner image URL (optional)
+    */
+   bannerImage?: string | null;
+   /**
+    * Trailer information (optional)
+    */
+   trailer?: {
+     id?: string | null;
+     site?: string | null; // e.g., "youtube"
+     thumbnail?: string | null;
+   } | null;
+    /**
+    * AniList URL
+    */
+    siteUrl?: string | null;
 }
 
 // AniList API endpoint
 const ANILIST_API_URL = 'https://graphql.anilist.co';
 
-// Basic GraphQL query to fetch trending anime with optional genre filter
+// GraphQL query to fetch anime details including banner and trailer
 const ANIME_QUERY = `
-query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: String) {
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: String, $id: Int) {
   Page(page: $page, perPage: $perPage) {
-    media(type: ANIME, sort: $sort, genre: $genre, search: $search, isAdult: false) {
+    media(id: $id, type: ANIME, sort: $sort, genre: $genre, search: $search, isAdult: false) {
       id
       title {
         romaji
@@ -65,11 +81,18 @@ query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: S
       averageScore
       description(asHtml: false)
       coverImage {
-        large
-        extraLarge
+        large # For cards
+        extraLarge # For details page potentially
       }
+      bannerImage # Fetch banner image
       status
       episodes
+      trailer { # Fetch trailer info
+        id
+        site
+        thumbnail
+      }
+      siteUrl # Fetch AniList URL
     }
   }
 }
@@ -87,34 +110,40 @@ const mapAniListDataToAnime = (media: any): Anime => {
     averageScore: averageScore,
     rating: rating,
     description: media.description || null,
-    imageUrl: media.coverImage?.extraLarge || media.coverImage?.large || null,
+    imageUrl: media.coverImage?.large || null, // Use large for consistency in cards
+    bannerImage: media.bannerImage || null,
     status: media.status || null,
     episodes: media.episodes || null,
+    trailer: media.trailer || null,
+    siteUrl: media.siteUrl || null,
   };
 };
 
 
 /**
- * Asynchronously retrieves anime from AniList with optional filters.
+ * Asynchronously retrieves anime from AniList with optional filters or by ID.
  *
  * @param genre The genre to filter animes on.
- * @param releaseYear The release year to filter animes on (Not directly supported by basic query, filtering done post-fetch).
+ * @param releaseYear The release year to filter animes on (filtering done post-fetch).
  * @param rating The minimum rating to filter animes on (0-10 scale, filtering done post-fetch).
  * @param search Optional search term for the title.
+ * @param id Optional AniList ID to fetch a specific anime.
  * @returns A promise that resolves to a list of Anime.
  */
 export async function getAnimes(
   genre?: string,
   releaseYear?: number,
   rating?: number,
-  search?: string
+  search?: string,
+  id?: number // Add id parameter
 ): Promise<Anime[]> {
-  const variables = {
+  const variables: any = {
     page: 1,
-    perPage: 40, // Fetch more items to allow for client-side filtering
-    sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'], // Sort by trending/popularity if no search
-    genre: genre || undefined, // Pass genre if provided
-    search: search || undefined, // Pass search term if provided
+    perPage: id ? 1 : 40, // Fetch 1 if ID is provided, else 40 for lists
+    sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'],
+    genre: genre || undefined,
+    search: search || undefined,
+    id: id || undefined, // Include id in variables if provided
   };
 
   try {
@@ -128,42 +157,71 @@ export async function getAnimes(
         query: ANIME_QUERY,
         variables: variables,
       }),
-       // Add cache control if needed, e.g., revalidate every hour
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 }, // Revalidate cache every hour
+      // Consider adding a timeout if needed
+      // signal: AbortSignal.timeout(10000) // e.g., 10 seconds timeout
     });
 
     if (!response.ok) {
+      const errorBody = await response.text();
       console.error('AniList API response not OK:', response.status, response.statusText);
-       const errorBody = await response.text();
-       console.error('Error Body:', errorBody);
-      throw new Error(`AniList API request failed: ${response.status}`);
+      console.error('AniList Error Body:', errorBody);
+      console.error('AniList Request Variables:', variables); // Log variables on error
+      throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
     }
 
     const jsonResponse = await response.json();
 
     if (jsonResponse.errors) {
       console.error('AniList API errors:', jsonResponse.errors);
+      console.error('AniList Request Variables:', variables); // Log variables on error
       throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
     }
 
     let animes = jsonResponse.data?.Page?.media?.map(mapAniListDataToAnime) || [];
 
-     // --- Client-side filtering (as basic query doesn't support all) ---
-     if (releaseYear) {
-       animes = animes.filter(anime => anime.releaseYear === releaseYear);
-     }
-     if (rating !== undefined && rating !== null) {
-       animes = animes.filter(anime => anime.rating !== null && anime.rating >= rating);
-     }
-     // Limit results after filtering if necessary
-     animes = animes.slice(0, 20); // Limit to 20 results after filtering
+    // --- Client-side filtering (only for list requests, not when fetching by ID) ---
+    if (!id) {
+        if (releaseYear) {
+        animes = animes.filter(anime => anime.releaseYear === releaseYear);
+        }
+        if (rating !== undefined && rating !== null) {
+        animes = animes.filter(anime => anime.rating !== null && anime.rating >= rating);
+        }
+        // Limit results after filtering if necessary for list view
+        animes = animes.slice(0, 20);
+    }
+
 
     return animes;
 
-  } catch (error) {
-    console.error('Failed to fetch anime from AniList:', error);
-    // Return empty array or re-throw error based on desired behavior
-    return [];
-    // throw error; // Or re-throw the error
+  } catch (error: any) {
+    // Log the specific error and the request variables
+    console.error('Failed to fetch anime from AniList. Variables:', variables);
+    console.error('Fetch Error:', error);
+
+    // Re-throw the error to be handled by the calling component
+    // This allows the UI to show a specific error message
+    throw new Error(`Failed to fetch anime data from AniList: ${error.message || error}`);
   }
 }
+
+/**
+ * Fetches a single anime by its AniList ID.
+ *
+ * @param id The AniList ID of the anime to fetch.
+ * @returns A promise that resolves to the Anime object or null if not found.
+ */
+export async function getAnimeById(id: number): Promise<Anime | null> {
+    try {
+        const animes = await getAnimes(undefined, undefined, undefined, undefined, id);
+        return animes.length > 0 ? animes[0] : null;
+    } catch (error) {
+        console.error(`Failed to fetch anime with ID ${id}:`, error);
+        // Return null or re-throw based on how you want to handle errors in the specific component
+        return null;
+        // Or: throw error;
+    }
+}
+
+    

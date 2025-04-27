@@ -27,90 +27,100 @@ export default function Home() {
   const [recommendations, setRecommendations] = useState<AIDrivenHomepageOutput | null>(null);
   const [recommendedContent, setRecommendedContent] = useState<RecommendationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null); // General error for AI/Recommendation fetching
   const [trendingAnime, setTrendingAnime] = useState<Anime[]>([]);
   const [trendingManga, setTrendingManga] = useState<Manga[]>([]);
   const [loadingTrending, setLoadingTrending] = useState(true);
+  const [errorTrending, setErrorTrending] = useState<string | null>(null); // Specific error for trending content
 
   useEffect(() => {
     const fetchInitialData = async () => {
       setLoading(true);
       setLoadingTrending(true);
       setError(null);
+      setErrorTrending(null);
 
       try {
         // TODO: Replace with actual user data (e.g., from context or auth)
         const userProfile = "Loves action and fantasy anime, recently watched Attack on Titan. Enjoys ongoing manga series.";
         const currentMood = "Excited";
 
-        // Fetch AI recommendations and trending data concurrently
-        const [aiOutput, initialAnime, initialManga] = await Promise.all([
-          aiDrivenHomepage({ userProfile, currentMood }),
-          getAnimes(), // Fetch trending anime
-          getMangas(), // Fetch trending manga
-        ]);
+        // Fetch AI recommendations first
+        let aiOutput: AIDrivenHomepageOutput;
+        try {
+             aiOutput = await aiDrivenHomepage({ userProfile, currentMood });
+             setRecommendations(aiOutput);
 
-        setRecommendations(aiOutput);
-        setTrendingAnime(initialAnime.slice(0, 6)); // Show 6 trending anime
-        setTrendingManga(initialManga.slice(0, 6)); // Show 6 trending manga
-        setLoadingTrending(false);
+             // Fetch details for recommended titles *after* getting AI output
+             const animeTitles = aiOutput.animeRecommendations || [];
+             const mangaTitles = aiOutput.mangaRecommendations || [];
 
-        // Prepare lists of titles to search for details
-        const animeTitles = aiOutput.animeRecommendations || [];
-        const mangaTitles = aiOutput.mangaRecommendations || [];
-
-        // Fetch details for recommended titles from AniList (using search)
-        const animePromises = animeTitles.map(title => getAnimes(undefined, undefined, undefined, title).then(results => results[0])); // Get the first result
-        const mangaPromises = mangaTitles.map(title => getMangas(undefined, undefined, title).then(results => results[0])); // Get the first result
-
-        const [animeResults, mangaResults] = await Promise.all([
-          Promise.all(animePromises),
-          Promise.all(mangaPromises),
-        ]);
-
-        // Combine results, handling cases where a title might not be found
-        const combinedResults: RecommendationItem[] = [];
-        animeResults.forEach((anime, index) => {
-          if (anime) {
-            combinedResults.push({ ...anime, type: 'anime' });
-          } else {
-             // Fallback if anime not found by title search
-             combinedResults.push({ id: `anime-fallback-${index}`, title: animeTitles[index], type: 'anime' });
-          }
-        });
-        mangaResults.forEach((manga, index) => {
-          if (manga) {
-            combinedResults.push({ ...manga, type: 'manga' });
-          } else {
-              // Fallback if manga not found by title search
-              combinedResults.push({ id: `manga-fallback-${index}`, title: mangaTitles[index], type: 'manga' });
-          }
-        });
+             // Fetch details using the services (which now have better error handling)
+             const animePromises = animeTitles.map(title => getAnimes(undefined, undefined, undefined, title).then(results => results[0]).catch(err => { console.warn(`Could not fetch details for anime "${title}":`, err); return null; }));
+             const mangaPromises = mangaTitles.map(title => getMangas(undefined, undefined, title).then(results => results[0]).catch(err => { console.warn(`Could not fetch details for manga "${title}":`, err); return null; }));
 
 
-        // Shuffle AI recommended results for variety
-        combinedResults.sort(() => Math.random() - 0.5);
+             const [animeResults, mangaResults] = await Promise.all([
+                 Promise.all(animePromises),
+                 Promise.all(mangaPromises),
+             ]);
 
-        setRecommendedContent(combinedResults);
 
-      } catch (err: any) {
-        console.error("Failed to fetch recommendations or trending data:", err);
-        setError(err.message || "Couldn't load recommendations or trending content.");
-        // Attempt to load just trending if AI fails
-        if (!trendingAnime.length || !trendingManga.length) {
-             try {
-                 const [animes, mangas] = await Promise.all([getAnimes(), getMangas()]);
-                 setTrendingAnime(animes.slice(0, 6));
-                 setTrendingManga(mangas.slice(0, 6));
-             } catch (fallbackErr) {
-                 console.error("Failed to fetch any content:", fallbackErr);
-                 setError("Failed to load any content. Please try again later.");
-             } finally {
-                  setLoadingTrending(false);
-             }
+             // Combine results, handling cases where a title might not be found or errored
+             const combinedResults: RecommendationItem[] = [];
+             animeResults.forEach((anime, index) => {
+                 if (anime) {
+                    combinedResults.push({ ...anime, type: 'anime' });
+                 } else {
+                     // Fallback if anime not found or errored
+                    combinedResults.push({ id: `anime-fallback-${index}`, title: animeTitles[index], type: 'anime' });
+                 }
+             });
+             mangaResults.forEach((manga, index) => {
+                 if (manga) {
+                    combinedResults.push({ ...manga, type: 'manga' });
+                 } else {
+                     // Fallback if manga not found or errored
+                    combinedResults.push({ id: `manga-fallback-${index}`, title: mangaTitles[index], type: 'manga' });
+                 }
+             });
+
+             // Shuffle AI recommended results for variety
+            combinedResults.sort(() => Math.random() - 0.5);
+            setRecommendedContent(combinedResults);
+
+        } catch (aiError: any) {
+            console.error("Failed to fetch AI recommendations:", aiError);
+            setError(aiError.message || "Nami couldn't generate recommendations right now.");
+             // Set empty recommendations if AI fails
+             setRecommendations({ animeRecommendations: [], mangaRecommendations: [], reasoning: "" });
+             setRecommendedContent([]);
+        } finally {
+            setLoading(false); // Stop loading for recommendations part
         }
-      } finally {
-        setLoading(false);
+
+        // Fetch trending data separately
+        try {
+           const [initialAnime, initialManga] = await Promise.all([
+               getAnimes(), // Fetch trending anime
+               getMangas(), // Fetch trending manga
+           ]);
+           setTrendingAnime(initialAnime.slice(0, 6)); // Show 6 trending anime
+           setTrendingManga(initialManga.slice(0, 6)); // Show 6 trending manga
+        } catch (trendingError: any) {
+             console.error("Failed to fetch trending data:", trendingError);
+             setErrorTrending(trendingError.message || "Could not load trending content.");
+        } finally {
+            setLoadingTrending(false); // Stop loading for trending part
+        }
+
+      } catch (generalError: any) {
+          // Catch any unexpected error during the overall process
+          console.error("An unexpected error occurred during initial data fetch:", generalError);
+          setError("An unexpected error occurred. Please refresh the page.");
+          setErrorTrending("Could not load trending content due to an error.");
+          setLoading(false);
+          setLoadingTrending(false);
       }
     };
 
@@ -159,7 +169,8 @@ export default function Home() {
                     </Link>
                 </Button>
              )}
-             {(!('id' in item) || typeof item.id !== 'number') && (
+             {/* Show placeholder if it's a fallback recommendation without a real ID */}
+             {('id' in item && typeof item.id !== 'number') && (
                  <span className="text-xs text-muted-foreground italic">Details unavailable</span>
               )}
          </div>
@@ -205,10 +216,11 @@ export default function Home() {
                </p>
            )}
         </div>
+        {/* Display error specific to AI recommendations */}
         {error && !loading && (
            <Alert variant="destructive" className="mb-6">
               <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error Loading Recommendations</AlertTitle>
+              <AlertTitle>Could Not Get Nami's Picks</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
            </Alert>
         )}
@@ -234,12 +246,21 @@ export default function Home() {
                  <Link href="/anime">View All</Link>
              </Button>
            </div>
+           {/* Display error specific to trending content */}
+           {errorTrending && !loadingTrending && (
+               <Alert variant="destructive" className="mb-6">
+                 <AlertCircle className="h-4 w-4" />
+                 <AlertTitle>Error Loading Trending Content</AlertTitle>
+                 <AlertDescription>{errorTrending}</AlertDescription>
+              </Alert>
+            )}
            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
                {loadingTrending
                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-anime-skel-${index}`} />)
-                 : trendingAnime.map((item) => <ItemCard key={`trending-${item.id}`} item={item} type="anime" />)
+                 : trendingAnime.length > 0
+                    ? trendingAnime.map((item) => <ItemCard key={`trending-${item.id}`} item={item} type="anime" />)
+                    : !errorTrending && <p className="col-span-full text-center text-muted-foreground py-5">No trending anime found.</p>
                }
-               {!loadingTrending && trendingAnime.length === 0 && <p className="col-span-full text-center text-muted-foreground py-5">Could not load trending anime.</p>}
            </div>
        </section>
 
@@ -253,12 +274,21 @@ export default function Home() {
                     <Link href="/manga">View All</Link>
                 </Button>
             </div>
+           {/* Display error specific to trending content (reuse same error state) */}
+           {errorTrending && !loadingTrending && (
+               <Alert variant="destructive" className="mb-6">
+                 <AlertCircle className="h-4 w-4" />
+                 <AlertTitle>Error Loading Trending Content</AlertTitle>
+                 <AlertDescription>{errorTrending}</AlertDescription>
+              </Alert>
+            )}
            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
                {loadingTrending
                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-manga-skel-${index}`} />)
-                 : trendingManga.map((item) => <ItemCard key={`trending-${item.id}`} item={item} type="manga" />)
+                 : trendingManga.length > 0
+                    ? trendingManga.map((item) => <ItemCard key={`trending-${item.id}`} item={item} type="manga" />)
+                    : !errorTrending && <p className="col-span-full text-center text-muted-foreground py-5">No trending manga found.</p>
                 }
-                 {!loadingTrending && trendingManga.length === 0 && <p className="col-span-full text-center text-muted-foreground py-5">Could not load trending manga.</p>}
            </div>
        </section>
 
@@ -282,3 +312,5 @@ if (typeof window !== 'undefined') {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 }
+
+    

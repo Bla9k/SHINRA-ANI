@@ -42,16 +42,24 @@ export interface Manga {
     * The release year.
     */
    releaseYear: number | null;
+   /**
+    * Banner image URL (optional)
+    */
+   bannerImage?: string | null;
+    /**
+    * AniList URL
+    */
+    siteUrl?: string | null;
 }
 
 // AniList API endpoint
 const ANILIST_API_URL = 'https://graphql.anilist.co';
 
-// Basic GraphQL query to fetch trending manga with optional genre/status filter
+// GraphQL query to fetch manga details including banner
 const MANGA_QUERY = `
-query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String) {
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String, $id: Int) {
   Page(page: $page, perPage: $perPage) {
-    media(type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false) {
+    media(id: $id, type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false) {
       id
       title {
         romaji
@@ -65,12 +73,14 @@ query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: M
       averageScore
       description(asHtml: false)
       coverImage {
-        large
-        extraLarge
+        large # For cards
+        extraLarge # For details page potentially
       }
+      bannerImage # Fetch banner image
       status
       chapters
       volumes
+      siteUrl # Fetch AniList URL
     }
   }
 }
@@ -84,42 +94,39 @@ const mapAniListDataToManga = (media: any): Manga => {
     genre: media.genres || [],
     status: media.status || null,
     description: media.description || null,
-    imageUrl: media.coverImage?.extraLarge || media.coverImage?.large || null,
+    imageUrl: media.coverImage?.large || null, // Use large for consistency in cards
+    bannerImage: media.bannerImage || null,
     averageScore: media.averageScore || null,
     chapters: media.chapters || null,
     volumes: media.volumes || null,
     releaseYear: media.startDate?.year || null,
+    siteUrl: media.siteUrl || null,
   };
 };
 
 /**
- * Asynchronously retrieves manga from AniList with optional filters.
+ * Asynchronously retrieves manga from AniList with optional filters or by ID.
  *
  * @param genre The genre to filter mangas on.
- * @param status The status to filter mangas on (e.g., RELEASING, FINISHED, NOT_YET_RELEASED, CANCELLED, HIATUS).
+ * @param status The status to filter mangas on (e.g., RELEASING, FINISHED).
  * @param search Optional search term for the title.
+ * @param id Optional AniList ID to fetch a specific manga.
  * @returns A promise that resolves to a list of Manga.
  */
 export async function getMangas(
   genre?: string,
   status?: string,
-  search?: string
+  search?: string,
+  id?: number // Add id parameter
 ): Promise<Manga[]> {
-  const variables: {
-      page: number;
-      perPage: number;
-      sort: string[];
-      genre?: string;
-      status?: string;
-      search?: string;
-    } = {
+   const variables: any = {
     page: 1,
-    perPage: 40, // Fetch more for potential filtering
+    perPage: id ? 1 : 40, // Fetch 1 if ID is provided, else 40 for lists
     sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'],
     genre: genre || undefined,
-    // Map user-friendly status to AniList MediaStatus enum if needed
-    status: status ? status.toUpperCase().replace(' ', '_') : undefined, // Basic mapping
+    status: status ? status.toUpperCase().replace(' ', '_') : undefined,
     search: search || undefined,
+    id: id || undefined, // Include id in variables if provided
   };
 
 
@@ -134,35 +141,63 @@ export async function getMangas(
         query: MANGA_QUERY,
         variables: variables,
       }),
-       // Add cache control if needed, e.g., revalidate every hour
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 }, // Revalidate cache every hour
+      // Consider adding a timeout if needed
+      // signal: AbortSignal.timeout(10000) // e.g., 10 seconds timeout
     });
 
      if (!response.ok) {
-      console.error('AniList API response not OK:', response.status, response.statusText);
-      const errorBody = await response.text();
-      console.error('Error Body:', errorBody);
-      throw new Error(`AniList API request failed: ${response.status}`);
+        const errorBody = await response.text();
+        console.error('AniList API response not OK:', response.status, response.statusText);
+        console.error('AniList Error Body:', errorBody);
+        console.error('AniList Request Variables:', variables); // Log variables on error
+        throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
      }
 
     const jsonResponse = await response.json();
 
      if (jsonResponse.errors) {
-       console.error('AniList API errors:', jsonResponse.errors);
+        console.error('AniList API errors:', jsonResponse.errors);
+        console.error('AniList Request Variables:', variables); // Log variables on error
        throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
      }
 
-
     let mangas = jsonResponse.data?.Page?.media?.map(mapAniListDataToManga) || [];
 
-     // Limit results if needed (after potential filtering, though filtering here is basic)
-     mangas = mangas.slice(0, 20);
+    // Limit results if needed (only for list requests, not when fetching by ID)
+    if (!id) {
+        mangas = mangas.slice(0, 20);
+    }
 
     return mangas;
 
-  } catch (error) {
-    console.error('Failed to fetch manga from AniList:', error);
-    return [];
-    // throw error;
+  } catch (error: any) {
+    // Log the specific error and the request variables
+    console.error('Failed to fetch manga from AniList. Variables:', variables);
+    console.error('Fetch Error:', error);
+
+    // Re-throw the error to be handled by the calling component
+    throw new Error(`Failed to fetch manga data from AniList: ${error.message || error}`);
   }
 }
+
+
+/**
+ * Fetches a single manga by its AniList ID.
+ *
+ * @param id The AniList ID of the manga to fetch.
+ * @returns A promise that resolves to the Manga object or null if not found.
+ */
+export async function getMangaById(id: number): Promise<Manga | null> {
+    try {
+        const mangas = await getMangas(undefined, undefined, undefined, id);
+        return mangas.length > 0 ? mangas[0] : null;
+    } catch (error) {
+        console.error(`Failed to fetch manga with ID ${id}:`, error);
+        // Return null or re-throw based on how you want to handle errors in the specific component
+        return null;
+        // Or: throw error;
+    }
+}
+
+    
