@@ -57,15 +57,14 @@ export interface Manga {
      type: 'manga';
 }
 
-// AniList API endpoint (kept for structure, but key won't work here)
+// AniList API endpoint
 const ANILIST_API_URL = 'https://graphql.anilist.co';
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY; // Read key from environment
 
 // GraphQL query to fetch manga details including banner
 const MANGA_QUERY = `
-query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String, $id: Int) {
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String, $id: Int, $seasonYear: Int) {
   Page(page: $page, perPage: $perPage) {
-    media(id: $id, type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false) {
+    media(id: $id, type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false, seasonYear: $seasonYear) {
       id
       title {
         romaji
@@ -113,19 +112,20 @@ const mapAniListDataToManga = (media: any): Manga => {
 
 /**
  * Asynchronously retrieves manga from AniList with optional filters or by ID.
- * Includes RapidAPI key in headers as requested, though likely incompatible with AniList.
  *
  * @param genre The genre to filter mangas on.
  * @param status The status to filter mangas on (e.g., RELEASING, FINISHED).
  * @param search Optional search term for the title.
  * @param id Optional AniList ID to fetch a specific manga.
+ * @param releaseYear Optional release year to filter manga on.
  * @returns A promise that resolves to a list of Manga.
  */
 export async function getMangas(
   genre?: string,
   status?: string,
   search?: string,
-  id?: number // Add id parameter
+  id?: number, // Add id parameter
+  releaseYear?: number // Add releaseYear parameter
 ): Promise<Manga[]> {
    const variables: any = {
     page: 1,
@@ -135,29 +135,21 @@ export async function getMangas(
     status: status ? status.toUpperCase().replace(' ', '_') : undefined,
     search: search || undefined,
     id: id || undefined, // Include id in variables if provided
+    seasonYear: releaseYear || undefined, // Filter by year
   };
 
+  // Standard headers for AniList GraphQL API
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
   };
 
-  // Add RapidAPI key header if it exists
-  if (RAPIDAPI_KEY) {
-      headers['X-RapidAPI-Key'] = RAPIDAPI_KEY;
-      // Note: You might also need 'X-RapidAPI-Host' depending on the actual RapidAPI endpoint
-      // headers['X-RapidAPI-Host'] = 'your-rapidapi-host.com';
-  } else {
-       console.warn("RAPIDAPI_KEY environment variable not set.");
-      // Optionally throw an error or proceed without the key depending on requirements
-      // throw new Error("RAPIDAPI_KEY environment variable is required.");
-  }
 
   let response: Response | undefined;
   try {
     response = await fetch(ANILIST_API_URL, {
       method: 'POST',
-      headers: headers, // Use updated headers
+      headers: headers, // Use standard headers
       body: JSON.stringify({
         query: MANGA_QUERY,
         variables: variables,
@@ -201,12 +193,7 @@ export async function getMangas(
         console.error('Response Status:', response.status, response.statusText);
     }
     // Attempt to log more detailed error information
-    // Avoid stringifying the raw error object directly as it might be complex/circular
-    console.error('Fetch Error Message:', error.message);
-    if (error instanceof Error) {
-        console.error('Error Name:', error.name);
-        console.error('Error Stack:', error.stack);
-    }
+    console.error('Fetch Error Details:', error); // Log raw error
 
     // Re-throw the error to be handled by the calling component
     throw new Error(`Failed to fetch manga data from AniList: ${error.message || 'Unknown fetch error'}`);

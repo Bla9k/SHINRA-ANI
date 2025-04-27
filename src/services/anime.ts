@@ -65,15 +65,14 @@ export interface Anime {
      type: 'anime';
 }
 
-// AniList API endpoint (kept for structure, but key won't work here)
+// AniList API endpoint
 const ANILIST_API_URL = 'https://graphql.anilist.co';
-const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY; // Read key from environment
 
 // GraphQL query to fetch anime details including banner and trailer
 const ANIME_QUERY = `
-query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: String, $id: Int) {
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: String, $id: Int, $seasonYear: Int, $status: MediaStatus) {
   Page(page: $page, perPage: $perPage) {
-    media(id: $id, type: ANIME, sort: $sort, genre: $genre, search: $search, isAdult: false) {
+    media(id: $id, type: ANIME, sort: $sort, genre: $genre, search: $search, isAdult: false, seasonYear: $seasonYear, status: $status) {
       id
       title {
         romaji
@@ -129,13 +128,13 @@ const mapAniListDataToAnime = (media: any): Anime => {
 
 /**
  * Asynchronously retrieves anime from AniList with optional filters or by ID.
- * Includes RapidAPI key in headers as requested, though likely incompatible with AniList.
  *
  * @param genre The genre to filter animes on.
- * @param releaseYear The release year to filter animes on (filtering done post-fetch).
+ * @param releaseYear The specific release year to filter animes on.
  * @param rating The minimum rating to filter animes on (0-10 scale, filtering done post-fetch).
  * @param search Optional search term for the title.
  * @param id Optional AniList ID to fetch a specific anime.
+ * @param status Optional status to filter anime on.
  * @returns A promise that resolves to a list of Anime.
  */
 export async function getAnimes(
@@ -143,7 +142,8 @@ export async function getAnimes(
   releaseYear?: number,
   rating?: number,
   search?: string,
-  id?: number // Add id parameter
+  id?: number, // Add id parameter
+  status?: string // Add status parameter
 ): Promise<Anime[]> {
   const variables: any = {
     page: 1,
@@ -152,30 +152,21 @@ export async function getAnimes(
     genre: genre || undefined,
     search: search || undefined,
     id: id || undefined, // Include id in variables if provided
+    seasonYear: releaseYear || undefined, // Use releaseYear for seasonYear filter
+    status: status ? status.toUpperCase().replace(' ', '_') : undefined, // Add status filter
   };
 
+  // Standard headers for AniList GraphQL API
   const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
   };
 
-  // Add RapidAPI key header if it exists
-  if (RAPIDAPI_KEY) {
-      headers['X-RapidAPI-Key'] = RAPIDAPI_KEY;
-      // Note: You might also need 'X-RapidAPI-Host' depending on the actual RapidAPI endpoint
-      // headers['X-RapidAPI-Host'] = 'your-rapidapi-host.com';
-  } else {
-      console.warn("RAPIDAPI_KEY environment variable not set.");
-      // Optionally throw an error or proceed without the key depending on requirements
-      // throw new Error("RAPIDAPI_KEY environment variable is required.");
-  }
-
-
   let response: Response | undefined;
   try {
     response = await fetch(ANILIST_API_URL, {
       method: 'POST',
-      headers: headers, // Use updated headers
+      headers: headers, // Use standard headers
       body: JSON.stringify({
         query: ANIME_QUERY,
         variables: variables,
@@ -204,16 +195,15 @@ export async function getAnimes(
 
     let animes = jsonResponse.data?.Page?.media?.map(mapAniListDataToAnime) || [];
 
-    // --- Client-side filtering (only for list requests, not when fetching by ID) ---
+    // --- Client-side filtering (only for list requests, not when fetching by ID or applying server filters) ---
+    // Only apply rating filter client-side as AniList API doesn't directly support min rating
+    if (!id && rating !== undefined && rating !== null) {
+       animes = animes.filter(anime => anime.rating !== null && anime.rating >= rating);
+    }
+
+    // Limit results after filtering if necessary for list view (only if not fetching by ID)
     if (!id) {
-        if (releaseYear) {
-        animes = animes.filter(anime => anime.releaseYear === releaseYear);
-        }
-        if (rating !== undefined && rating !== null) {
-        animes = animes.filter(anime => anime.rating !== null && anime.rating >= rating);
-        }
-        // Limit results after filtering if necessary for list view
-        animes = animes.slice(0, 20);
+      animes = animes.slice(0, 20);
     }
 
 
@@ -221,18 +211,13 @@ export async function getAnimes(
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch anime from AniList. Variables:', JSON.stringify(variables)); // Log stringified variables
-    // Log the response status if available
+    console.error('Failed to fetch anime from AniList. Variables:', variables); // Log raw variables
+     // Log the response status if available
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
     // Attempt to log more detailed error information
-    // Avoid stringifying the raw error object directly as it might be complex/circular
-    console.error('Fetch Error Message:', error.message);
-    if (error instanceof Error) {
-        console.error('Error Name:', error.name);
-        console.error('Error Stack:', error.stack);
-    }
+    console.error('Fetch Error Details:', error); // Log the raw error
 
     // Re-throw the error to be handled by the calling component
     // This allows the UI to show a specific error message
