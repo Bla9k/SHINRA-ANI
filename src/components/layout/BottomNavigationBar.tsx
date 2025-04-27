@@ -40,16 +40,17 @@ const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
       <Tooltip>
         <TooltipTrigger asChild>
           <Link href={href} passHref legacyBehavior>
+            {/* Use flex-1 to allow items to space out evenly */}
             <Button
               variant="ghost"
               className={cn(
-                'flex flex-col items-center h-auto px-2 py-1 text-xs sm:flex-row sm:text-sm sm:px-3 sm:py-2 sm:h-10 gap-1 transition-colors duration-200',
-                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-foreground hover:bg-accent',
+                'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200', // Adjusted padding/height for consistency
+                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-foreground hover:bg-accent/50', // Subtle hover
               )}
               aria-current={isActive ? 'page' : undefined}
             >
-              <Icon className="w-5 h-5 sm:w-4 sm:h-4" />
-              <span className="mt-1 sm:mt-0 sm:ml-1">{label}</span>
+              <Icon className="w-5 h-5 mb-0.5" /> {/* Adjusted icon size/margin */}
+              <span className="truncate max-w-full">{label}</span> {/* Truncate long labels */}
             </Button>
           </Link>
         </TooltipTrigger>
@@ -70,36 +71,44 @@ export default function BottomNavigationBar() {
     // Example: Call surpriseMeRecommendation({ userProfile: '...', mood: '...', recentInteractions: '...' })
   };
 
-  // Define navigation items
+  // Define navigation items - keep essential ones for mobile
   const navItems: NavItemProps[] = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/search', icon: Search, label: 'Search' },
     { href: '/watchlist', icon: ListVideo, label: 'Watchlist' },
     { href: '/readlist', icon: BookOpen, label: 'Readlist' },
-    { href: '/favorites', icon: Heart, label: 'Favorites' },
+    // Favorites might be better under a 'More' or profile section on mobile
+    // { href: '/favorites', icon: Heart, label: 'Favorites' },
     { href: '/upload', icon: Upload, label: 'Upload' },
-    // Optionally include Profile/Settings here or keep in TopBar
-    // { href: '/profile', icon: User, label: 'Profile' },
-    // { href: '/settings', icon: Settings, label: 'Settings' },
   ];
 
+   // Determine items to show directly (e.g., max 4 + Surprise Me)
+   const maxDirectItems = 4;
+   const directItems = navItems.slice(0, maxDirectItems);
+   // const moreItems = navItems.slice(maxDirectItems); // For potential "More" menu
+
+
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-20 border-t bg-background/90 backdrop-blur-lg glass md:hidden"> {/* Hide on md and larger screens */}
-      <div className="flex justify-around items-center h-16 px-2">
-        {navItems.slice(0, 5).map((item) => ( // Show first 5 items, adjust as needed
+    // Fixed position at bottom, full width, z-index, background with blur
+    <nav className="fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass md:hidden"> {/* Hide on md and larger screens */}
+      {/* Flex container for items, centered content */}
+      <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-2"> {/* items-stretch for full height buttons */}
+        {directItems.map((item) => (
           <NavItem key={item.href} {...item} />
         ))}
-         {/* Surprise Me Button */}
+
+         {/* Surprise Me Button - Treat as a NavItem */}
          <TooltipProvider delayDuration={100}>
             <Tooltip>
                 <TooltipTrigger asChild>
+                    {/* Use flex-1 like other items */}
                     <Button
                         variant="ghost"
-                         className="flex flex-col items-center h-auto px-2 py-1 text-xs sm:flex-row sm:text-sm sm:px-3 sm:py-2 sm:h-10 gap-1 transition-colors duration-200 text-muted-foreground hover:text-primary hover:bg-accent neon-glow-hover"
+                        className="flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 text-muted-foreground hover:text-primary hover:bg-accent/50 neon-glow-hover"
                         onClick={handleSurpriseMe}
                     >
-                        <Sparkles className="w-5 h-5 sm:w-4 sm:h-4 text-primary" />
-                         <span className="mt-1 sm:mt-0 sm:ml-1">Surprise</span>
+                        <Sparkles className="w-5 h-5 mb-0.5 text-primary" />
+                        <span className="truncate max-w-full">Surprise</span>
                     </Button>
                  </TooltipTrigger>
                  <TooltipContent side="top" className="hidden sm:block">
@@ -107,10 +116,11 @@ export default function BottomNavigationBar() {
                  </TooltipContent>
             </Tooltip>
          </TooltipProvider>
-        {/* Add a "More" button or similar if more than 5 items */}
-        {/* Example:
-        {navItems.length > 5 && (
-          <NavItem href="/more" icon={Menu} label="More" />
+
+        {/* Example: More button if needed */}
+        {/* {moreItems.length > 0 && (
+             // Implement a Sheet or Popover trigger here for "More"
+             <NavItem href="#" icon={Menu} label="More" /> // Adjust href/action
         )} */}
       </div>
     </nav>
