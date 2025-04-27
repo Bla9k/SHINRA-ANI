@@ -58,6 +58,10 @@ export interface Anime {
     * AniList URL
     */
     siteUrl?: string | null;
+     /**
+      * Type identifier
+      */
+     type: 'anime';
 }
 
 // AniList API endpoint
@@ -116,6 +120,7 @@ const mapAniListDataToAnime = (media: any): Anime => {
     episodes: media.episodes || null,
     trailer: media.trailer || null,
     siteUrl: media.siteUrl || null,
+    type: 'anime', // Add type identifier
   };
 };
 
@@ -157,7 +162,8 @@ export async function getAnimes(
         query: ANIME_QUERY,
         variables: variables,
       }),
-      next: { revalidate: 3600 }, // Revalidate cache every hour
+      // Using shorter revalidation for testing, increase for production
+      next: { revalidate: 600 }, // Revalidate cache every 10 minutes
       // Consider adding a timeout if needed
       // signal: AbortSignal.timeout(10000) // e.g., 10 seconds timeout
     });
@@ -166,7 +172,7 @@ export async function getAnimes(
       const errorBody = await response.text();
       console.error('AniList API response not OK:', response.status, response.statusText);
       console.error('AniList Error Body:', errorBody);
-      console.error('AniList Request Variables:', variables); // Log variables on error
+      console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
       throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
     }
 
@@ -174,7 +180,7 @@ export async function getAnimes(
 
     if (jsonResponse.errors) {
       console.error('AniList API errors:', jsonResponse.errors);
-      console.error('AniList Request Variables:', variables); // Log variables on error
+      console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
       throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
     }
 
@@ -196,8 +202,8 @@ export async function getAnimes(
     return animes;
 
   } catch (error: any) {
-    // Log the specific error and the request variables
-    console.error('Failed to fetch anime from AniList. Variables:', variables);
+    // Log the specific error and the stringified request variables
+    console.error('Failed to fetch anime from AniList. Variables:', JSON.stringify(variables));
     console.error('Fetch Error:', error);
 
     // Re-throw the error to be handled by the calling component
@@ -214,6 +220,7 @@ export async function getAnimes(
  */
 export async function getAnimeById(id: number): Promise<Anime | null> {
     try {
+        // Ensure getAnimes is called correctly to fetch by ID
         const animes = await getAnimes(undefined, undefined, undefined, undefined, id);
         return animes.length > 0 ? animes[0] : null;
     } catch (error) {
@@ -223,5 +230,3 @@ export async function getAnimeById(id: number): Promise<Anime | null> {
         // Or: throw error;
     }
 }
-
-    

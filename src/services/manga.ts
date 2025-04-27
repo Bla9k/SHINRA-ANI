@@ -50,6 +50,10 @@ export interface Manga {
     * AniList URL
     */
     siteUrl?: string | null;
+     /**
+      * Type identifier
+      */
+     type: 'manga';
 }
 
 // AniList API endpoint
@@ -101,6 +105,7 @@ const mapAniListDataToManga = (media: any): Manga => {
     volumes: media.volumes || null,
     releaseYear: media.startDate?.year || null,
     siteUrl: media.siteUrl || null,
+    type: 'manga', // Add type identifier
   };
 };
 
@@ -141,7 +146,8 @@ export async function getMangas(
         query: MANGA_QUERY,
         variables: variables,
       }),
-      next: { revalidate: 3600 }, // Revalidate cache every hour
+       // Using shorter revalidation for testing, increase for production
+      next: { revalidate: 600 }, // Revalidate cache every 10 minutes
       // Consider adding a timeout if needed
       // signal: AbortSignal.timeout(10000) // e.g., 10 seconds timeout
     });
@@ -150,7 +156,7 @@ export async function getMangas(
         const errorBody = await response.text();
         console.error('AniList API response not OK:', response.status, response.statusText);
         console.error('AniList Error Body:', errorBody);
-        console.error('AniList Request Variables:', variables); // Log variables on error
+        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
         throw new Error(`AniList API request failed: ${response.status} ${response.statusText}`);
      }
 
@@ -158,7 +164,7 @@ export async function getMangas(
 
      if (jsonResponse.errors) {
         console.error('AniList API errors:', jsonResponse.errors);
-        console.error('AniList Request Variables:', variables); // Log variables on error
+        console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
        throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
      }
 
@@ -172,8 +178,8 @@ export async function getMangas(
     return mangas;
 
   } catch (error: any) {
-    // Log the specific error and the request variables
-    console.error('Failed to fetch manga from AniList. Variables:', variables);
+    // Log the specific error and the stringified request variables
+    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables));
     console.error('Fetch Error:', error);
 
     // Re-throw the error to be handled by the calling component
@@ -190,6 +196,7 @@ export async function getMangas(
  */
 export async function getMangaById(id: number): Promise<Manga | null> {
     try {
+        // Ensure getMangas is called correctly to fetch by ID
         const mangas = await getMangas(undefined, undefined, undefined, id);
         return mangas.length > 0 ? mangas[0] : null;
     } catch (error) {
@@ -199,5 +206,3 @@ export async function getMangaById(id: number): Promise<Manga | null> {
         // Or: throw error;
     }
 }
-
-    
