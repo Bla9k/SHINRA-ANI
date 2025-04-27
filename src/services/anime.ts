@@ -1,4 +1,6 @@
 
+import { env } from '@/env';
+
 /**
  * Represents an Anime based on AniList data structure.
  */
@@ -65,13 +67,32 @@ export interface Anime {
      type: 'anime';
 }
 
+/**
+ * Represents the response structure for anime fetch operations, including pagination info.
+ */
+export interface AnimeResponse {
+    animes: Anime[];
+    hasNextPage: boolean;
+}
+
+
 // AniList API endpoint
 const ANILIST_API_URL = 'https://graphql.anilist.co';
+// Define a reasonable number of items per page
+const PER_PAGE = 24;
 
-// GraphQL query to fetch anime details including banner and trailer
+
+// GraphQL query to fetch anime details including banner, trailer, and pagination info
 const ANIME_QUERY = `
 query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: String, $id: Int, $seasonYear: Int, $status: MediaStatus) {
   Page(page: $page, perPage: $perPage) {
+    pageInfo {
+        total
+        currentPage
+        lastPage
+        hasNextPage
+        perPage
+    }
     media(id: $id, type: ANIME, sort: $sort, genre: $genre, search: $search, isAdult: false, seasonYear: $seasonYear, status: $status) {
       id
       title {
@@ -127,7 +148,7 @@ const mapAniListDataToAnime = (media: any): Anime => {
 
 
 /**
- * Asynchronously retrieves anime from AniList with optional filters or by ID.
+ * Asynchronously retrieves anime from AniList with optional filters, by ID, and pagination.
  *
  * @param genre The genre to filter animes on.
  * @param releaseYear The specific release year to filter animes on.
@@ -135,7 +156,8 @@ const mapAniListDataToAnime = (media: any): Anime => {
  * @param search Optional search term for the title.
  * @param id Optional AniList ID to fetch a specific anime.
  * @param status Optional status to filter anime on.
- * @returns A promise that resolves to a list of Anime.
+ * @param page The page number to fetch (default: 1).
+ * @returns A promise that resolves to an AnimeResponse object containing the list of Anime and pagination info.
  */
 export async function getAnimes(
   genre?: string,
@@ -143,11 +165,12 @@ export async function getAnimes(
   rating?: number,
   search?: string,
   id?: number, // Add id parameter
-  status?: string // Add status parameter
-): Promise<Anime[]> {
+  status?: string, // Add status parameter
+  page: number = 1 // Add page parameter with default value
+): Promise<AnimeResponse> { // Return AnimeResponse
   const variables: any = {
-    page: 1,
-    perPage: id ? 1 : 40, // Fetch 1 if ID is provided, else 40 for lists
+    page: page, // Use the page parameter
+    perPage: id ? 1 : PER_PAGE, // Fetch 1 if ID is provided, else PER_PAGE
     sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'],
     genre: genre || undefined,
     search: search || undefined,
@@ -160,13 +183,15 @@ export async function getAnimes(
   const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      // Add Authorization header if an API key/token is available
+      // 'Authorization': `Bearer ${env.ANILIST_API_KEY}` // Uncomment if using token auth
   };
 
   let response: Response | undefined;
   try {
     response = await fetch(ANILIST_API_URL, {
       method: 'POST',
-      headers: headers, // Use standard headers
+      headers: headers,
       body: JSON.stringify({
         query: ANIME_QUERY,
         variables: variables,
@@ -190,9 +215,18 @@ export async function getAnimes(
     if (jsonResponse.errors) {
       console.error('AniList API errors:', jsonResponse.errors);
       console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
-      throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
+      // Attempt to parse the specific error message if possible
+      const errorMessage = jsonResponse.errors.map((e: any) => e.message).join(', ');
+       // Check for specific error messages like 'Invalid token' or 'Not authenticated.'
+       if (errorMessage.includes('Invalid token') || errorMessage.includes('Not authenticated')) {
+           console.error("AniList Authentication Error: Please check your API Key/Token.");
+           // Potentially throw a more specific error or return a specific state
+           throw new Error(`AniList Authentication Error: ${errorMessage}`);
+       }
+      throw new Error(`AniList API errors: ${errorMessage}`);
     }
 
+    const pageInfo = jsonResponse.data?.Page?.pageInfo;
     let animes = jsonResponse.data?.Page?.media?.map(mapAniListDataToAnime) || [];
 
     // --- Client-side filtering (only for list requests, not when fetching by ID or applying server filters) ---
@@ -201,23 +235,21 @@ export async function getAnimes(
        animes = animes.filter(anime => anime.rating !== null && anime.rating >= rating);
     }
 
-    // Limit results after filtering if necessary for list view (only if not fetching by ID)
-    if (!id) {
-      animes = animes.slice(0, 20);
-    }
 
-
-    return animes;
+    return {
+        animes: animes,
+        hasNextPage: pageInfo?.hasNextPage ?? false // Return hasNextPage info
+    };
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch anime from AniList. Variables:', variables); // Log raw variables
+    console.error('Failed to fetch anime from AniList. Variables:', JSON.stringify(variables));
      // Log the response status if available
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
-    // Attempt to log more detailed error information
-    console.error('Fetch Error Details:', error); // Log the raw error
+    // Attempt to log more detailed error information using JSON.stringify for better formatting
+    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
 
     // Re-throw the error to be handled by the calling component
     // This allows the UI to show a specific error message
@@ -233,9 +265,9 @@ export async function getAnimes(
  */
 export async function getAnimeById(id: number): Promise<Anime | null> {
     try {
-        // Ensure getAnimes is called correctly to fetch by ID
-        const animes = await getAnimes(undefined, undefined, undefined, undefined, id);
-        return animes.length > 0 ? animes[0] : null;
+        // Ensure getAnimes is called correctly to fetch by ID, expecting AnimeResponse
+        const response = await getAnimes(undefined, undefined, undefined, undefined, id);
+        return response.animes.length > 0 ? response.animes[0] : null;
     } catch (error) {
         console.error(`Failed to fetch anime with ID ${id}:`, error);
         // Return null or re-throw based on how you want to handle errors in the specific component

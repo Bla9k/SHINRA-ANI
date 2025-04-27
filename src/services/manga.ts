@@ -1,4 +1,6 @@
 
+import { env } from '@/env';
+
 /**
  * Represents a Manga based on AniList data structure.
  */
@@ -57,13 +59,30 @@ export interface Manga {
      type: 'manga';
 }
 
+/**
+ * Represents the response structure for manga fetch operations, including pagination info.
+ */
+export interface MangaResponse {
+    mangas: Manga[];
+    hasNextPage: boolean;
+}
+
 // AniList API endpoint
 const ANILIST_API_URL = 'https://graphql.anilist.co';
+// Define a reasonable number of items per page
+const PER_PAGE = 24;
 
-// GraphQL query to fetch manga details including banner
+// GraphQL query to fetch manga details including banner and pagination info
 const MANGA_QUERY = `
 query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String, $id: Int, $seasonYear: Int) {
   Page(page: $page, perPage: $perPage) {
+     pageInfo {
+        total
+        currentPage
+        lastPage
+        hasNextPage
+        perPage
+    }
     media(id: $id, type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false, seasonYear: $seasonYear) {
       id
       title {
@@ -111,25 +130,27 @@ const mapAniListDataToManga = (media: any): Manga => {
 };
 
 /**
- * Asynchronously retrieves manga from AniList with optional filters or by ID.
+ * Asynchronously retrieves manga from AniList with optional filters, by ID, and pagination.
  *
  * @param genre The genre to filter mangas on.
  * @param status The status to filter mangas on (e.g., RELEASING, FINISHED).
  * @param search Optional search term for the title.
  * @param id Optional AniList ID to fetch a specific manga.
  * @param releaseYear Optional release year to filter manga on.
- * @returns A promise that resolves to a list of Manga.
+ * @param page The page number to fetch (default: 1).
+ * @returns A promise that resolves to a MangaResponse object containing the list of Manga and pagination info.
  */
 export async function getMangas(
   genre?: string,
   status?: string,
   search?: string,
   id?: number, // Add id parameter
-  releaseYear?: number // Add releaseYear parameter
-): Promise<Manga[]> {
+  releaseYear?: number, // Add releaseYear parameter
+  page: number = 1 // Add page parameter with default value
+): Promise<MangaResponse> { // Return MangaResponse
    const variables: any = {
-    page: 1,
-    perPage: id ? 1 : 40, // Fetch 1 if ID is provided, else 40 for lists
+    page: page, // Use the page parameter
+    perPage: id ? 1 : PER_PAGE, // Fetch 1 if ID is provided, else PER_PAGE
     sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'],
     genre: genre || undefined,
     status: status ? status.toUpperCase().replace(' ', '_') : undefined,
@@ -142,6 +163,8 @@ export async function getMangas(
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+       // Add Authorization header if an API key/token is available
+      // 'Authorization': `Bearer ${env.ANILIST_API_KEY}` // Uncomment if using token auth
   };
 
 
@@ -149,7 +172,7 @@ export async function getMangas(
   try {
     response = await fetch(ANILIST_API_URL, {
       method: 'POST',
-      headers: headers, // Use standard headers
+      headers: headers,
       body: JSON.stringify({
         query: MANGA_QUERY,
         variables: variables,
@@ -173,27 +196,34 @@ export async function getMangas(
      if (jsonResponse.errors) {
         console.error('AniList API errors:', jsonResponse.errors);
         console.error('AniList Request Variables:', JSON.stringify(variables)); // Log stringified variables on error
-       throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
+        const errorMessage = jsonResponse.errors.map((e: any) => e.message).join(', ');
+        // Check for specific error messages like 'Invalid token' or 'Not authenticated.'
+        if (errorMessage.includes('Invalid token') || errorMessage.includes('Not authenticated')) {
+            console.error("AniList Authentication Error: Please check your API Key/Token.");
+            // Potentially throw a more specific error or return a specific state
+            throw new Error(`AniList Authentication Error: ${errorMessage}`);
+        }
+       throw new Error(`AniList API errors: ${errorMessage}`);
      }
 
+    const pageInfo = jsonResponse.data?.Page?.pageInfo;
     let mangas = jsonResponse.data?.Page?.media?.map(mapAniListDataToManga) || [];
 
-    // Limit results if needed (only for list requests, not when fetching by ID)
-    if (!id) {
-        mangas = mangas.slice(0, 20);
-    }
 
-    return mangas;
+    return {
+        mangas: mangas,
+        hasNextPage: pageInfo?.hasNextPage ?? false // Return hasNextPage info
+    };
 
   } catch (error: any) {
     // Log the specific error and the request variables
-    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables)); // Log stringified variables
+    console.error('Failed to fetch manga from AniList. Variables:', JSON.stringify(variables));
      // Log the response status if available
     if(response) {
         console.error('Response Status:', response.status, response.statusText);
     }
-    // Attempt to log more detailed error information
-    console.error('Fetch Error Details:', error); // Log raw error
+    // Attempt to log more detailed error information using JSON.stringify
+    console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
 
     // Re-throw the error to be handled by the calling component
     throw new Error(`Failed to fetch manga data from AniList: ${error.message || 'Unknown fetch error'}`);
@@ -209,9 +239,9 @@ export async function getMangas(
  */
 export async function getMangaById(id: number): Promise<Manga | null> {
     try {
-        // Ensure getMangas is called correctly to fetch by ID
-        const mangas = await getMangas(undefined, undefined, undefined, id);
-        return mangas.length > 0 ? mangas[0] : null;
+        // Ensure getMangas is called correctly to fetch by ID, expecting MangaResponse
+        const response = await getMangas(undefined, undefined, undefined, id);
+        return response.mangas.length > 0 ? response.mangas[0] : null;
     } catch (error) {
         console.error(`Failed to fetch manga with ID ${id}:`, error);
         // Return null or re-throw based on how you want to handle errors in the specific component
