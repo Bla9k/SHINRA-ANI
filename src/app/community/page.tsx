@@ -23,7 +23,8 @@ import {
   User as UserIcon,
   LogOut,
   Bot,
-  Palette
+  Palette,
+  Upload,
 } from 'lucide-react'; // Import icons
 import Image from 'next/image';
 import Link from 'next/link';
@@ -348,7 +349,7 @@ const IndieMangaHub = () => {
                  </div>
                   <Button asChild variant="outline" size="sm" className="neon-glow-hover">
                      <Link href="/upload">
-                         Upload Your Manga
+                        <Upload size={16} className="mr-1.5" /> Upload Manga
                      </Link>
                  </Button>
              </div>
@@ -562,52 +563,5 @@ export default function CommunityPage() {
        </aside> */}
 
     </div>
-  );
-}
-```</description>
-  </change>
-  <change>
-    <file>src/app/layout.tsx</file>
-    <description>Adjust main padding to accommodate Discord-like layout in Community page.</description>
-    <content><![CDATA[
-import type { Metadata } from 'next';
-import { Poppins } from 'next/font/google'; // Changed from Geist to Poppins
-import './globals.css';
-import { cn } from '@/lib/utils';
-import { Toaster } from "@/components/ui/toaster"; // Import Toaster
-import AppLayout from '@/components/layout/AppLayout'; // Import AppLayout
-
-const poppins = Poppins({
-  weight: ['300', '400', '500', '600', '700'], // Include desired weights
-  subsets: ['latin'],
-  variable: '--font-poppins', // Define CSS variable
-});
-
-export const metadata: Metadata = {
-  title: 'Shinra-Ani', // Updated App Name
-  description: 'Ultimate Anime & Manga Platform with Nami AI Integration', // Updated description
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en" className="dark h-full"> {/* Ensure html takes full height */}
-      <body
-        className={cn(
-          'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
-          poppins.variable // Use Poppins variable
-        )}
-      >
-        {/* AppLayout now handles the core layout structure */}
-        <AppLayout>
-          {/* Removed fade-in animation wrapper here, apply within AppLayout if needed */}
-          {children}
-        </AppLayout>
-        <Toaster /> {/* Add Toaster component */}
-      </body>
-    </html>
   );
 }
