@@ -31,7 +31,7 @@ async function fetchDetailsByTitleWithDelay(
     titles: string[],
     fetchFunction: (genre?: string | number, year?: number, minScore?: number, search?: string, status?: string, page?: number, sort?: string) => Promise<AnimeResponse | MangaResponse>,
     itemType: 'anime' | 'manga',
-    delayMs = 400 // Adjusted delay for Jikan
+    delayMs = 600 // Increased delay for Jikan (was 400ms)
 ): Promise<RecommendationItem[]> {
     const results: RecommendationItem[] = [];
     // Ensure unique titles before fetching to avoid redundant calls
@@ -116,9 +116,14 @@ export default function Home() {
              // --- Filter for unique items based on type and id ---
              const uniqueResultsMap = new Map<string, RecommendationItem>();
              combinedResults.forEach(item => {
-                 const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
-                 if (!uniqueResultsMap.has(uniqueKey)) {
-                     uniqueResultsMap.set(uniqueKey, item);
+                 // Ensure item.id is defined before creating key
+                 if (item && typeof item.id !== 'undefined') {
+                     const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
+                     if (!uniqueResultsMap.has(uniqueKey)) {
+                         uniqueResultsMap.set(uniqueKey, item);
+                     }
+                 } else {
+                    console.warn("Skipping item with undefined id:", item);
                  }
              });
              const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
@@ -136,12 +141,12 @@ export default function Home() {
         setLoadingRecommendations(false); // AI Recommendations part is done
 
         // --- 3. Fetch Trending Data (After AI details) ---
-        await delay(500); // Add delay before fetching trending data
+        await delay(800); // Increased delay before fetching trending data (was 500ms)
         try {
            // Fetch trending using Jikan services (default sort is popularity)
            // Fetch them sequentially to further reduce burst load
            const trendingAnimeResponse = await getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
-           await delay(400); // Delay between trending fetches
+           await delay(600); // Increased delay between trending fetches (was 400ms)
            const trendingMangaResponse = await getMangas(undefined, undefined, undefined, undefined, 1, 'popularity');
 
            setTrendingAnime(trendingAnimeResponse.animes.slice(0, 6));
@@ -354,4 +359,5 @@ if (typeof window !== 'undefined') {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 }
+
 
