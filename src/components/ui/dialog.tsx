@@ -108,6 +108,25 @@ const DialogDescription = React.forwardRef<
 ))
 DialogDescription.displayName = DialogPrimitive.Description.displayName
 
+// Add VisuallyHidden for accessibility when title is not needed visually
+const VisuallyHidden = React.forwardRef<
+  HTMLSpanElement,
+  React.HTMLAttributes<HTMLSpanElement>
+>(({ className, ...props }, ref) => {
+  return (
+    <span
+      ref={ref}
+      className={cn(
+        "absolute border-0 w-px h-px -m-px p-0 overflow-hidden whitespace-nowrap", // Tailwind equivalent of sr-only
+        className
+      )}
+      {...props}
+    />
+  );
+});
+VisuallyHidden.displayName = "VisuallyHidden";
+
+
 export {
   Dialog,
   DialogPortal,
@@ -119,4 +138,5 @@ export {
   DialogFooter,
   DialogTitle,
   DialogDescription,
+  VisuallyHidden, // Export VisuallyHidden
 }

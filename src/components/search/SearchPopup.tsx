@@ -5,9 +5,9 @@ import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
-  // DialogHeader, // Might not be needed if header is custom
-  // DialogTitle, // Title handled differently
-  // DialogDescription, // Description handled differently
+  DialogHeader, // Import DialogHeader
+  DialogTitle, // Import DialogTitle
+  VisuallyHidden, // Import VisuallyHidden
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -224,6 +224,10 @@ export default function SearchPopup({ isOpen, onClose }: SearchPopupProps) {
           className="glass p-0 pt-4 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl" // Adjusted max-width and height, removed padding, added flex
           onInteractOutside={(e) => e.preventDefault()} // Prevent closing on outside click initially
         >
+          {/* Add a visually hidden title for accessibility */}
+           <DialogHeader className="sr-only">
+             <DialogTitle>Nami AI Search</DialogTitle>
+           </DialogHeader>
            {/* Custom Header/Search Input Area */}
           <div className="relative px-4 pb-3 border-b border-border/50">
             <SearchIcon className="absolute left-7 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none z-10" />
