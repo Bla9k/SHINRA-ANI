@@ -109,9 +109,9 @@ body {
     @apply bg-neutral-800/30 backdrop-blur-lg border border-neutral-700/50 shadow-lg;
   }
 
-  /* Add base styles for neon glows */
+  /* Add base styles for neon glows with smoother transitions */
   .neon-glow {
-     @apply shadow-[0_0_5px_theme(colors.primary),_0_0_10px_theme(colors.primary)];
+     @apply shadow-[0_0_5px_theme(colors.primary),_0_0_10px_theme(colors.primary)] transition-shadow duration-300 ease-in-out;
   }
   .neon-glow-hover:hover {
      @apply shadow-[0_0_10px_theme(colors.primary),_0_0_20px_theme(colors.primary)];
@@ -126,7 +126,37 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Add pulse animation for loaders */
+/* Add animations */
+@layer utilities {
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-in {
+    animation: fade-in 0.5s ease-out forwards;
+  }
+
+  @keyframes pulse-subtle {
+    0%, 100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.7;
+       transform: scale(0.98);
+    }
+  }
+  .animate-pulse-subtle {
+    animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+   /* Smooth transition utility */
+   .transition-smooth {
+      @apply transition-all duration-300 ease-in-out;
+   }
+}
+
+/* Keep pulse animation for skeletons or loaders */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -138,4 +168,3 @@ html {
 .animate-pulse {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
-

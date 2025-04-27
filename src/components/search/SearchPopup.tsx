@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
@@ -326,10 +327,10 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                target={target}
                rel={target === '_blank' ? "noopener noreferrer" : undefined}
                onClick={onClose}
-               className="block group mb-3 mx-1" // Make the anchor block level and add group
+               className="block group mb-3 mx-1 transition-smooth" // Make the anchor block level and add group + transition
             >
-                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:bg-card/60 flex flex-col sm:flex-row"> {/* Apply group hover to card */}
-                    <CardHeader className="p-0 relative h-36 w-full sm:h-auto sm:w-24 flex-shrink-0 overflow-hidden">
+                <Card className="overflow-hidden glass neon-glow-hover transition-smooth group-hover:bg-card/60 flex flex-col sm:flex-row"> {/* Apply group hover to card */}
+                    <CardHeader className="p-0 relative h-36 w-full sm:h-auto sm:w-24 flex-shrink-0 overflow-hidden transition-smooth">
                         {item.imageUrl ? (
                         <Image
                             src={item.imageUrl}
@@ -351,7 +352,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                             {item.type}
                         </Badge>
                     </CardHeader>
-                    <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between">
+                    <CardContent className="p-2 sm:p-3 flex-grow flex flex-col justify-between transition-smooth">
                         <div>
                             <CardTitlePrimitive className="text-sm font-semibold mb-0.5 line-clamp-1 group-hover:text-primary transition-colors">
                                 {item.title} {/* Title is part of the link */}
@@ -417,7 +418,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
   return (
       <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
         <DialogContent
-          className="glass p-0 sm:p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl"
+          className="glass p-0 sm:p-0 sm:max-w-xl md:max-w-2xl lg:max-w-3xl max-h-[85vh] flex flex-col gap-0 border-primary/30 shadow-2xl transition-smooth data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
            onInteractOutside={(e) => {
                 // Allow interaction with filters/suggestions without closing
                 if ((e.target as Element)?.closest('[data-radix-select-content]')) {
@@ -433,7 +434,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                      <form onSubmit={(e) => { e.preventDefault(); handleSearch(searchTerm); }} className="relative flex-grow">
                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 pointer-events-none z-10">
                            {isAiActive ? (
-                              <Sparkles className="h-full w-full text-primary animate-pulse" /> // Add pulse to AI icon
+                              <Sparkles className="h-full w-full text-primary animate-pulse-subtle" /> // Use subtle pulse
                            ) : (
                               <SearchIcon className="h-full w-full text-muted-foreground" />
                            )}
@@ -444,16 +445,16 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                            value={searchTerm}
                            onChange={(e) => setSearchTerm(e.target.value)}
                            className={cn(
-                               "pl-10 pr-10 w-full glass text-base h-11 rounded-full border-2", // Adjusted padding and height
-                               isAiActive ? "border-primary/60 focus:border-primary" : "border-input focus:border-primary/50"
+                               "pl-10 pr-10 w-full glass text-base h-11 rounded-full border-2 transition-smooth", // Adjusted padding and height + smooth transition
+                               isAiActive ? "border-primary/60 focus:border-primary neon-glow-focus" : "border-input focus:border-primary/50"
                            )}
                            aria-label="Search Shinra-Ani"
                            autoFocus
                        />
                        {/* Loader inside input area */}
                         {(loading || isPending) && (
-                             <div className="absolute right-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-pulse"> {/* Changed spin to pulse */}
-                                <Loader2 />
+                             <div className="absolute right-11 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground animate-pulse">
+                                <Loader2 className="animate-spin"/> {/* Use Loader2 with spin */}
                              </div>
                         )}
                          {/* Hidden submit button */}
@@ -465,7 +466,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                         <Button
                             variant="outline"
                             size="icon"
-                            className={cn("h-10 w-10 rounded-full flex-shrink-0 glass", showFilters && "bg-accent text-accent-foreground")}
+                            className={cn("h-10 w-10 rounded-full flex-shrink-0 glass transition-smooth neon-glow-hover", showFilters && "bg-accent text-accent-foreground")}
                             onClick={toggleFilters}
                             aria-pressed={showFilters}
                             aria-label="Toggle Advanced Filters"
@@ -479,7 +480,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                         variant="ghost"
                         size="icon"
                         className={cn(
-                            "h-10 w-10 rounded-full text-primary hover:bg-primary/10 flex-shrink-0",
+                            "h-10 w-10 rounded-full text-primary hover:bg-primary/10 flex-shrink-0 transition-smooth neon-glow-hover",
                             isAiActive && "bg-primary/20 neon-glow"
                         )}
                         onClick={onAiToggle}
@@ -494,7 +495,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                         <Button
                             variant="ghost"
                             size="icon"
-                            className="h-10 w-10 rounded-full text-muted-foreground hover:bg-accent/50 flex-shrink-0"
+                            className="h-10 w-10 rounded-full text-muted-foreground hover:bg-accent/50 flex-shrink-0 transition-smooth"
                             aria-label="Close search popup"
                         >
                             <X size={22} />
@@ -503,9 +504,9 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                 </div>
             </DialogHeader>
 
-             {/* Filters Panel (Standard Mode Only) */}
-             {!isAiActive && showFilters && (
-                 <div className="p-3 border-b border-border/50 bg-background/50 flex-shrink-0">
+             {/* Filters Panel (Standard Mode Only) - Added smooth transition */}
+             {!isAiActive && (
+                 <div className={cn("transition-all duration-300 ease-in-out overflow-hidden", showFilters ? "max-h-96 p-3 border-b border-border/50 bg-background/50 flex-shrink-0" : "max-h-0 p-0 border-b-0")}>
                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 text-xs">
                           {/* Content Type Filter */}
                          <div className="space-y-1">
@@ -584,14 +585,14 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
           <ScrollArea className="flex-grow overflow-y-auto px-2 pt-3">
             {/* Loading State */}
             {loading && (
-              <div className="space-y-3 px-2">
+              <div className="space-y-3 px-2 animate-fade-in"> {/* Apply fade-in */}
                  {Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />)}
               </div>
             )}
 
             {/* Error State */}
             {error && !loading && (
-                <Alert variant="destructive" className="m-2">
+                <Alert variant="destructive" className="m-2 animate-fade-in">
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Search Error</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
@@ -600,7 +601,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
              {/* Initial State & AI Suggestions */}
              {!loading && !error && !hasSearched && isAiActive && (
-                 <div className="px-2 py-4">
+                 <div className="px-2 py-4 animate-fade-in">
                      <h3 className="text-sm font-semibold mb-3 text-muted-foreground px-1">Try asking Nami:</h3>
                      <div className="space-y-2">
                          {initialAiSuggestions.map((suggestion, index) => (
@@ -608,7 +609,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                                 key={index}
                                 variant="ghost"
                                 onClick={() => handleSuggestionClick(suggestion)}
-                                className="w-full justify-start text-left h-auto py-2 px-3 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                className="w-full justify-start text-left h-auto py-2 px-3 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-smooth"
                              >
                                  {suggestion}
                              </Button>
@@ -619,10 +620,10 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
             {/* Results State */}
             {!loading && !error && hasSearched && results.length > 0 && (
-                 <div className="space-y-0 pb-4">
+                 <div className="space-y-0 pb-4 animate-fade-in">
                      {/* AI Analysis */}
                      {isAiActive && aiAnalysis && (
-                         <Alert className="m-2 glass border-primary/30 mb-3 text-xs">
+                         <Alert className="m-2 glass border-primary/30 mb-3 text-xs transition-smooth">
                               <Sparkles className="h-3 w-3 text-primary" />
                               <AlertTitle className="text-primary text-xs font-semibold">Nami's Analysis</AlertTitle>
                               <AlertDescription className="text-xs">{aiAnalysis}</AlertDescription>
@@ -634,27 +635,27 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                          <h3 className="text-xs font-semibold mb-1 text-muted-foreground">Nami Suggests:</h3>
                          <div className="flex flex-wrap gap-1.5">
                            {aiSuggestions.map((suggestion, index) => (
-                             <Button key={index} variant="outline" size="sm" onClick={() => handleSuggestionClick(suggestion)} className="neon-glow-hover text-[11px] h-7 px-2 py-1 glass">{suggestion}</Button>
+                             <Button key={index} variant="outline" size="sm" onClick={() => handleSuggestionClick(suggestion)} className="neon-glow-hover text-[11px] h-7 px-2 py-1 glass transition-smooth">{suggestion}</Button>
                            ))}
                          </div>
                        </div>
                      )}
                      {/* Result Cards */}
                     {results.map((item, index) => (
-                        item && item.id != null ? <ResultCard key={`${item.type}-${item.id}-${index}`} item={item} /> : null // Use unique type-id-index key, check for null ID
+                        item && item.id ? <ResultCard key={`${item.type}-${item.id}-${index}`} item={item} /> : null // Use unique type-id key
                     ))}
                 </div>
             )}
 
              {/* No Results State */}
             {!loading && !error && hasSearched && results.length === 0 && (
-                <div className="text-center text-muted-foreground py-10 px-4">
+                <div className="text-center text-muted-foreground py-10 px-4 animate-fade-in">
                     <p>No results found for "{searchTerm}"{hasActiveFilters ? " with the selected filters" : ""}.</p>
                      {isAiActive && aiSuggestions.length > 0 && ( // Suggest AI suggestions even if initial search failed
                          <div className="mt-4">
                             <p className="text-sm mb-2">Maybe try:</p>
                              <div className="flex flex-wrap gap-2 justify-center">
-                                {aiSuggestions.map((suggestion, index) => ( <Button key={index} variant="outline" size="sm" onClick={() => handleSuggestionClick(suggestion)} className="neon-glow-hover text-xs h-8 glass">{suggestion}</Button> ))}
+                                {aiSuggestions.map((suggestion, index) => ( <Button key={index} variant="outline" size="sm" onClick={() => handleSuggestionClick(suggestion)} className="neon-glow-hover text-xs h-8 glass transition-smooth">{suggestion}</Button> ))}
                             </div>
                         </div>
                      )}
@@ -669,7 +670,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
              {/* Prompt to enter search (Standard Mode Initial State) */}
              {!loading && !error && !hasSearched && !isAiActive && (
-                 <div className="text-center text-muted-foreground py-10 px-4">
+                 <div className="text-center text-muted-foreground py-10 px-4 animate-fade-in">
                      <p>Enter a search term or use filters <Filter size={16} className="inline-block ml-1"/>.</p>
                  </div>
              )}
@@ -680,5 +681,3 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
       </Dialog>
   );
 }
-
-    

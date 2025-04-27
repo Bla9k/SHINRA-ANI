@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google'; // Changed from Geist to Poppins
 import './globals.css';
@@ -23,15 +24,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      {/* Removed space before body */}
       <body
         className={cn(
-          'min-h-screen bg-background font-sans antialiased',
+          'min-h-screen bg-background font-sans antialiased transition-smooth', // Added transition-smooth
           poppins.variable // Use Poppins variable
         )}
       >
         <AppLayout>
-          {children}
+          <div className="animate-fade-in"> {/* Wrap children in fade-in animation div */}
+            {children}
+          </div>
         </AppLayout>
         <Toaster /> {/* Add Toaster component */}
       </body>

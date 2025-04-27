@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -99,10 +100,10 @@ export default function TopBar({
   };
 
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b bg-background/80 px-4 backdrop-blur-md glass">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b bg-background/80 px-4 backdrop-blur-md glass transition-smooth">
       {/* Logo/Brand */}
-      <Link href="/" className="flex items-center gap-2 mr-auto">
-         <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary">
+      <Link href="/" className="flex items-center gap-2 mr-auto transition-smooth">
+         <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary transition-smooth">
             <path d="M50 0L61.226 30.9017H95.1056L69.9398 50L81.1658 80.9017H50L18.8342 80.9017L30.0602 50L4.89435 30.9017H38.774L50 0Z" fill="currentColor"/>
          </svg>
         <span className="font-bold text-lg hidden sm:inline">Shinra-Ani</span> {/* Updated App Name */}
@@ -115,7 +116,7 @@ export default function TopBar({
            <Input
              type="search"
              placeholder="Search anime, manga..."
-             className="pl-9 pr-4 py-2 h-9 w-full glass border-primary/20 rounded-full" // Adjusted padding and height
+             className="pl-9 pr-4 py-2 h-9 w-full glass border-primary/20 rounded-full transition-smooth" // Adjusted padding and height + transition
              value={searchTerm}
              onChange={handleSearchInputChange}
              aria-label="Search"
@@ -127,7 +128,7 @@ export default function TopBar({
           {/* Suggestions Container */}
           {showSuggestions && (
               <div
-                className="absolute top-full left-0 mt-1.5 w-full z-10 bg-background/80 backdrop-blur-sm rounded shadow-md border border-border/50 overflow-hidden"
+                className="absolute top-full left-0 mt-1.5 w-full z-10 bg-background/80 backdrop-blur-sm rounded shadow-md border border-border/50 overflow-hidden animate-fade-in" // Add fade-in animation
                 // Keep focus within suggestions by preventing blur on container interaction
                 onMouseDown={(e) => e.preventDefault()}
                >
@@ -135,7 +136,7 @@ export default function TopBar({
                 <Button
                     variant="ghost"
                     size="sm"
-                    className="text-xs text-muted-foreground h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-accent/50 hover:text-foreground"
+                    className="text-xs text-muted-foreground h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-accent/50 hover:text-foreground transition-smooth"
                     onClick={handleAdvancedSuggestionClick}
                 >
                     <Settings className="w-3 h-3 mr-1.5 flex-shrink-0" /> Advanced Search for "{searchTerm}"
@@ -144,7 +145,7 @@ export default function TopBar({
                  <Button
                     variant="ghost"
                     size="sm"
-                    className="text-xs text-primary h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-primary/10"
+                    className="text-xs text-primary h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-primary/10 transition-smooth"
                     onClick={handleAiSuggestionClick}
                  >
                      <Sparkles className="w-3 h-3 mr-1.5 flex-shrink-0" /> Use Nami AI for "{searchTerm}"?
@@ -157,7 +158,7 @@ export default function TopBar({
       <div className="flex items-center gap-2">
 
          {/* Search Icon Button (Mobile) */}
-         <Button variant="ghost" size="icon" className="rounded-full md:hidden" onClick={onSearchIconClick}>
+         <Button variant="ghost" size="icon" className="rounded-full md:hidden transition-smooth neon-glow-hover">
            <SearchIcon className="h-5 w-5" />
            <span className="sr-only">Open Search</span>
          </Button>
@@ -167,7 +168,7 @@ export default function TopBar({
            variant="ghost"
            size="icon"
            className={cn(
-             "rounded-full neon-glow-hover",
+             "rounded-full neon-glow-hover transition-smooth", // Added transition-smooth
              isAiSearchActive && "bg-primary/20 text-primary neon-glow"
            )}
            onClick={onAiToggle}
@@ -182,7 +183,7 @@ export default function TopBar({
         {isAuthenticated ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover">
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={user.avatarUrl} alt={user.username} />
                   <AvatarFallback>{user.username.slice(0, 2).toUpperCase()}</AvatarFallback>
@@ -190,7 +191,7 @@ export default function TopBar({
                  <span className="sr-only">Toggle user menu</span>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="glass">
+            <DropdownMenuContent align="end" className="glass animate-fade-in">
               <DropdownMenuLabel>{user.username}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
@@ -205,7 +206,7 @@ export default function TopBar({
           </DropdownMenu>
         ) : (
           <Link href="/login" passHref legacyBehavior>
-            <Button variant="outline" className="neon-glow-hover">Login</Button>
+            <Button variant="outline" className="neon-glow-hover transition-smooth">Login</Button>
           </Link>
         )}
       </div>
