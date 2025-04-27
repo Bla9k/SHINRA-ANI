@@ -1,1 +1,4 @@
-// Flows will be imported for their side effects in this file.
+import '@/ai/flows/ai-powered-search.ts';
+import '@/ai/flows/surprise-me-recommendation.ts';
+import '@/ai/flows/mood-based-recommendations.ts';
+import '@/ai/flows/ai-driven-homepage.ts';
