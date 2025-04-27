@@ -312,7 +312,8 @@ export default function SearchPage() {
                              <SelectValue placeholder="Any Genre" />
                          </SelectTrigger>
                          <SelectContent className="glass max-h-60">
-                            <SelectItem value="">Any Genre</SelectItem>
+                            {/* Remove the item with empty string value */}
+                             {/* <SelectItem value="">Any Genre</SelectItem> */}
                              {genres.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                          </SelectContent>
                     </Select>
@@ -357,7 +358,8 @@ export default function SearchPage() {
                                 <SelectValue placeholder="Any Status" />
                              </SelectTrigger>
                              <SelectContent className="glass">
-                                <SelectItem value="">Any Status</SelectItem>
+                                {/* Remove the item with empty string value */}
+                                 {/* <SelectItem value="">Any Status</SelectItem> */}
                                  {mangaStatuses.map(s => <SelectItem key={s} value={s}>{formatStatus(s)}</SelectItem>)}
                              </SelectContent>
                          </Select>
