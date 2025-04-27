@@ -71,7 +71,7 @@ export interface Manga {
     /**
     * Mapped ID field for component key consistency
     */
-   id?: number; // Add this optional field
+   id: number; // Use definite ID
 }
 
 /**
@@ -121,7 +121,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 4000; // Increased delay to 4 seconds
+const JIKAN_DELAY = 4000; // 4 seconds - adjust as needed based on rate limit issues
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -262,10 +262,16 @@ export async function getMangas(
          let parsedError = null;
         try {
             parsedError = JSON.parse(errorBody);
-            console.error('[getMangas] Parsed Jikan Error Body:', parsedError);
+             // Improved logging for parsed error body
+             if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
+                 console.warn('[getMangas] Parsed Jikan error body was empty.');
+             } else if (parsedError) {
+                 console.error('[getMangas] Parsed Jikan Error Body:', parsedError);
+             } else {
+                 console.warn('[getMangas] Could not parse Jikan error body as JSON.');
+             }
         } catch {}
         // Instead of throwing, return an empty response to allow the UI to handle it gracefully
-        // throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
         return {
             mangas: [],
             hasNextPage: false,
@@ -281,9 +287,9 @@ export async function getMangas(
 
     // Check if the data field is missing or not an array AFTER confirming response.ok
      if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-         console.error('Jikan API error: Response OK but missing or invalid "data" field.');
-         console.error('Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
-         console.error('Jikan Request URL:', url);
+         console.error('[getMangas] Jikan API error: Response OK but missing or invalid "data" field.');
+         console.error('[getMangas] Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
+         console.error('[getMangas] Jikan Request URL:', url);
          // Check if it looks like a Jikan error structure even with 2xx status (unlikely but possible)
          if (jsonResponse.status && jsonResponse.message) {
              console.warn(`[getMangas] Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}`);
@@ -316,10 +322,10 @@ export async function getMangas(
     console.error(`[getMangas] Failed to fetch manga from Jikan. URL: ${url}`);
      // Log the response status if available
      if(response) {
-         console.error('Response Status:', response.status, response.statusText);
+         console.error('[getMangas] Response Status on Catch:', response.status, response.statusText);
      }
     // Attempt to log more detailed error information
-     console.error('Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+     console.error('[getMangas] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
      // Return empty response on fetch error
      return {
          mangas: [],
@@ -373,7 +379,13 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
              let parsedError = null;
              try {
                 parsedError = JSON.parse(errorBody);
-                console.error('[getMangaById] Parsed Jikan Error Body:', parsedError);
+                 if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
+                    console.warn('[getMangaById] Parsed Jikan error body was empty.');
+                } else if (parsedError) {
+                    console.error('[getMangaById] Parsed Jikan Error Body:', parsedError);
+                } else {
+                    console.warn('[getMangaById] Could not parse Jikan error body as JSON.');
+                }
             } catch {}
             // Return null on failure as per function signature
             return null;

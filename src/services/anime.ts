@@ -82,7 +82,7 @@ export interface Anime {
    /**
     * Mapped ID field for component key consistency
     */
-   id?: number; // Add this optional field
+   id: number; // Use definite ID
 }
 
 /**
@@ -130,7 +130,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 4000; // Increased delay to 4 seconds
+const JIKAN_DELAY = 4000; // 4 seconds - adjust as needed based on rate limit issues
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -274,7 +274,13 @@ export async function getAnimes(
       let parsedError = null;
       try {
           parsedError = JSON.parse(errorBody);
-          console.error('[getAnimes] Parsed Jikan Error:', parsedError);
+          if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
+              console.warn('[getAnimes] Parsed Jikan error body was empty.');
+          } else if (parsedError) {
+              console.error('[getAnimes] Parsed Jikan Error Body:', parsedError);
+          } else {
+              console.warn('[getAnimes] Could not parse Jikan error body as JSON.');
+          }
       } catch {}
       // Instead of throwing, return an empty response
         return {
@@ -376,7 +382,13 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
              let parsedError = null;
              try {
                 parsedError = JSON.parse(errorBody);
-                console.error('[getAnimeById] Parsed Jikan Error:', parsedError);
+                if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
+                    console.warn('[getAnimeById] Parsed Jikan error body was empty.');
+                } else if (parsedError) {
+                    console.error('[getAnimeById] Parsed Jikan Error Body:', parsedError);
+                } else {
+                    console.warn('[getAnimeById] Could not parse Jikan error body as JSON.');
+                }
             } catch {}
              // Return null on failure
              return null;
