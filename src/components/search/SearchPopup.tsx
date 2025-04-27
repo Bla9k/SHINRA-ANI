@@ -211,11 +211,13 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                   console.log("[SearchPopup] Performing AI Search with input:", searchInput);
                   const searchOutput = await aiPoweredSearch(searchInput);
                   console.log("[SearchPopup] AI Search Response:", searchOutput);
-                  setResults(searchOutput.results || []);
+                   // Deduplicate AI results based on type and id
+                   const uniqueAiResults = Array.from(new Map((searchOutput.results || []).map(item => [`${item.type}-${item.id}`, item])).values());
+                  setResults(uniqueAiResults);
                   setAiSuggestions(searchOutput.suggestions || []);
                   setAiAnalysis(searchOutput.aiAnalysis || null);
                   setError(null); // Clear previous errors
-                  console.log("[SearchPopup] AI Search successful. Results:", searchOutput.results?.length);
+                  console.log("[SearchPopup] AI Search successful. Results:", uniqueAiResults.length);
               } else {
                   // --- Standard Jikan Search Logic with Filters ---
                   console.log("[SearchPopup] Performing Standard Jikan Search. Term:", term, "Filters:", { selectedType, selectedGenre, selectedStatus, debouncedMinScore, selectedSort });
@@ -225,7 +227,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                   const validMinScore = scoreNum && !isNaN(scoreNum) && scoreNum >= 0 && scoreNum <= 10 ? scoreNum : undefined;
 
                    // Map 'any' values to undefined for API calls
-                  const typeParam = selectedType === ANY_VALUE ? 'all' : selectedType;
+                  const typeParam = selectedType === ANY_VALUE ? undefined : selectedType; // Undefined for 'all'
                   const genreParam = selectedGenre === ANY_VALUE ? undefined : selectedGenre;
                   const statusParam = selectedStatus === ANY_VALUE ? undefined : selectedStatus;
                   const sortParam = selectedSort === ANY_VALUE ? DEFAULT_SORT : selectedSort;
@@ -235,7 +237,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
                   // Prepare service call promises based on selectedType
                   const searchLimit = 12; // Max results for popup
-                  const animePromise = (typeParam === 'all' || typeParam === 'anime')
+                  const animePromise = (!typeParam || typeParam === 'anime')
                     ? getAnimes(
                           genreParam,
                           undefined, // Year filter not currently in popup
@@ -248,7 +250,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                       ).catch(err => { console.error("Anime fetch failed:", err); return { animes: [], hasNextPage: false } as AnimeResponse; }) // Catch errors per promise
                     : Promise.resolve({ animes: [], hasNextPage: false } as AnimeResponse);
 
-                  const mangaPromise = (typeParam === 'all' || typeParam === 'manga')
+                  const mangaPromise = (!typeParam || typeParam === 'manga')
                     ? getMangas(
                           genreParam,
                           statusParam, // Note: Jikan status filtering for manga might differ
@@ -262,7 +264,7 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
 
                   const [animeRes, mangaRes] = await Promise.all([animePromise, mangaPromise]);
 
-                  console.log("[SearchPopup] Jikan Response - Anime:", animeRes, "Manga:", mangaRes);
+                  console.log("[SearchPopup] Jikan Response - Anime:", animeRes?.animes?.length, "Manga:", mangaRes?.mangas?.length);
 
 
                   // Map results to the unified SearchResult format
@@ -287,16 +289,19 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                        // Let the default sort order from Jikan handle relevance if no exact match
                        return 0; // Maintain Jikan's order otherwise (assuming combined array preserves relative order)
                        // Or fallback sort: return (b.score ?? -1) - (a.score ?? -1);
-                   })
-                   .slice(0, searchLimit * 2); // Ensure we don't exceed limits post-combination
+                   });
+
+                  // Deduplicate combined results
+                  const uniqueResults = Array.from(new Map(combinedResults.map(item => [`${item.type}-${item.id}`, item])).values());
+                  const finalResults = uniqueResults.slice(0, searchLimit * 2); // Ensure we don't exceed limits post-combination
 
 
-                  console.log("[SearchPopup] Combined Results:", combinedResults);
-                  setResults(combinedResults);
+                  console.log("[SearchPopup] Combined Results:", finalResults.length);
+                  setResults(finalResults);
                   setAiSuggestions([]); // No AI suggestions in standard mode
                   setAiAnalysis(null); // No AI analysis in standard mode
                   setError(null); // Clear previous errors
-                  console.log(`[SearchPopup] Standard Search successful, found ${combinedResults.length} items.`);
+                  console.log(`[SearchPopup] Standard Search successful, found ${finalResults.length} items.`);
               }
 
           } catch (err: any) {
@@ -645,8 +650,8 @@ export default function SearchPopup({ isOpen, onClose, isAiActive, initialSearch
                        </div>
                      )}
                      {/* Result Cards */}
-                    {results.map((item) => (
-                        item && item.id ? <ResultCard key={`${item.type}-${item.id}`} item={item} /> : null // Use unique type-id key
+                    {results.map((item, index) => ( // Add index as part of the key for absolute uniqueness in case of data issues
+                        item && item.id ? <ResultCard key={`${item.type}-${item.id}-${index}`} item={item} /> : null // Use unique type-id-index key
                     ))}
                 </div>
             )}
