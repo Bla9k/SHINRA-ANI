@@ -1,28 +1,28 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound, useParams } from 'next/navigation'; // Use useParams
+import { notFound, useParams } from 'next/navigation';
 import { getMangaDetails, Manga } from '@/services/manga'; // Jikan-based service
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, PlayCircle } from 'lucide-react'; // Import icons
+import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, PlayCircle, BookOpen } from 'lucide-react'; // Added BookOpen
 import { Separator } from '@/components/ui/separator';
-import { AspectRatio } from '@/components/ui/aspect-ratio'; // For potential future use (e.g., related media trailer)
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
     if (!status) return 'N/A';
-    // Capitalize first letter for display if needed
     return status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, ' ');
 };
 
-// Helper to format score with icon (copied from anime page)
+// Helper to format score with icon
 const ScoreDisplay = ({ score }: { score: number | null }) => {
     if (score === null || score === undefined) return <span className="text-sm text-muted-foreground">N/A</span>;
     const scoreColor = score >= 8 ? 'text-green-400' : score >= 6 ? 'text-yellow-400' : 'text-red-400';
@@ -34,8 +34,8 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
 };
 
 export default function MangaDetailPage() {
-  const params = useParams(); // Get params from the URL
-  const id = params.id ? parseInt(params.id as string, 10) : NaN; // Parse ID
+  const params = useParams();
+  const id = params.id ? parseInt(params.id as string, 10) : NaN;
 
   const [manga, setManga] = useState<Manga | null>(null);
   const [loading, setLoading] = useState(true);
@@ -70,7 +70,7 @@ export default function MangaDetailPage() {
     }
 
     fetchMangaData();
-  }, [id]); // Depend on id
+  }, [id]);
 
   if (loading) {
     return <MangaDetailSkeleton />;
@@ -127,7 +127,7 @@ export default function MangaDetailPage() {
                                 fill
                                 sizes="(max-width: 768px) 192px, 25vw"
                                 className="object-cover"
-                                priority // Prioritize loading the main image
+                                priority
                               />
                            ) : (
                                <div className="h-full w-full bg-muted flex items-center justify-center">
@@ -137,6 +137,11 @@ export default function MangaDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
+                            <Button size="sm" className="w-full neon-glow-hover" asChild>
+                              <Link href={`/read/manga/${manga.id}`}> {/* Link to potential read page */}
+                                  <BookOpen size={16} className="mr-2"/> Read Now
+                              </Link>
+                           </Button>
                            {/* Add to List / Readlist Button (Example) */}
                            {/* <Button size="sm" className="w-full neon-glow-hover">
                               <PlusCircle size={16} className="mr-2"/> Add to Readlist
@@ -148,12 +153,6 @@ export default function MangaDetailPage() {
                                   </Link>
                               </Button>
                            )}
-                            {/* Optional: Add a "Read Now" button if linking to an external reader */}
-                            {/* <Button variant="secondary" size="sm" asChild className="w-full neon-glow-hover">
-                                <Link href={"#"} target="_blank" rel="noopener noreferrer">
-                                    Read Now <BookOpen size={16} className="ml-2"/>
-                                </Link>
-                            </Button> */}
                         </div>
                     </div>
 
@@ -258,6 +257,7 @@ function MangaDetailSkeleton() {
                       </Card>
                        {/* Actions Buttons Skeleton */}
                        <div className="flex flex-col gap-3 mt-4">
+                           <Skeleton className="h-9 w-full rounded-md" />
                            <Skeleton className="h-9 w-full rounded-md" />
                            <Skeleton className="h-9 w-full rounded-md" />
                        </div>
