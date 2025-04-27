@@ -227,7 +227,7 @@ export default function Home() {
 
         return (
             <section className="mb-8 md:mb-12">
-                <div className="flex items-center justify-between mb-3 md:mb-4 px-4 md:px-0"> {/* Add horizontal padding for title */}
+                <div className="flex items-center justify-between mb-3 md:mb-4 px-4 lg:px-0"> {/* Adjusted title padding */}
                     <h2 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
                         {React.createElement(icon, { className: "text-primary w-5 h-5 md:w-6 md:h-6" })} {title}
                     </h2>
@@ -238,10 +238,10 @@ export default function Home() {
                     )}
                 </div>
                 <div className="relative">
-                  {/* Scrollable Container */}
+                  {/* Scrollable Container - Adjusted padding */}
                   <div className={cn(
                       "flex space-x-3 md:space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent",
-                      "px-4 md:px-0", // Add padding for scroll area start/end
+                      "pl-4 lg:pl-0 pr-4 lg:pr-0", // Adjust horizontal padding: More padding on smaller screens, none on large
                       "snap-x snap-mandatory" // Add snap scrolling
                       )}>
                     {isLoading && displayItems.length === 0
@@ -251,8 +251,9 @@ export default function Home() {
                             : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
                   </div>
                    {/* Optional: Add fade overlays if desired - Adjust position based on padding */}
-                   <div className="absolute top-0 bottom-4 left-0 w-10 bg-gradient-to-r from-background to-transparent pointer-events-none md:hidden"></div> {/* Mobile fade */}
-                   <div className="absolute top-0 bottom-4 right-0 w-10 bg-gradient-to-l from-background to-transparent pointer-events-none md:hidden"></div> {/* Mobile fade */}
+                   {/* Only show fades on smaller screens where horizontal padding exists */}
+                   <div className="absolute top-0 bottom-4 left-0 w-10 bg-gradient-to-r from-background to-transparent pointer-events-none lg:hidden"></div>
+                   <div className="absolute top-0 bottom-4 right-0 w-10 bg-gradient-to-l from-background to-transparent pointer-events-none lg:hidden"></div>
                 </div>
             </section>
         );
@@ -260,10 +261,10 @@ export default function Home() {
 
 
     return (
-        <div className="container mx-auto px-0 py-6 md:py-8"> {/* Remove horizontal container padding */}
+        <div className="container mx-auto py-6 md:py-8 px-0 lg:px-4"> {/* Remove padding on small screens, add on large */}
             {/* Global Error Display */}
             {error && (
-                <Alert variant="destructive" className="mb-6 mx-4 md:mx-0">
+                <Alert variant="destructive" className="mb-6 mx-4 lg:mx-0"> {/* Add margin for alert on small screens */}
                     <AlertCircle className="h-4 w-4" />
                     <AlertTitle>Error Loading Homepage</AlertTitle>
                     <AlertDescription>{error}</AlertDescription>
@@ -282,7 +283,7 @@ export default function Home() {
                 SkeletonBannerCard // Use Banner Skeleton
              )}
              {homepageData?.reasoning && !loading && (
-                 <p className="text-sm text-center italic text-muted-foreground mb-8 px-4 md:px-0">{homepageData.reasoning}</p>
+                 <p className="text-sm text-center italic text-muted-foreground mb-8 px-4 lg:px-0">{homepageData.reasoning}</p>
              )}
 
              {/* Trending Anime Section - Using AI data */}
