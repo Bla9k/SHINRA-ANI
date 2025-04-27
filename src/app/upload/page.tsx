@@ -124,7 +124,7 @@ export default function UploadPage() {
         <Card className="glass">
           <CardHeader>
             <CardTitle>Manga Details</CardTitle>
-            <CardDescription>Provide information about the manga you are uploading.</CardDescription>
+            <CardDescription>Provide information about the manga you are uploading. It will appear in the Community section.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Title */}
