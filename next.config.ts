@@ -19,11 +19,23 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'm.media-amazon.com', // Added this hostname
+        hostname: 'm.media-amazon.com',
         port: '',
         pathname: '/**',
       },
     ],
+  },
+  // Add webpack configuration to handle server-only modules
+  webpack: (config, { isServer }) => {
+    // Mark 'async_hooks' as external for the client bundle
+    // This prevents client-side code from trying to bundle Node.js built-in modules
+    // which are often dependencies of server-side packages like OpenTelemetry.
+    if (!isServer) {
+      config.externals = [...(config.externals || []), 'async_hooks'];
+    }
+
+    // Important: return the modified config
+    return config;
   },
 };
 
