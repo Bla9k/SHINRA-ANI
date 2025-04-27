@@ -1,11 +1,10 @@
-
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { User, Sparkles, Search as SearchIcon } from 'lucide-react'; // Added SearchIcon
+import { User, Sparkles, Search as SearchIcon, Settings } from 'lucide-react'; // Added Settings for advanced
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input'; // Added Input
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -15,22 +14,30 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils'; // Import cn
-import { useDebounce } from '@/hooks/use-debounce'; // For debouncing input
+import { cn } from '@/lib/utils';
+import { useDebounce } from '@/hooks/use-debounce';
 
 // Interface for props including search and AI handlers
 interface TopBarProps {
   onSearchIconClick: () => void; // For clicking the icon itself
   onSearchSubmit: (term: string) => void; // For submitting search term
-  onAiToggle: () => void; // Renamed from onAiSearchToggle
+  onAiToggle: () => void;
   isAiSearchActive: boolean;
-  onOpenAiSearch: (term: string) => void; // New handler to open popup in AI mode with term
+  onOpenAiSearch: (term: string) => void;
+  onOpenAdvancedSearch: (term: string) => void; // New handler for advanced search suggestion
 }
 
-export default function TopBar({ onSearchIconClick, onSearchSubmit, onAiToggle, isAiSearchActive, onOpenAiSearch }: TopBarProps) {
+export default function TopBar({
+    onSearchIconClick,
+    onSearchSubmit,
+    onAiToggle,
+    isAiSearchActive,
+    onOpenAiSearch,
+    onOpenAdvancedSearch // Receive the new handler
+}: TopBarProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAiSuggestion, setShowAiSuggestion] = useState(false);
-  const debouncedSearchTerm = useDebounce(searchTerm, 300); // Debounce for showing suggestion
+  const [showSuggestions, setShowSuggestions] = useState(false); // Consolidated suggestion state
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   // TODO: Replace with actual user data and authentication state
   const isAuthenticated = true; // Placeholder
@@ -42,16 +49,14 @@ export default function TopBar({ onSearchIconClick, onSearchSubmit, onAiToggle, 
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value;
     setSearchTerm(term);
-    // Show suggestion only if user is typing something
-    setShowAiSuggestion(!!term.trim());
+    setShowSuggestions(!!term.trim()); // Show suggestions only if user is typing something
   };
 
   const handleSearchFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setShowAiSuggestion(false); // Hide suggestion on submit
+    setShowSuggestions(false);
     if (searchTerm.trim()) {
-      // For now, submitting the top bar search just opens the popup with the term
-      // (could be changed to navigate to a dedicated search results page later)
+      // Submitting top bar search opens popup in standard mode with the term
       onSearchSubmit(searchTerm.trim());
     } else {
       onSearchIconClick(); // Open empty search if submitted blank
@@ -61,18 +66,37 @@ export default function TopBar({ onSearchIconClick, onSearchSubmit, onAiToggle, 
 
   const handleAiSuggestionClick = () => {
       if (searchTerm.trim()) {
-          onOpenAiSearch(searchTerm.trim()); // Use the new handler
-          setShowAiSuggestion(false); // Hide suggestion
-          setSearchTerm(''); // Clear top bar input
+          onOpenAiSearch(searchTerm.trim());
+          setShowSuggestions(false);
+          setSearchTerm('');
       }
   };
 
-  // Hide suggestion if search term becomes empty
+  const handleAdvancedSuggestionClick = () => {
+      if (searchTerm.trim()) {
+          onOpenAdvancedSearch(searchTerm.trim()); // Call the advanced search handler
+          setShowSuggestions(false);
+          setSearchTerm('');
+      }
+  };
+
+  // Hide suggestions if search term becomes empty
   React.useEffect(() => {
     if (!debouncedSearchTerm) {
-      setShowAiSuggestion(false);
+      setShowSuggestions(false);
     }
   }, [debouncedSearchTerm]);
+
+  const handleFocus = () => {
+      if (searchTerm.trim()) {
+          setShowSuggestions(true);
+      }
+  };
+
+  const handleBlur = () => {
+      // Delay hiding to allow clicking suggestions
+      setTimeout(() => setShowSuggestions(false), 150);
+  };
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b bg-background/80 px-4 backdrop-blur-md glass">
@@ -95,22 +119,37 @@ export default function TopBar({ onSearchIconClick, onSearchSubmit, onAiToggle, 
              value={searchTerm}
              onChange={handleSearchInputChange}
              aria-label="Search"
-             onFocus={() => setShowAiSuggestion(!!searchTerm.trim())} // Show suggestion on focus if term exists
-             onBlur={() => setTimeout(() => setShowAiSuggestion(false), 150)} // Hide suggestion on blur with delay
+             onFocus={handleFocus}
+             onBlur={handleBlur}
            />
            {/* Submit button is implicit via form onSubmit */}
          </form>
-          {/* AI Search Suggestion */}
-          {showAiSuggestion && (
-              <Button
-                 variant="ghost"
-                 size="sm"
-                 className="absolute top-full left-0 mt-1.5 text-xs text-primary h-auto px-2 py-1 z-10 bg-background/80 backdrop-blur-sm rounded shadow-md hover:bg-primary/10 w-full text-left justify-start whitespace-nowrap overflow-hidden"
-                 onClick={handleAiSuggestionClick}
-                 onMouseDown={(e) => e.preventDefault()} // Prevent blur closing the suggestion immediately
-              >
-                  <Sparkles className="w-3 h-3 mr-1.5 flex-shrink-0" /> Use Nami AI for "{searchTerm}"?
-              </Button>
+          {/* Suggestions Container */}
+          {showSuggestions && (
+              <div
+                className="absolute top-full left-0 mt-1.5 w-full z-10 bg-background/80 backdrop-blur-sm rounded shadow-md border border-border/50 overflow-hidden"
+                // Keep focus within suggestions by preventing blur on container interaction
+                onMouseDown={(e) => e.preventDefault()}
+               >
+                 {/* Advanced Search Suggestion */}
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-muted-foreground h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-accent/50 hover:text-foreground"
+                    onClick={handleAdvancedSuggestionClick}
+                >
+                    <Settings className="w-3 h-3 mr-1.5 flex-shrink-0" /> Advanced Search for "{searchTerm}"
+                </Button>
+                 {/* AI Search Suggestion */}
+                 <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-xs text-primary h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-primary/10"
+                    onClick={handleAiSuggestionClick}
+                 >
+                     <Sparkles className="w-3 h-3 mr-1.5 flex-shrink-0" /> Use Nami AI for "{searchTerm}"?
+                 </Button>
+              </div>
           )}
        </div>
 
@@ -123,15 +162,15 @@ export default function TopBar({ onSearchIconClick, onSearchSubmit, onAiToggle, 
            <span className="sr-only">Open Search</span>
          </Button>
 
-        {/* AI Toggle Button (Now primarily controls the SearchPopup mode) */}
+        {/* AI Toggle Button (Controls SearchPopup mode) */}
         <Button
            variant="ghost"
            size="icon"
            className={cn(
              "rounded-full neon-glow-hover",
-             isAiSearchActive && "bg-primary/20 text-primary neon-glow" // Highlight if active
+             isAiSearchActive && "bg-primary/20 text-primary neon-glow"
            )}
-           onClick={onAiToggle} // Toggles AI state in parent (AppLayout)
+           onClick={onAiToggle}
            aria-pressed={isAiSearchActive}
            aria-label={isAiSearchActive ? "Deactivate AI Search Mode" : "Activate AI Search Mode"}
         >
