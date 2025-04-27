@@ -12,6 +12,7 @@ import { getAnimes, Anime } from '@/services/anime'; // Import anime service
 import { getMangas, Manga } from '@/services/manga'; // Import manga service
 import { Sparkles, AlertCircle, Tv, BookText } from 'lucide-react'; // Import icons
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
+import { Badge } from '@/components/ui/badge'; // Import Badge component
 
 // Define types for combined recommendations from AniList
 type RecommendationItem = (Partial<Anime> & Partial<Manga>) & {
