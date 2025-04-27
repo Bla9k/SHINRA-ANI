@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAnimes, getMangas, Anime, Manga, AnimeResponse, MangaResponse } from '@/services'; // Updated imports
+import { getAnimes, getMangas, Anime, Manga } from '@/services'; // Updated imports
 import { Sparkles, AlertCircle, Tv, BookText, Star, TrendingUp, Clock, CalendarDays, ArrowRight } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils'; // Import cn utility
+import { aiDrivenHomepage, AIDrivenHomepageInput, AIDrivenHomepageOutput } from '@/ai/flows/ai-driven-homepage'; // Import AI Flow
+
 
 // Define a unified type for items displayed on the homepage
 type DisplayItem = (Anime | Manga) & {
@@ -31,7 +33,7 @@ const mapToDisplayItem = (item: Anime | Manga): DisplayItem | null => {
         imageUrl: item.images?.jpg?.large_image_url ?? item.images?.jpg?.image_url ?? null,
         description: item.synopsis,
         // Ensure year is mapped if available (used in cards)
-        year: item.year ?? (item.published?.from ? new Date(item.published.from).getFullYear() : null),
+        year: item.year ?? ('published' in item && item.published?.from ? new Date(item.published.from).getFullYear() : null),
     };
 };
 
@@ -43,7 +45,7 @@ const ItemCard = ({ item }: { item: DisplayItem }) => {
     const linkHref = `/${item.type}/${item.id}`;
 
     return (
-        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group w-40 md:w-48 flex-shrink-0 h-full flex flex-col"> {/* Fixed width for horizontal scroll */}
+        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group w-40 md:w-48 flex-shrink-0 h-full flex flex-col snap-start"> {/* Fixed width, snap */}
             <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
                 {item.imageUrl ? (
                     <Image
@@ -89,23 +91,25 @@ const ItemCard = ({ item }: { item: DisplayItem }) => {
     );
 };
 
-// Banner Card for Nami's Picks (horizontal scroll)
+// Banner Card for Nami's Picks (horizontal scroll) - Larger Hero Style
 const BannerCard = ({ item }: { item: DisplayItem }) => {
     if (!item) return null;
     const linkHref = `/${item.type}/${item.id}`;
 
     return (
-        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group w-80 md:w-96 flex-shrink-0 relative aspect-video h-auto"> {/* Banner aspect ratio */}
+        // Increased width and adjusted aspect ratio for a more banner-like feel
+        <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group w-[80vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Wider banner, snap center */}
              <div className="absolute inset-0">
                 {item.imageUrl ? (
                     <Image
                         src={item.imageUrl}
                         alt={item.title}
                         fill
-                        sizes="(max-width: 768px) 80vw, 384px" // Adjusted sizes for banner
+                        // Updated sizes for the larger banner
+                        sizes="(max-width: 640px) 80vw, (max-width: 1024px) 70vw, 60vw"
                         className="object-cover transition-transform duration-500 group-hover:scale-110"
                         priority // Higher priority for banner images
-                        onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/600/340?grayscale`; }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/800/350?grayscale`; }} // Larger placeholder
                     />
                 ) : (
                     <div className="absolute inset-0 bg-muted flex items-center justify-center">
@@ -114,14 +118,16 @@ const BannerCard = ({ item }: { item: DisplayItem }) => {
                 )}
             </div>
             {/* Gradient overlay for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent pointer-events-none"></div> {/* Left fade */}
 
-            {/* Content positioned at the bottom */}
-            <CardContent className="absolute bottom-0 left-0 right-0 p-4 z-10 flex justify-between items-end">
-                 <div className="space-y-1">
+
+            {/* Content positioned at the bottom left */}
+            <CardContent className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10 flex justify-between items-end">
+                 <div className="space-y-1 max-w-[70%]"> {/* Limit text width */}
                     <Badge variant="secondary" className="capitalize text-xs backdrop-blur-sm bg-background/60">{item.type}</Badge>
-                    <CardTitle className="text-lg font-bold text-primary-foreground line-clamp-1 shadow-text">{item.title}</CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground line-clamp-2 shadow-text">{item.description || 'Check it out!'}</CardDescription>
+                    <CardTitle className="text-xl md:text-2xl font-bold text-primary-foreground line-clamp-1 shadow-text">{item.title}</CardTitle>
+                    <CardDescription className="text-sm text-muted-foreground line-clamp-2 shadow-text">{item.description || 'Check it out!'}</CardDescription>
                  </div>
                  <Button variant="outline" size="sm" asChild className="glass neon-glow-hover shrink-0">
                      <Link href={linkHref}>
@@ -135,7 +141,7 @@ const BannerCard = ({ item }: { item: DisplayItem }) => {
 
 // Skeleton Card for regular sections
 const SkeletonItemCard = () => (
-    <Card className="overflow-hidden glass w-40 md:w-48 flex-shrink-0 h-full flex flex-col">
+    <Card className="overflow-hidden glass w-40 md:w-48 flex-shrink-0 h-full flex flex-col snap-start">
         <CardHeader className="p-0 relative aspect-[2/3] w-full">
             <Skeleton className="h-full w-full" />
         </CardHeader>
@@ -151,14 +157,14 @@ const SkeletonItemCard = () => (
     </Card>
 );
 
-// Skeleton Card for Banner section
+// Skeleton Card for Banner section - Adjusted size
 const SkeletonBannerCard = () => (
-    <Card className="overflow-hidden glass w-80 md:w-96 flex-shrink-0 relative aspect-video h-auto">
+    <Card className="overflow-hidden glass w-[80vw] sm:w-[70vw] md:w-[60vw] lg:w-[50vw] flex-shrink-0 relative aspect-[16/7] h-auto snap-center"> {/* Match banner size */}
          <Skeleton className="absolute inset-0" />
-         <CardContent className="absolute bottom-0 left-0 right-0 p-4 z-10 flex justify-between items-end">
-             <div className="space-y-1 flex-grow mr-4">
+         <CardContent className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10 flex justify-between items-end">
+             <div className="space-y-1 flex-grow mr-4 max-w-[70%]">
                  <Skeleton className="h-4 w-16 mb-1" />
-                 <Skeleton className="h-6 w-3/4 mb-1" />
+                 <Skeleton className="h-6 md:h-7 w-3/4 mb-1" /> {/* Larger title skeleton */}
                  <Skeleton className="h-3 w-full" />
                  <Skeleton className="h-3 w-5/6" />
              </div>
@@ -171,132 +177,61 @@ const SkeletonBannerCard = () => (
 // --- Main Page Component ---
 
 export default function Home() {
-    const [trendingAnime, setTrendingAnime] = useState<Anime[]>([]);
-    const [trendingManga, setTrendingManga] = useState<Manga[]>([]);
-    const [popularAnime, setPopularAnime] = useState<Anime[]>([]);
-    const [popularManga, setPopularManga] = useState<Manga[]>([]);
-    const [airingAnime, setAiringAnime] = useState<Anime[]>([]);
-    const [upcomingAnime, setUpcomingAnime] = useState<Anime[]>([]);
-    const [namiPicks, setNamiPicks] = useState<DisplayItem[]>([]); // Unified type for picks
-
-    const [loading, setLoading] = useState({
-        trending: true,
-        popular: true,
-        airing: true,
-        upcoming: true,
-        nami: true,
-    });
+    const [homepageData, setHomepageData] = useState<AIDrivenHomepageOutput | null>(null);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-
-    // Fetch initial data
-    const fetchInitialData = useCallback(async () => {
-        setLoading(prev => ({ ...prev, trending: true, popular: true, airing: true, upcoming: true, nami: true }));
+    // Fetch initial data using the AI flow
+    const fetchHomepageData = useCallback(async () => {
+        setLoading(true);
         setError(null);
 
         try {
-            // Fetch standard sections concurrently
-            const results = await Promise.allSettled([
-                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10), // Trending Anime (limit 10 for scroll)
-                getMangas(undefined, undefined, undefined, undefined, 1, 'popularity', 10), // Trending Manga (limit 10)
-                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'score', 10),      // Popular Anime (limit 10)
-                getMangas(undefined, undefined, undefined, undefined, 1, 'score', 10),      // Popular Manga (limit 10)
-                getAnimes(undefined, undefined, undefined, undefined, 'airing', 1, 'popularity', 10), // Airing Anime (limit 10)
-                getAnimes(undefined, undefined, undefined, undefined, 'upcoming', 1, 'popularity', 10), // Upcoming Anime (limit 10)
-                 // Placeholder for Nami's Picks - Replace with AI call if implemented
-                 // aiDrivenHomepage({ userProfile: "...", currentMood: "...", recentActivity: [] })
-                 Promise.resolve({ // Mock Nami's picks - Fetch actual ones when AI flow is ready
-                    personalizedAnime: (await getAnimes(undefined, undefined, 7, undefined, undefined, 1, 'score', 3)).animes,
-                    personalizedManga: (await getMangas(undefined, undefined, undefined, 7, 1, 'score', 3)).mangas,
-                    reasoning: "Based on general high scores and variety." // Mock reasoning
-                 })
-            ]);
-
-            // Process results
-            if (results[0].status === 'fulfilled') {
-                setTrendingAnime(results[0].value.animes);
-                setLoading(prev => ({ ...prev, trending: false }));
-            } else console.error("Failed fetching trending anime:", results[0].reason);
-
-            if (results[1].status === 'fulfilled') {
-                setTrendingManga(results[1].value.mangas);
-            } else console.error("Failed fetching trending manga:", results[1].reason);
-
-            if (results[2].status === 'fulfilled') {
-                setPopularAnime(results[2].value.animes);
-                 setLoading(prev => ({ ...prev, popular: false }));
-            } else console.error("Failed fetching popular anime:", results[2].reason);
-
-            if (results[3].status === 'fulfilled') {
-                setPopularManga(results[3].value.mangas);
-            } else console.error("Failed fetching popular manga:", results[3].reason);
-
-            if (results[4].status === 'fulfilled') {
-                 setAiringAnime(results[4].value.animes);
-                 setLoading(prev => ({ ...prev, airing: false }));
-            } else console.error("Failed fetching airing anime:", results[4].reason);
-
-             if (results[5].status === 'fulfilled') {
-                 setUpcomingAnime(results[5].value.animes);
-                 setLoading(prev => ({ ...prev, upcoming: false }));
-             } else console.error("Failed fetching upcoming anime:", results[5].reason);
-
-              // Process Nami's Picks (Mocked for now)
-              if (results[6].status === 'fulfilled') {
-                const namiData = results[6].value as any; // Type assertion for mock
-                const picks = [
-                    ...(namiData.personalizedAnime || []),
-                    ...(namiData.personalizedManga || [])
-                ]
-                .map(mapToDisplayItem)
-                .filter((item): item is DisplayItem => item !== null)
-                .sort(() => 0.5 - Math.random()) // Shuffle
-                .slice(0, 5); // Take top 5 for banner scroll
-                setNamiPicks(picks);
-                setLoading(prev => ({ ...prev, nami: false }));
-                console.log("Nami's Picks Reasoning:", namiData.reasoning);
-            } else {
-                console.error("Failed fetching Nami's picks:", results[6].reason);
-                setLoading(prev => ({ ...prev, nami: false })); // Still stop loading
-            }
-
-
-            // Check if any fetch failed to set a general error message
-            if (results.some(r => r.status === 'rejected')) {
-                 setError("Some sections could not be loaded. Please try refreshing.");
-            }
+            // TODO: Replace dummy profile/mood/activity with actual user data
+            const input: AIDrivenHomepageInput = {
+                userProfile: "Loves action, fantasy, isekai anime. Recently watched One Punch Man, reads Berserk.",
+                currentMood: "Adventurous",
+                recentActivity: ["One Punch Man"],
+            };
+            console.log("Fetching AI Driven Homepage with input:", input);
+            const data = await aiDrivenHomepage(input);
+            setHomepageData(data);
+            console.log("AI Driven Homepage data received:", data);
 
         } catch (err: any) {
-            console.error("Failed to fetch homepage data:", err);
-            setError("Could not load homepage content. Please try refreshing.");
-            // Reset loading states on global error
-            setLoading({ trending: false, popular: false, airing: false, upcoming: false, nami: false });
+            console.error("Failed to fetch AI-driven homepage data:", err);
+            setError("Could not load personalized homepage content. Please try refreshing.");
+            setHomepageData(null); // Clear data on error
+        } finally {
+            setLoading(false);
         }
     }, []);
 
     useEffect(() => {
-        fetchInitialData();
-    }, [fetchInitialData]);
+        fetchHomepageData();
+    }, [fetchHomepageData]);
 
     // Helper to render a horizontally scrolling section
     const renderHorizontalSection = (
         title: string,
         icon: React.ElementType,
-        items: (Anime | Manga)[],
+        items: (Anime | Manga)[] | undefined, // Make items optional
         isLoading: boolean,
         viewAllLink?: string,
         itemComponent: React.FC<{ item: DisplayItem }> = ItemCard, // Default to ItemCard
         skeletonComponent: React.FC = SkeletonItemCard // Default skeleton
     ) => {
-        const displayItems = items.map(mapToDisplayItem).filter((item): item is DisplayItem => item !== null);
+        // Ensure items is an array before mapping, default to empty array if undefined
+        const validItems = Array.isArray(items) ? items : [];
+        const displayItems = validItems.map(mapToDisplayItem).filter((item): item is DisplayItem => item !== null);
 
         return (
             <section className="mb-8 md:mb-12">
-                <div className="flex items-center justify-between mb-3 md:mb-4">
+                <div className="flex items-center justify-between mb-3 md:mb-4 px-4 md:px-0"> {/* Add horizontal padding for title */}
                     <h2 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
                         {React.createElement(icon, { className: "text-primary w-5 h-5 md:w-6 md:h-6" })} {title}
                     </h2>
-                    {viewAllLink && (
+                    {viewAllLink && displayItems.length > 0 && ( // Only show View All if there are items
                         <Button variant="link" size="sm" asChild className="text-xs md:text-sm">
                             <Link href={viewAllLink}>View All <ArrowRight size={14} className="ml-1" /></Link>
                         </Button>
@@ -306,17 +241,18 @@ export default function Home() {
                   {/* Scrollable Container */}
                   <div className={cn(
                       "flex space-x-3 md:space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent",
+                      "px-4 md:px-0", // Add padding for scroll area start/end
                       "snap-x snap-mandatory" // Add snap scrolling
                       )}>
                     {isLoading && displayItems.length === 0
-                        ? Array.from({ length: 5 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` }))
+                        ? Array.from({ length: itemComponent === BannerCard ? 3 : 5 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` })) // Show fewer banner skeletons
                         : displayItems.length > 0
-                            ? displayItems.map((item) => React.createElement(itemComponent, { key: `${item.type}-${item.id}`, item: item }))
-                            : !isLoading && <p className="text-center text-muted-foreground italic px-4">Nothing to show here right now.</p>}
+                            ? displayItems.map((item, index) => React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item })) // Use index in key for safety if IDs overlap between anime/manga in combined lists
+                            : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
                   </div>
-                   {/* Optional: Add fade overlays if desired */}
-                   <div className="absolute top-0 bottom-4 left-0 w-8 bg-gradient-to-r from-background to-transparent pointer-events-none"></div>
-                   <div className="absolute top-0 bottom-4 right-0 w-8 bg-gradient-to-l from-background to-transparent pointer-events-none"></div>
+                   {/* Optional: Add fade overlays if desired - Adjust position based on padding */}
+                   <div className="absolute top-0 bottom-4 left-0 w-10 bg-gradient-to-r from-background to-transparent pointer-events-none md:hidden"></div> {/* Mobile fade */}
+                   <div className="absolute top-0 bottom-4 right-0 w-10 bg-gradient-to-l from-background to-transparent pointer-events-none md:hidden"></div> {/* Mobile fade */}
                 </div>
             </section>
         );
@@ -324,7 +260,7 @@ export default function Home() {
 
 
     return (
-        <div className="container mx-auto px-0 md:px-4 py-6 md:py-8"> {/* Adjusted padding */}
+        <div className="container mx-auto px-0 py-6 md:py-8"> {/* Remove horizontal container padding */}
             {/* Global Error Display */}
             {error && (
                 <Alert variant="destructive" className="mb-6 mx-4 md:mx-0">
@@ -334,78 +270,82 @@ export default function Home() {
                 </Alert>
             )}
 
-            {/* Nami's Picks Banner Section */}
-             {renderHorizontalSection(
+            {/* Nami's Picks Banner Section - Using AI data */}
+            {renderHorizontalSection(
                 "Nami's Picks For You",
                 Sparkles,
-                namiPicks, // Pass the already processed picks
-                loading.nami,
-                undefined, // No "View All" for personalized picks (usually)
+                // Combine personalized anime and manga from AI response
+                 homepageData ? [...(homepageData.personalizedAnime || []), ...(homepageData.personalizedManga || [])] : [],
+                loading,
+                undefined, // No "View All"
                 BannerCard, // Use BannerCard component
                 SkeletonBannerCard // Use Banner Skeleton
              )}
+             {homepageData?.reasoning && !loading && (
+                 <p className="text-sm text-center italic text-muted-foreground mb-8 px-4 md:px-0">{homepageData.reasoning}</p>
+             )}
 
-             {/* Trending Anime Section */}
+             {/* Trending Anime Section - Using AI data */}
              {renderHorizontalSection(
                  "Trending Anime",
                  TrendingUp,
-                 trendingAnime,
-                 loading.trending,
+                 homepageData?.trendingAnime,
+                 loading,
                  "/anime?sort=popularity",
                  ItemCard,
                  SkeletonItemCard
              )}
 
-             {/* Trending Manga Section */}
+             {/* Trending Manga Section - Using AI data */}
              {renderHorizontalSection(
                  "Trending Manga",
                  TrendingUp,
-                 trendingManga,
-                 loading.trending, // Share trending loading state for now
+                 homepageData?.trendingManga,
+                 loading,
                  "/manga?sort=popularity",
                  ItemCard,
                  SkeletonItemCard
              )}
 
-             {/* Airing Now Anime Section */}
+             {/* Airing Now Anime Section - Using AI data */}
              {renderHorizontalSection(
                 "Airing Now",
                 Clock,
-                airingAnime,
-                loading.airing,
+                homepageData?.airingAnime,
+                loading,
                 "/anime?status=airing",
                 ItemCard,
                 SkeletonItemCard
             )}
 
-             {/* Popular Anime Section */}
+             {/* Popular Anime Section - Using AI data */}
              {renderHorizontalSection(
                  "Popular Anime",
                  Star,
-                 popularAnime,
-                 loading.popular,
+                 homepageData?.popularAnime,
+                 loading,
                  "/anime?sort=score",
                  ItemCard,
                  SkeletonItemCard
              )}
 
-            {/* Popular Manga Section */}
+            {/* Popular Manga Section - Using AI data */}
              {renderHorizontalSection(
                  "Popular Manga",
                  Star,
-                 popularManga,
-                 loading.popular, // Share popular loading state
+                 homepageData?.popularManga,
+                 loading,
                  "/manga?sort=score",
                  ItemCard,
                  SkeletonItemCard
              )}
 
-             {/* Upcoming Anime Section */}
+             {/* Upcoming Anime Section - Using AI data */}
              {renderHorizontalSection(
                  "Upcoming Anime",
                  CalendarDays,
-                 upcomingAnime,
-                 loading.upcoming,
+                 homepageData?.upcomingAnime,
+                 loading,
                  "/anime?status=upcoming",
                  ItemCard,
                  SkeletonItemCard
@@ -442,10 +382,15 @@ const styles = `
    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
      background-color: hsl(var(--primary) / 0.7); /* Thumb color on hover */
    }
+
+   /* Ensure snap scrolling works correctly */
+    .snap-x { scroll-snap-type: x mandatory; }
+    .snap-start { scroll-snap-align: start; }
+    .snap-center { scroll-snap-align: center; }
 `;
 // Inject styles
 if (typeof window !== 'undefined') {
-    const styleId = 'custom-scrollbar-styles';
+    const styleId = 'custom-styles-homepage'; // Use a unique ID
     if (!document.getElementById(styleId)) {
         const styleSheet = document.createElement("style");
         styleSheet.id = styleId;
@@ -454,4 +399,3 @@ if (typeof window !== 'undefined') {
         document.head.appendChild(styleSheet);
     }
 }
-
