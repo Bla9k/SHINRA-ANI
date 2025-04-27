@@ -1,29 +1,32 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, ShieldCheck, Zap, Award, Edit2, BookOpen, ListVideo, Heart, Settings, Star, Loader2 } from 'lucide-react'; // Added Loader2
+import { User, ShieldCheck, Zap, Award, Edit2, BookOpen, ListVideo, Heart, Settings, Star, Loader2, Save, Image as ImageIcon, Camera } from 'lucide-react'; // Added Save, ImageIcon, Camera
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
-import { getAnimeById, Anime } from '@/services/anime'; // Import Jikan-based Anime type and fetcher
-import { getMangaById, Manga } from '@/services/manga'; // Import Jikan-based Manga type and fetcher
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { getAnimeById, Anime } from '@/services/anime'; // Jikan-based services
+import { getMangaById, Manga } from '@/services/manga'; // Jikan-based services
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
+import { Input } from '@/components/ui/input'; // Import Input
+import { Textarea } from '@/components/ui/textarea'; // Import Textarea
+import { Label } from '@/components/ui/label'; // Import Label
 
-// --- User Profile Data Structure ---
-interface UserProfile {
+// --- Data Structures ---
+interface UserProfileData {
   username: string;
-  email: string;
+  email: string; // Usually fetched from auth, not edited directly here
   avatarUrl: string | null;
-  bannerUrl: string | null; // Added banner
-  bio: string; // Added bio
-  status: string; // Added custom status
+  bannerUrl: string | null;
+  bio: string;
+  status: string;
   level: number;
   xp: number;
   xpToNextLevel: number;
@@ -35,87 +38,93 @@ interface UserProfile {
     mangaRead: number;
     uploads: number;
   };
-  // Use MAL IDs for lists
-  watchlistIds: { id: number, userStatus: string, userScore?: number | null, userProgress?: string }[];
-  readlistIds: { id: number, userStatus: string, userScore?: number | null, userProgress?: string }[];
-  favoriteIds: { id: number, type: 'anime' | 'manga' }[];
+  watchlistIds: UserListItemData[];
+  readlistIds: UserListItemData[];
+  favoriteIds: UserListItemData[];
 }
 
-// Define the structure returned by fetch functions, including user data
-type FetchedListItemData = (Anime | Manga) & {
-    userStatus: string; // e.g., Watching, Reading, Completed, Plan to Watch/Read, Dropped
-    userProgress?: string; // e.g., S1 E5, Ch 20
-    userScore?: number | null; // User's personal score (0-10)
+interface UserListItemData {
+  id: number;
+  type: 'anime' | 'manga';
+  userStatus: string;
+  userScore?: number | null;
+  userProgress?: string; // e.g., S1 E5, Ch 20
+}
+
+// Combine fetched item details with user data
+type FetchedListItemDetails = (Anime | Manga) & UserListItemData; // Combine service type with user data fields
+
+// --- ListItemCard (Accepts full fetched details) ---
+const ListItemCard = ({ item }: { item: FetchedListItemDetails }) => {
+  if (!item || !item.mal_id) return null;
+  const linkHref = `/${item.type}/${item.mal_id}`;
+
+  return (
+      <Link href={linkHref} passHref legacyBehavior>
+          <a className="block group">
+              <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-105 flex h-full"> {/* Ensure full height */}
+                  <div className="p-0 relative h-28 w-20 flex-shrink-0 overflow-hidden rounded-l-md">
+                      {item.imageUrl ? (
+                          <Image
+                              src={item.imageUrl}
+                              alt={item.title}
+                              fill
+                              sizes="80px"
+                              className="object-cover transition-transform duration-300 group-hover:scale-105"
+                              onError={(e) => { (e.target as HTMLImageElement).src = 'https://picsum.photos/80/120?grayscale'; }} // Fallback
+                          />
+                      ) : (
+                          <div className="h-full w-full bg-muted flex items-center justify-center">
+                              {item.type === 'anime' ? <ListVideo className="w-8 h-8 text-muted-foreground" /> : <BookOpen className="w-8 h-8 text-muted-foreground" />}
+                          </div>
+                      )}
+                  </div>
+                  <CardContent className="p-3 flex-grow flex flex-col justify-between">
+                      <div>
+                          <CardTitle className="text-sm font-semibold mb-1 line-clamp-1 group-hover:text-primary transition-colors">
+                              {item.title}
+                          </CardTitle>
+                          {item.userScore !== undefined && item.userScore !== null && (
+                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                  My Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.userScore}/10
+                              </p>
+                          )}
+                          {item.userProgress && item.userStatus !== 'Favorited' && (
+                              <p className="text-xs text-muted-foreground mb-1">Progress: {item.userProgress}</p>
+                          )}
+                           {/* Show MAL score if user hasn't scored */}
+                          {(item.userScore === undefined || item.userScore === null) && item.score && (
+                              <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                  MAL Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.score.toFixed(1)}
+                              </p>
+                          )}
+                           {/* Display synopsis only for favorites, trimmed */}
+                          {item.userStatus === 'Favorited' && item.synopsis && (
+                              <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{item.synopsis}</p>
+                          )}
+                      </div>
+                      <div className="flex justify-between items-center mt-auto pt-1 border-t border-border/50">
+                          <Badge
+                              variant={
+                                  item.userStatus === 'Watching' || item.userStatus === 'Reading' ? 'default' :
+                                  item.userStatus === 'Completed' ? 'secondary' :
+                                  item.userStatus === 'Dropped' ? 'destructive' :
+                                  item.userStatus === 'Favorited' ? 'outline' : // Favorited style
+                                  'outline' // Default for Plan to Watch/Read, On-Hold
+                              }
+                              className="text-xs px-1.5 py-0.5 capitalize" // Ensure capitalization
+                          >
+                              {item.userStatus}
+                          </Badge>
+                           <span className="text-xs text-primary font-medium group-hover:underline">View Details</span>
+                      </div>
+                  </CardContent>
+              </Card>
+          </a>
+      </Link>
+  );
 };
 
-// --- ListItemCard (Accepts full fetched data) ---
-const ListItemCard = ({ item }: { item: FetchedListItemData }) => {
-    if (!item || !item.mal_id) return null;
-    const linkHref = `/${item.type}/${item.mal_id}`;
-
-    return (
-        <Link href={linkHref} passHref legacyBehavior>
-            <a className="block group">
-                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-105 flex h-full"> {/* Ensure full height */}
-                    <div className="p-0 relative h-28 w-20 flex-shrink-0 overflow-hidden rounded-l-md">
-                        {item.imageUrl ? (
-                            <Image
-                                src={item.imageUrl}
-                                alt={item.title}
-                                fill
-                                sizes="80px"
-                                className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            />
-                        ) : (
-                            <div className="h-full w-full bg-muted flex items-center justify-center">
-                                {item.type === 'anime' ? <ListVideo className="w-8 h-8 text-muted-foreground" /> : <BookOpen className="w-8 h-8 text-muted-foreground" />}
-                            </div>
-                        )}
-                    </div>
-                    <CardContent className="p-3 flex-grow flex flex-col justify-between">
-                        <div>
-                            <CardTitle className="text-sm font-semibold mb-1 line-clamp-1 group-hover:text-primary transition-colors">
-                                {item.title}
-                            </CardTitle>
-                            {item.userScore !== undefined && item.userScore !== null && (
-                                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                    My Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.userScore}/10
-                                </p>
-                            )}
-                            {item.userProgress && item.userStatus !== 'Favorited' && (
-                                <p className="text-xs text-muted-foreground mb-1">Progress: {item.userProgress}</p>
-                            )}
-                            {(item.userScore === undefined || item.userScore === null) && item.score && (
-                                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                    MAL Score: <Star size={12} className="text-yellow-400 inline-block"/> {item.score.toFixed(1)}
-                                </p>
-                            )}
-                             {/* Display synopsis only for favorites */}
-                            {item.userStatus === 'Favorited' && item.synopsis && (
-                                <p className="text-xs text-muted-foreground line-clamp-1 mb-1">{item.synopsis}</p>
-                            )}
-                            <Badge variant="outline" className="capitalize text-xs px-1.5 py-0.5 mb-2">{item.type}</Badge>
-                        </div>
-                        <div className="flex justify-between items-center mt-auto pt-1 border-t border-border/50">
-                            <Badge
-                                variant={
-                                    item.userStatus === 'Watching' || item.userStatus === 'Reading' ? 'default' :
-                                    item.userStatus === 'Completed' ? 'secondary' :
-                                    item.userStatus === 'Dropped' ? 'destructive' :
-                                    'outline'
-                                }
-                                className="text-xs px-1.5 py-0.5"
-                            >
-                                {item.userStatus}
-                            </Badge>
-                             <span className="text-xs text-primary font-medium group-hover:underline">View Details</span>
-                        </div>
-                    </CardContent>
-                </Card>
-            </a>
-        </Link>
-    );
-};
 
 // --- Skeleton for ListItemCard ---
 const ListItemSkeletonCard = () => (
@@ -140,16 +149,8 @@ const ListItemSkeletonCard = () => (
 
 
 // --- Component to Fetch and Render Individual List Item ---
-interface UserListItemFetcherProps {
-  id: number;
-  type: 'anime' | 'manga';
-  userStatus: string;
-  userScore?: number | null;
-  userProgress?: string;
-}
-
-const UserListItemFetcher: React.FC<UserListItemFetcherProps> = ({ id, type, userStatus, userScore, userProgress }) => {
-  const [itemData, setItemData] = useState<FetchedListItemData | null>(null);
+const UserListItemFetcher: React.FC<UserListItemData> = ({ id, type, userStatus, userScore, userProgress }) => {
+  const [itemDetails, setItemDetails] = useState<FetchedListItemDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -163,14 +164,15 @@ const UserListItemFetcher: React.FC<UserListItemFetcherProps> = ({ id, type, use
       try {
         let data: Anime | Manga | null = null;
         if (type === 'anime') {
-          data = await getAnimeById(id);
+          data = await getAnimeById(id); // Use Jikan service
         } else {
-          data = await getMangaById(id);
+          data = await getMangaById(id); // Use Jikan service
         }
 
         if (isMounted) {
           if (data) {
-            setItemData({
+            // Combine fetched data with user list data
+            setItemDetails({
               ...data,
               userStatus,
               userScore,
@@ -178,14 +180,14 @@ const UserListItemFetcher: React.FC<UserListItemFetcherProps> = ({ id, type, use
             });
           } else {
              setError(`Could not load ${type} details.`);
-             console.warn(`Failed to fetch details for ${type} ID ${id}`);
-             // Optionally show a toast error for individual item failures
+             console.warn(`[UserListItemFetcher] Failed to fetch details for ${type} ID ${id}`);
+             // Optional: Show toast error for individual item failures
              // toast({ title: "Loading Error", description: `Failed to load details for ${type} ID ${id}`, variant: "destructive" });
           }
         }
       } catch (err) {
         if (isMounted) {
-          console.error(`Error fetching ${type} ID ${id}:`, err);
+          console.error(`[UserListItemFetcher] Error fetching ${type} ID ${id}:`, err);
            setError(`Error loading ${type}.`);
             // toast({ title: "Loading Error", description: `Error loading ${type} ID ${id}`, variant: "destructive" });
         }
@@ -207,8 +209,8 @@ const UserListItemFetcher: React.FC<UserListItemFetcherProps> = ({ id, type, use
     return <ListItemSkeletonCard />;
   }
 
-  if (error || !itemData) {
-    // Optionally render a small error indicator card or nothing
+  if (error || !itemDetails) {
+    // Render a small error indicator card
      return (
         <Card className="overflow-hidden glass flex h-28 border-destructive/50">
              <div className="p-0 relative h-28 w-20 flex-shrink-0 bg-muted/50 flex items-center justify-center">
@@ -222,18 +224,39 @@ const UserListItemFetcher: React.FC<UserListItemFetcherProps> = ({ id, type, use
     );
   }
 
-  return <ListItemCard item={itemData} />;
+  return <ListItemCard item={itemDetails} />;
 };
 
 // --- Main Profile Page Component ---
 export default function ProfilePage() {
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('activity');
+  const [isEditing, setIsEditing] = useState(false); // State for edit mode
   const { toast } = useToast();
 
-  // Simulate fetching user profile data
+  // State for editing fields
+  const [editData, setEditData] = useState<{
+      username: string;
+      bio: string;
+      status: string;
+      avatarFile: File | null;
+      bannerFile: File | null;
+      avatarPreview: string | null;
+      bannerPreview: string | null;
+  }>({
+      username: '',
+      bio: '',
+      status: '',
+      avatarFile: null,
+      bannerFile: null,
+      avatarPreview: null,
+      bannerPreview: null,
+  });
+
+
+  // Fetch User Profile Data (Simulated - Replace with actual data fetching)
   const fetchUserProfile = useCallback(async () => {
     setLoadingProfile(true);
     setProfileError(null);
@@ -242,12 +265,14 @@ export default function ProfilePage() {
       // Simulate API delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
+      // --- Placeholder Profile Data ---
       // TODO: Replace with actual API call (e.g., from Firebase Firestore)
-      const fetchedProfile: UserProfile = {
+      // Ensure this data structure matches UserProfileData
+      const fetchedProfile: UserProfileData = {
         username: 'ShinraFanatic',
-        email: 'shinra@example.com', // Usually not displayed publicly
+        email: 'shinra@example.com', // Usually fetched from auth
         avatarUrl: 'https://picsum.photos/seed/avatar1/150/150',
-        bannerUrl: 'https://picsum.photos/seed/banner1/1000/300', // Example banner
+        bannerUrl: 'https://picsum.photos/seed/banner1/1000/300',
         bio: 'Just a guy who loves intense action and deep stories. Currently struggling through Berserk.',
         status: 'Watching Jujutsu Kaisen S2',
         level: 15,
@@ -257,27 +282,38 @@ export default function ProfilePage() {
         badges: ['Anime Adept', 'Manga Maniac', 'First Upload', 'Community Pioneer'],
         joinDate: new Date(2023, 5, 15),
         stats: { animeWatched: 120, mangaRead: 85, uploads: 3 },
-        // Example lists (use MAL IDs)
+        // Example lists (use Jikan/MAL IDs)
         watchlistIds: [
-          { id: 16498, userStatus: 'Watching', userProgress: 'S4 E10', userScore: 9 },
-          { id: 5114, userStatus: 'Completed', userScore: 10 },
-          { id: 50265, userStatus: 'Plan to Watch' },
-          { id: 11061, userStatus: 'Dropped', userScore: 4 }, // Example: Hunter x Hunter
+          { id: 16498, type: 'anime', userStatus: 'Watching', userProgress: 'S4 E10', userScore: 9 },
+          { id: 5114, type: 'anime', userStatus: 'Completed', userScore: 10 }, // FMA:B
+          { id: 50265, type: 'anime', userStatus: 'Plan to Watch' }, // Chainsaw Man Movie
+          { id: 11061, type: 'anime', userStatus: 'Dropped', userScore: 4 }, // Hunter x Hunter
         ],
         readlistIds: [
-          { id: 2, userStatus: 'Reading', userProgress: 'Ch 375', userScore: 10 },
-          { id: 21, userStatus: 'Reading', userProgress: 'Ch 1100', userScore: 9 },
-          { id: 74045, userStatus: 'Plan to Read' },
-          { id: 1, userStatus: 'On-Hold', userProgress: 'Vol 5' }, // Example: Monster
+          { id: 2, type: 'manga', userStatus: 'Reading', userProgress: 'Ch 375', userScore: 10 }, // Berserk
+          { id: 21, type: 'manga', userStatus: 'Reading', userProgress: 'Ch 1100', userScore: 9 }, // One Piece
+          { id: 74045, type: 'manga', userStatus: 'Plan to Read' }, // Solo Leveling
+          { id: 1, type: 'manga', userStatus: 'On-Hold', userProgress: 'Vol 5' }, // Monster
         ],
         favoriteIds: [
-          { id: 16498, type: 'anime' }, // AOT
-          { id: 2, type: 'manga' }, // Berserk
-          { id: 4181, type: 'anime' }, // Clannad: After Story
+          { id: 16498, type: 'anime', userStatus: 'Favorited' }, // AOT
+          { id: 2, type: 'manga', userStatus: 'Favorited' }, // Berserk
+          { id: 4181, type: 'anime', userStatus: 'Favorited' }, // Clannad: After Story
         ],
       };
+      // --- End Placeholder Data ---
 
       setUserProfile(fetchedProfile);
+      // Initialize edit state when profile is fetched
+      setEditData({
+          username: fetchedProfile.username,
+          bio: fetchedProfile.bio,
+          status: fetchedProfile.status,
+          avatarFile: null,
+          bannerFile: null,
+          avatarPreview: fetchedProfile.avatarUrl,
+          bannerPreview: fetchedProfile.bannerUrl,
+      });
        console.log("Profile data fetched:", fetchedProfile);
 
     } catch (error) {
@@ -293,10 +329,114 @@ export default function ProfilePage() {
     fetchUserProfile();
   }, [fetchUserProfile]);
 
+  // --- Edit Mode Handlers ---
+  const handleEditToggle = () => {
+      if (isEditing && userProfile) {
+          // Reset edit data to original profile data if cancelling
+          setEditData({
+             username: userProfile.username,
+             bio: userProfile.bio,
+             status: userProfile.status,
+             avatarFile: null,
+             bannerFile: null,
+             avatarPreview: userProfile.avatarUrl,
+             bannerPreview: userProfile.bannerUrl,
+          });
+      }
+      setIsEditing(!isEditing);
+  };
 
-  // Render Lists Function
+  const handleEditChange = (field: keyof Omit<typeof editData, 'avatarFile' | 'bannerFile' | 'avatarPreview' | 'bannerPreview'>, value: string) => {
+     setEditData(prev => ({ ...prev, [field]: value }));
+  };
+
+ const handleFileChange = (type: 'avatar' | 'banner', event: ChangeEvent<HTMLInputElement>) => {
+     const file = event.target.files?.[0];
+     if (file) {
+         const fieldKey = type === 'avatar' ? 'avatarFile' : 'bannerFile';
+         const previewKey = type === 'avatar' ? 'avatarPreview' : 'bannerPreview';
+         setEditData(prev => ({ ...prev, [fieldKey]: file }));
+
+         // Generate preview
+         const reader = new FileReader();
+         reader.onloadend = () => {
+             setEditData(prev => ({ ...prev, [previewKey]: reader.result as string }));
+         };
+         reader.readAsDataURL(file);
+     }
+ };
+
+ const handleSaveChanges = async () => {
+     if (!userProfile) return;
+     setLoadingProfile(true); // Indicate saving process
+     console.log("Saving profile changes...", editData);
+
+     try {
+         // --- Simulate Save Logic ---
+         // 1. Upload avatarFile if it exists (e.g., to Firebase Storage)
+         //    Get the new avatarUrl
+         let newAvatarUrl = editData.avatarPreview; // Use preview initially
+         if (editData.avatarFile) {
+             // Replace with your actual upload function
+             // newAvatarUrl = await uploadFile(editData.avatarFile, `avatars/${userProfile.userId}`);
+             await new Promise(resolve => setTimeout(resolve, 500)); // Simulate upload delay
+             console.log("Simulated avatar upload complete.");
+             // Keep the local preview URL for immediate UI update
+         }
+
+         // 2. Upload bannerFile if it exists
+         let newBannerUrl = editData.bannerPreview;
+         if (editData.bannerFile) {
+             // newBannerUrl = await uploadFile(editData.bannerFile, `banners/${userProfile.userId}`);
+             await new Promise(resolve => setTimeout(resolve, 500)); // Simulate upload delay
+             console.log("Simulated banner upload complete.");
+         }
+
+         // 3. Update user profile data in your database (e.g., Firestore)
+         const updatedProfileData: Partial<UserProfileData> = {
+             username: editData.username,
+             bio: editData.bio,
+             status: editData.status,
+             avatarUrl: newAvatarUrl,
+             bannerUrl: newBannerUrl,
+         };
+         // await updateFirestoreDocument(`users/${userProfile.userId}`, updatedProfileData);
+         await new Promise(resolve => setTimeout(resolve, 500)); // Simulate DB update delay
+         console.log("Simulated DB update complete.");
+         // --- End Simulate Save Logic ---
+
+         // Update local state with saved data
+          setUserProfile(prev => prev ? {
+              ...prev,
+              username: editData.username,
+              bio: editData.bio,
+              status: editData.status,
+              avatarUrl: newAvatarUrl, // Use the potentially updated URLs
+              bannerUrl: newBannerUrl,
+          } : null);
+
+         setIsEditing(false); // Exit edit mode
+         toast({
+             title: "Profile Updated",
+             description: "Your profile has been successfully updated.",
+             variant: "default",
+         });
+     } catch (error) {
+         console.error("Failed to save profile changes:", error);
+         toast({
+             title: "Save Error",
+             description: "Could not save profile changes. Please try again.",
+             variant: "destructive",
+         });
+     } finally {
+         setLoadingProfile(false);
+     }
+ };
+
+
+  // Render Lists Function (using UserListItemFetcher)
   const renderList = (
-    items: UserListItemFetcherProps[],
+    items: UserListItemData[],
     emptyMessage: string
   ) => {
     if (!items || items.length === 0) {
@@ -305,9 +445,8 @@ export default function ProfilePage() {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
         {items.map((item) => (
-           // Key must be unique across all lists if they render simultaneously, hence type-id
           <UserListItemFetcher
-             key={`${item.type}-${item.id}`}
+             key={`${item.type}-${item.id}`} // Ensure unique key
              id={item.id}
              type={item.type}
              userStatus={item.userStatus}
@@ -320,7 +459,7 @@ export default function ProfilePage() {
   };
 
 
-  if (loadingProfile) {
+  if (loadingProfile && !userProfile) { // Show full skeleton only on initial load
     return (
       <div className="container mx-auto px-4 py-8 animate-pulse">
         <Card className="mb-8 glass overflow-hidden border-primary/20 shadow-lg">
@@ -383,46 +522,123 @@ export default function ProfilePage() {
       <Card className="mb-8 glass overflow-hidden border-primary/20 shadow-xl">
         {/* Banner Image */}
         <div className="relative h-36 md:h-48 bg-gradient-to-br from-primary/80 via-purple-600/70 to-pink-600/70">
-          {userProfile.bannerUrl ? (
-             <Image src={userProfile.bannerUrl} alt={`${userProfile.username}'s banner`} layout="fill" objectFit="cover" className="opacity-70"/>
+          {/* Banner Image or Placeholder */}
+          {editData.bannerPreview ? (
+             <Image src={editData.bannerPreview} alt={`${editData.username}'s banner`} layout="fill" objectFit="cover" className="opacity-70"/>
           ) : (
               <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-purple-600/70 to-pink-600/70"></div>
+          )}
+          {/* Edit Banner Button */}
+          {isEditing && (
+              <div className="absolute bottom-2 right-2 z-20">
+                 <Input
+                    id="banner-upload"
+                    type="file"
+                    accept="image/png, image/jpeg, image/gif"
+                    onChange={(e) => handleFileChange('banner', e)}
+                    className="hidden"
+                  />
+                 <Label htmlFor="banner-upload">
+                    <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50 cursor-pointer" asChild>
+                        <span><Camera className="h-4 w-4 text-white"/></span>
+                    </Button>
+                  </Label>
+              </div>
           )}
            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm"></div> {/* Overlay */}
 
            {/* Avatar & Name - Positioned lower */}
           <div className="absolute bottom-[-50px] left-4 md:left-6 flex items-end gap-4 z-10">
-            <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-background shadow-xl transition-transform hover:scale-105">
-               {userProfile.avatarUrl ? (
-                  <AvatarImage src={userProfile.avatarUrl} alt={userProfile.username} />
-               ) : (
-                    <AvatarFallback className="text-2xl md:text-3xl">{userProfile.username.slice(0, 2).toUpperCase()}</AvatarFallback>
-               )}
-            </Avatar>
+             <div className="relative group">
+                <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-background shadow-xl transition-transform hover:scale-105">
+                   {editData.avatarPreview ? (
+                      <AvatarImage src={editData.avatarPreview} alt={editData.username} />
+                   ) : (
+                        <AvatarFallback className="text-2xl md:text-3xl">{editData.username.slice(0, 2).toUpperCase()}</AvatarFallback>
+                   )}
+                </Avatar>
+                {/* Edit Avatar Button (visible in edit mode) */}
+                {isEditing && (
+                     <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-full transition-opacity duration-300 cursor-pointer">
+                         <Input
+                            id="avatar-upload"
+                            type="file"
+                            accept="image/png, image/jpeg, image/gif"
+                            onChange={(e) => handleFileChange('avatar', e)}
+                            className="hidden"
+                          />
+                         <Label htmlFor="avatar-upload" className="cursor-pointer">
+                            <Camera className="h-6 w-6 text-white"/>
+                         </Label>
+                     </div>
+                 )}
+             </div>
              <div className="pb-2 md:pb-3"> {/* Adjusted padding */}
-                <h1 className="text-xl md:text-2xl font-bold text-white" style={{textShadow: '1px 1px 3px rgba(0,0,0,0.6)'}}>{userProfile.username}</h1>
-                 <p className="text-xs md:text-sm text-gray-300" style={{textShadow: '1px 1px 2px rgba(0,0,0,0.5)'}}>{userProfile.status || 'No status set'}</p> {/* Display status */}
+                 {isEditing ? (
+                     <Input
+                         value={editData.username}
+                         onChange={(e) => handleEditChange('username', e.target.value)}
+                         className="text-xl md:text-2xl font-bold text-white bg-transparent border-none p-0 h-auto focus:ring-0 placeholder-gray-300"
+                         style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.6)' }}
+                         placeholder="Username"
+                     />
+                 ) : (
+                     <h1 className="text-xl md:text-2xl font-bold text-white" style={{ textShadow: '1px 1px 3px rgba(0,0,0,0.6)' }}>{userProfile.username}</h1>
+                 )}
+                  {isEditing ? (
+                       <Input
+                           value={editData.status}
+                           onChange={(e) => handleEditChange('status', e.target.value)}
+                           className="text-xs md:text-sm text-gray-300 bg-transparent border-none p-0 h-auto focus:ring-0 placeholder-gray-400 mt-1"
+                           style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}
+                           placeholder="Set your status..."
+                           maxLength={60}
+                       />
+                  ) : (
+                       <p className="text-xs md:text-sm text-gray-300" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.5)' }}>{userProfile.status || 'No status set'}</p>
+                  )}
              </div>
           </div>
-           {/* Action Buttons */}
+           {/* Action Buttons (Top Right) */}
            <div className="absolute top-3 right-3 flex gap-2 z-10">
-               <Link href="/settings" passHref legacyBehavior>
-                    <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50">
-                       <Settings className="h-4 w-4 text-white"/>
-                       <span className="sr-only">Settings</span>
-                   </Button>
-               </Link>
-               <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50">
-                  <Edit2 className="h-4 w-4 text-white"/>
-                  <span className="sr-only">Edit Profile</span>
-              </Button>
+                {!isEditing ? (
+                   <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50" onClick={handleEditToggle}>
+                      <Edit2 className="h-4 w-4 text-white"/>
+                      <span className="sr-only">Edit Profile</span>
+                  </Button>
+                ) : (
+                    <>
+                        <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-green-600/70 border-white/30 hover:bg-green-500/70" onClick={handleSaveChanges} disabled={loadingProfile}>
+                           {loadingProfile ? <Loader2 className="h-4 w-4 text-white animate-spin"/> : <Save className="h-4 w-4 text-white"/>}
+                           <span className="sr-only">Save Changes</span>
+                        </Button>
+                        <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-red-600/70 border-white/30 hover:bg-red-500/70" onClick={handleEditToggle} disabled={loadingProfile}>
+                           <X size={16} className="text-white"/>
+                           <span className="sr-only">Cancel Edit</span>
+                        </Button>
+                    </>
+                )}
+                <Link href="/settings" passHref legacyBehavior>
+                     <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50">
+                        <Settings className="h-4 w-4 text-white"/>
+                        <span className="sr-only">Settings</span>
+                    </Button>
+                </Link>
            </div>
         </div>
          {/* Content below banner, starting after avatar */}
         <CardContent className="p-4 md:p-6 pt-16 md:pt-20"> {/* Increased top padding */}
            {/* Bio */}
-            {userProfile.bio && (
-                 <p className="text-sm text-muted-foreground mb-4 border-l-2 border-primary pl-3 italic">{userProfile.bio}</p>
+            {isEditing ? (
+                <Textarea
+                     value={editData.bio}
+                     onChange={(e) => handleEditChange('bio', e.target.value)}
+                     placeholder="Tell everyone a little about yourself..."
+                     className="text-sm text-muted-foreground mb-4 border-l-2 border-primary pl-3 italic glass"
+                     maxLength={190}
+                />
+            ) : (
+                 userProfile.bio && <p className="text-sm text-muted-foreground mb-4 border-l-2 border-primary pl-3 italic">{userProfile.bio}</p>
             )}
 
            {/* Stats */}
@@ -486,11 +702,6 @@ export default function ProfilePage() {
                 </CardHeader>
                 <CardContent>
                      <p className="text-center text-muted-foreground mt-8 py-6">Activity feed coming soon!</p>
-                    {/* Placeholder for activity items */}
-                    {/* <div className="space-y-3">
-                        {dummyActivity.map(item => <ActivityItem key={item.id} item={item} />)}
-                        {dummyActivity.length === 0 && ( <p className="text-center text-muted-foreground mt-8 py-6">No recent activity.</p> )}
-                    </div> */}
                 </CardContent>
             </Card>
          </TabsContent>
@@ -503,7 +714,7 @@ export default function ProfilePage() {
                 </CardHeader>
                  <CardContent>
                     {renderList(
-                        userProfile.watchlistIds.map(item => ({ ...item, type: 'anime' })), // Add type
+                        userProfile.watchlistIds, // Pass directly, type is included
                         "Your watchlist is empty. Add some anime!"
                      )}
                  </CardContent>
@@ -518,7 +729,7 @@ export default function ProfilePage() {
                  </CardHeader>
                  <CardContent>
                      {renderList(
-                         userProfile.readlistIds.map(item => ({ ...item, type: 'manga' })), // Add type
+                         userProfile.readlistIds, // Pass directly, type is included
                          "Your readlist is empty. Add some manga!"
                       )}
                 </CardContent>
@@ -533,7 +744,7 @@ export default function ProfilePage() {
                  </CardHeader>
                  <CardContent>
                       {renderList(
-                          userProfile.favoriteIds.map(item => ({ ...item, userStatus: 'Favorited' })), // Add userStatus for card display
+                          userProfile.favoriteIds, // Pass directly, type is included
                           "You haven't added any favorites yet."
                        )}
                  </CardContent>
@@ -544,7 +755,7 @@ export default function ProfilePage() {
   );
 }
 
-// Basic text shadow utility class
+// Basic text shadow utility class (add to globals.css or keep here if specific)
 const styles = `
   .shadow-text {
     text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
@@ -557,5 +768,3 @@ if (typeof window !== 'undefined') {
   styleSheet.innerText = styles;
   document.head.appendChild(styleSheet);
 }
-
-    
