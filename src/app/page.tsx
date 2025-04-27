@@ -26,39 +26,21 @@ type RecommendationItem = (Anime | Manga) & {
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-// Helper function to fetch details sequentially with delays
-async function fetchDetailsWithDelay<T extends Anime | Manga>(
-    items: T[],
-    fetchFunction: (id: number) => Promise<T | null>,
-    itemType: 'anime' | 'manga',
-    delayMs = 250 // Adjust delay as needed (e.g., 250ms between calls)
-): Promise<RecommendationItem[]> {
-    const results: RecommendationItem[] = [];
-    for (const item of items) {
-        try {
-            const details = await fetchFunction(item.mal_id);
-            if (details) {
-                results.push({ ...details, id: details.mal_id, type: itemType, description: details.synopsis });
-            }
-        } catch (err) {
-             console.warn(`Could not fetch details for ${itemType} "${item.title}" (ID: ${item.mal_id}) from Jikan:`, err);
-        }
-        await delay(delayMs); // Wait before the next call
-    }
-    return results;
-}
-
 // Helper function to fetch details based on title sequentially with delays
 async function fetchDetailsByTitleWithDelay(
     titles: string[],
-    fetchFunction: (genre?: string | number, year?: number, minScore?: number, search?: string) => Promise<AnimeResponse | MangaResponse>,
+    fetchFunction: (genre?: string | number, year?: number, minScore?: number, search?: string, status?: string, page?: number, sort?: string) => Promise<AnimeResponse | MangaResponse>,
     itemType: 'anime' | 'manga',
-    delayMs = 250 // Adjust delay as needed
+    delayMs = 400 // Adjusted delay for Jikan
 ): Promise<RecommendationItem[]> {
     const results: RecommendationItem[] = [];
-    for (const title of titles) {
+    // Ensure unique titles before fetching to avoid redundant calls
+    const uniqueTitles = Array.from(new Set(titles));
+
+    for (const title of uniqueTitles) {
         try {
-            const response = await fetchFunction(undefined, undefined, undefined, title);
+            // Fetch page 1, limit handled by service, sort by relevance (default for search)
+            const response = await fetchFunction(undefined, undefined, undefined, title, undefined, 1);
             let firstMatch: Anime | Manga | null = null;
             if ('animes' in response && response.animes.length > 0) {
                 firstMatch = response.animes[0];
@@ -67,6 +49,7 @@ async function fetchDetailsByTitleWithDelay(
             }
 
             if (firstMatch) {
+                // Ensure id is mapped correctly from mal_id
                 results.push({ ...firstMatch, id: firstMatch.mal_id, type: itemType, description: firstMatch.synopsis });
             } else {
                  console.warn(`Could not fetch details for ${itemType} "${title}" from Jikan.`);
@@ -122,16 +105,29 @@ export default function Home() {
              const animeTitles = aiOutput.animeRecommendations || [];
              const mangaTitles = aiOutput.mangaRecommendations || [];
 
+             // Fetch details
              const animeResults = await fetchDetailsByTitleWithDelay(animeTitles, getAnimes, 'anime');
              await delay(500); // Optional extra delay between fetching anime and manga details
              const mangaResults = await fetchDetailsByTitleWithDelay(mangaTitles, getMangas, 'manga');
 
-             // Combine valid results
+             // Combine results
              const combinedResults: RecommendationItem[] = [...animeResults, ...mangaResults];
 
-             // Shuffle results if desired
-             combinedResults.sort(() => Math.random() - 0.5);
-             setRecommendedContent(combinedResults.slice(0, 8)); // Limit displayed AI recommendations
+             // --- Filter for unique items based on type and id ---
+             const uniqueResultsMap = new Map<string, RecommendationItem>();
+             combinedResults.forEach(item => {
+                 const uniqueKey = `${item.type}-${item.id}`; // Use type and mal_id (mapped to id)
+                 if (!uniqueResultsMap.has(uniqueKey)) {
+                     uniqueResultsMap.set(uniqueKey, item);
+                 }
+             });
+             const uniqueRecommendedContent = Array.from(uniqueResultsMap.values());
+
+             // Shuffle results if desired (apply to unique results)
+             uniqueRecommendedContent.sort(() => Math.random() - 0.5);
+
+             setRecommendedContent(uniqueRecommendedContent.slice(0, 8)); // Limit displayed AI recommendations
+
 
         } else if (!errorRecommendations) {
              // No recommendations from AI, or AI failed gracefully
@@ -144,9 +140,9 @@ export default function Home() {
         try {
            // Fetch trending using Jikan services (default sort is popularity)
            // Fetch them sequentially to further reduce burst load
-           const trendingAnimeResponse = await getAnimes();
-           await delay(250); // Delay between trending fetches
-           const trendingMangaResponse = await getMangas();
+           const trendingAnimeResponse = await getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity');
+           await delay(400); // Delay between trending fetches
+           const trendingMangaResponse = await getMangas(undefined, undefined, undefined, undefined, 1, 'popularity');
 
            setTrendingAnime(trendingAnimeResponse.animes.slice(0, 6));
            setTrendingManga(trendingMangaResponse.mangas.slice(0, 6));
@@ -184,8 +180,8 @@ export default function Home() {
              fill
              sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
              className="object-cover transition-transform duration-300 group-hover:scale-105"
-             priority={false}
-             unoptimized={false} // Keep this false unless specific optimization needed and host is configured
+             priority={false} // Keep false unless critical LCP element
+             unoptimized={false} // Only set true if image host is explicitly NOT optimized
            />
           ) : (
            <div className="absolute inset-0 bg-muted flex items-center justify-center">
@@ -211,9 +207,9 @@ export default function Home() {
              <span className="flex items-center gap-1">
                  <Star size={12} className={item.score ? 'text-yellow-400' : ''}/> {item.score?.toFixed(1) ?? 'N/A'}
              </span>
-             {/* Link using MAL ID */}
+             {/* Link using MAL ID (stored in item.id) */}
              <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
-                 <Link href={`/${item.type}/${item.mal_id}`}> {/* Use mal_id */}
+                 <Link href={`/${item.type}/${item.id}`}> {/* Use item.id which is mal_id */}
                      View Details
                  </Link>
              </Button>
@@ -274,6 +270,7 @@ export default function Home() {
              ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`rec-skel-${index}`} />)
              : recommendedContent.length > 0
                ? recommendedContent.map((item) => (
+                 // Ensure unique key using type and id (mal_id)
                  <ItemCard key={`${item.type}-${item.id}`} item={item} />
                ))
                : !errorRecommendations && <p className="col-span-full text-center text-muted-foreground py-5">Nami couldn't find any specific recommendations right now, or failed to fetch details.</p>
@@ -302,7 +299,8 @@ export default function Home() {
                {loadingTrending
                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-anime-skel-${index}`} />)
                  : trendingAnime.length > 0
-                    ? trendingAnime.map((item) => <ItemCard key={`trending-anime-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis }} />)
+                    // Map Anime to RecommendationItem structure for the card
+                    ? trendingAnime.map((item) => <ItemCard key={`trending-anime-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis, type: 'anime' }} />)
                     : !errorTrending && <p className="col-span-full text-center text-muted-foreground py-5">No trending anime found.</p>
                }
            </div>
@@ -329,7 +327,8 @@ export default function Home() {
                {loadingTrending
                  ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-manga-skel-${index}`} />)
                  : trendingManga.length > 0
-                    ? trendingManga.map((item) => <ItemCard key={`trending-manga-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis }} />)
+                    // Map Manga to RecommendationItem structure for the card
+                    ? trendingManga.map((item) => <ItemCard key={`trending-manga-${item.mal_id}`} item={{...item, id: item.mal_id, description: item.synopsis, type: 'manga' }} />)
                     : !errorTrending && <p className="col-span-full text-center text-muted-foreground py-5">No trending manga found.</p>
                 }
            </div>
