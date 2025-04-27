@@ -23,6 +23,12 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 's4.anilist.co', // Add AniList image hostname
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // Add webpack configuration to handle server-only modules
