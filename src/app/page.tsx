@@ -1,3 +1,4 @@
+
 'use client'; // Mark as client component for state and effects
 
 import { useState, useEffect } from 'react';
@@ -9,121 +10,180 @@ import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 import { aiDrivenHomepage, AIDrivenHomepageOutput } from '@/ai/flows/ai-driven-homepage'; // Import the Genkit flow
 import { getAnimes, Anime } from '@/services/anime'; // Import anime service
 import { getMangas, Manga } from '@/services/manga'; // Import manga service
-import { Sparkles } from 'lucide-react';
+import { Sparkles, AlertCircle, Tv, BookText } from 'lucide-react'; // Import icons
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
 
-// Define types for combined recommendations
-type RecommendationItem = (Anime | Manga) & { type: 'anime' | 'manga' };
+// Define types for combined recommendations from AniList
+type RecommendationItem = (Partial<Anime> & Partial<Manga>) & {
+  id: number | string; // ID can be number (AniList) or string (fallback/placeholder)
+  title: string;
+  type: 'anime' | 'manga';
+  imageUrl?: string | null;
+  description?: string | null;
+};
 
 export default function Home() {
   const [recommendations, setRecommendations] = useState<AIDrivenHomepageOutput | null>(null);
   const [recommendedContent, setRecommendedContent] = useState<RecommendationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [trendingAnime, setTrendingAnime] = useState<Anime[]>([]);
+  const [trendingManga, setTrendingManga] = useState<Manga[]>([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
 
   useEffect(() => {
-    const fetchRecommendations = async () => {
+    const fetchInitialData = async () => {
       setLoading(true);
+      setLoadingTrending(true);
       setError(null);
+
       try {
-        // TODO: Replace with actual user data
+        // TODO: Replace with actual user data (e.g., from context or auth)
         const userProfile = "Loves action and fantasy anime, recently watched Attack on Titan. Enjoys ongoing manga series.";
         const currentMood = "Excited";
 
-        const aiOutput = await aiDrivenHomepage({ userProfile, currentMood });
-        setRecommendations(aiOutput);
+        // Fetch AI recommendations and trending data concurrently
+        const [aiOutput, initialAnime, initialManga] = await Promise.all([
+          aiDrivenHomepage({ userProfile, currentMood }),
+          getAnimes(), // Fetch trending anime
+          getMangas(), // Fetch trending manga
+        ]);
 
-        // Fetch details for recommended titles
-        const animePromises = aiOutput.animeRecommendations.map(title =>
-          getAnimes().then(animes => animes.find(a => a.title === title))
-        );
-        const mangaPromises = aiOutput.mangaRecommendations.map(title =>
-          getMangas().then(mangas => mangas.find(m => m.title === title))
-        );
+        setRecommendations(aiOutput);
+        setTrendingAnime(initialAnime.slice(0, 6)); // Show 6 trending anime
+        setTrendingManga(initialManga.slice(0, 6)); // Show 6 trending manga
+        setLoadingTrending(false);
+
+        // Prepare lists of titles to search for details
+        const animeTitles = aiOutput.animeRecommendations || [];
+        const mangaTitles = aiOutput.mangaRecommendations || [];
+
+        // Fetch details for recommended titles from AniList (using search)
+        const animePromises = animeTitles.map(title => getAnimes(undefined, undefined, undefined, title).then(results => results[0])); // Get the first result
+        const mangaPromises = mangaTitles.map(title => getMangas(undefined, undefined, title).then(results => results[0])); // Get the first result
 
         const [animeResults, mangaResults] = await Promise.all([
           Promise.all(animePromises),
           Promise.all(mangaPromises),
         ]);
 
-        const combinedResults: RecommendationItem[] = [
-          ...(animeResults.filter(a => a) as Anime[]).map(a => ({ ...a, type: 'anime' })),
-          ...(mangaResults.filter(m => m) as Manga[]).map(m => ({ ...m, type: 'manga' })),
-        ];
+        // Combine results, handling cases where a title might not be found
+        const combinedResults: RecommendationItem[] = [];
+        animeResults.forEach((anime, index) => {
+          if (anime) {
+            combinedResults.push({ ...anime, type: 'anime' });
+          } else {
+             // Fallback if anime not found by title search
+             combinedResults.push({ id: `anime-fallback-${index}`, title: animeTitles[index], type: 'anime' });
+          }
+        });
+        mangaResults.forEach((manga, index) => {
+          if (manga) {
+            combinedResults.push({ ...manga, type: 'manga' });
+          } else {
+              // Fallback if manga not found by title search
+              combinedResults.push({ id: `manga-fallback-${index}`, title: mangaTitles[index], type: 'manga' });
+          }
+        });
 
-        // Shuffle results for variety
+
+        // Shuffle AI recommended results for variety
         combinedResults.sort(() => Math.random() - 0.5);
 
         setRecommendedContent(combinedResults);
 
-      } catch (err) {
-        console.error("Failed to fetch recommendations:", err);
-        setError("Couldn't load recommendations. Please try again later.");
-        // Fallback: Load generic popular items
-        try {
-          const [animes, mangas] = await Promise.all([getAnimes(), getMangas()]);
-          const fallbackContent: RecommendationItem[] = [
-            ...animes.slice(0, 3).map(a => ({ ...a, type: 'anime' })),
-            ...mangas.slice(0, 3).map(m => ({ ...m, type: 'manga' })),
-          ].sort(() => Math.random() - 0.5);
-           setRecommendedContent(fallbackContent);
-        } catch (fallbackErr) {
-           console.error("Failed to fetch fallback content:", fallbackErr);
-           setError("Failed to load any content.");
+      } catch (err: any) {
+        console.error("Failed to fetch recommendations or trending data:", err);
+        setError(err.message || "Couldn't load recommendations or trending content.");
+        // Attempt to load just trending if AI fails
+        if (!trendingAnime.length || !trendingManga.length) {
+             try {
+                 const [animes, mangas] = await Promise.all([getAnimes(), getMangas()]);
+                 setTrendingAnime(animes.slice(0, 6));
+                 setTrendingManga(mangas.slice(0, 6));
+             } catch (fallbackErr) {
+                 console.error("Failed to fetch any content:", fallbackErr);
+                 setError("Failed to load any content. Please try again later.");
+             } finally {
+                  setLoadingTrending(false);
+             }
         }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchRecommendations();
-  }, []);
+    fetchInitialData();
+  }, []); // Empty dependency array ensures this runs once on mount
 
-  const RecommendationCard = ({ item }: { item: RecommendationItem }) => (
-     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group">
-      <CardHeader className="p-0 relative h-48 md:h-64">
-        <Image
-          src={item.imageUrl || 'https://picsum.photos/400/600?grayscale'} // Use placeholder if no image
-          alt={item.title}
-          fill // Replace layout="fill"
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw" // Add sizes prop
-          className="object-cover transition-transform duration-300 group-hover:scale-110" // Replace objectFit with object-cover
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-         <div className="absolute bottom-2 left-2 right-2">
-           <CardTitle className="text-lg font-semibold text-primary-foreground line-clamp-2">{item.title}</CardTitle>
+  const ItemCard = ({ item, type }: { item: (Anime | Manga | RecommendationItem), type: 'anime' | 'manga' }) => (
+     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.03] group flex flex-col h-full">
+      <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden"> {/* Aspect ratio */}
+         {item.imageUrl ? (
+           <Image
+             src={item.imageUrl}
+             alt={item.title}
+             fill
+             sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw"
+             className="object-cover transition-transform duration-300 group-hover:scale-105"
+             priority={false} // Lower priority for items further down
+           />
+          ) : (
+           <div className="absolute inset-0 bg-muted flex items-center justify-center">
+              {type === 'anime' ? <Tv className="w-16 h-16 text-muted-foreground opacity-50" /> : <BookText className="w-16 h-16 text-muted-foreground opacity-50" />}
+           </div>
+          )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" />
+         <div className="absolute bottom-2 left-3 right-3">
+           <CardTitle className="text-md font-semibold text-primary-foreground line-clamp-2 shadow-text">
+             {item.title}
+           </CardTitle>
          </div>
       </CardHeader>
-      <CardContent className="p-4">
-        <CardDescription className="text-sm text-muted-foreground line-clamp-3 mb-3">
-           {item.description}
-         </CardDescription>
-        <div className="flex justify-between items-center">
-           <span className="text-xs font-medium uppercase text-primary">
-             {item.type}
-           </span>
-           <Button variant="link" size="sm" asChild>
-              <Link href={`/${item.type}/${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
-                 View Details
-              </Link>
-           </Button>
-        </div>
+      <CardContent className="p-3 flex flex-col flex-grow"> {/* Use ItemCard for all */}
+         {item.description && (
+              <CardDescription className="text-xs text-muted-foreground line-clamp-3 mb-3 flex-grow">
+                {item.description}
+              </CardDescription>
+          )}
+           {!item.description && <div className="flex-grow mb-3"></div>} {/* Placeholder if no description */}
+
+         <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto">
+            <Badge variant="outline" className="capitalize">{type}</Badge>
+             {/* Only show details link if item has an ID (meaning it was found in AniList) */}
+             {'id' in item && typeof item.id === 'number' && (
+                  <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
+                    <Link href={`/${type}/${item.id}-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
+                        View Details
+                    </Link>
+                </Button>
+             )}
+             {(!('id' in item) || typeof item.id !== 'number') && (
+                 <span className="text-xs text-muted-foreground italic">Details unavailable</span>
+              )}
+         </div>
       </CardContent>
      </Card>
   );
 
  const SkeletonCard = () => (
-    <Card className="overflow-hidden glass">
-       <CardHeader className="p-0 h-48 md:h-64">
+    <Card className="overflow-hidden glass flex flex-col h-full">
+       <CardHeader className="p-0 relative aspect-[2/3] w-full">
           <Skeleton className="h-full w-full" />
        </CardHeader>
-       <CardContent className="p-4 space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-5/6" />
-          <div className="flex justify-between items-center pt-2">
-             <Skeleton className="h-3 w-1/4" />
-             <Skeleton className="h-6 w-1/3" />
-          </div>
+       <CardContent className="p-3 space-y-2 flex flex-col flex-grow">
+          <Skeleton className="h-4 w-3/4" /> {/* Title */}
+           <div className="flex gap-1.5 mb-1 flex-wrap"> {/* Placeholder for badges/genres */}
+              <Skeleton className="h-4 w-12 rounded-full" />
+              <Skeleton className="h-4 w-16 rounded-full" />
+           </div>
+          <Skeleton className="h-3 w-full" /> {/* Desc line 1 */}
+          <Skeleton className="h-3 w-5/6" /> {/* Desc line 2 */}
+          <div className="flex-grow" /> {/* Spacer */}
+           <div className="flex justify-between items-center border-t border-border/50 pt-2 mt-auto"> {/* Footer */}
+              <Skeleton className="h-4 w-14" /> {/* Type Badge */}
+              <Skeleton className="h-5 w-1/4" /> {/* Button */}
+           </div>
        </CardContent>
     </Card>
  );
@@ -131,38 +191,93 @@ export default function Home() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* AI Recommendations Section */}
       <section className="mb-12">
-        <div className="flex items-center justify-between mb-4">
-           <h1 className="text-3xl font-bold flex items-center gap-2">
-             <Sparkles className="text-primary w-7 h-7" />
-             For You
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-2">
+           <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2 shrink-0">
+             <Sparkles className="text-primary w-6 h-6 md:w-7 md:h-7" />
+             Nami's Picks For You
            </h1>
             {recommendations?.reasoning && !loading && !error && (
-               <p className="text-sm text-muted-foreground italic hidden md:block">
-                   Nami AI: "{recommendations.reasoning}"
+               <p className="text-xs md:text-sm text-muted-foreground italic text-left sm:text-right border-l-2 border-primary pl-2 sm:border-l-0 sm:pl-0">
+                   "{recommendations.reasoning}"
                </p>
            )}
         </div>
-        {error && <p className="text-destructive text-center">{error}</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {error && !loading && (
+           <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error Loading Recommendations</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+           </Alert>
+        )}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
            {loading
-             ? Array.from({ length: 8 }).map((_, index) => <SkeletonCard key={index} />)
-             : recommendedContent.map((item) => (
-                 <RecommendationCard key={`${item.type}-${item.title}`} item={item} />
-               ))}
+             ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`rec-skel-${index}`} />)
+             : recommendedContent.length > 0
+               ? recommendedContent.map((item) => (
+                 <ItemCard key={`${item.type}-${item.id || item.title}`} item={item} type={item.type} />
+               ))
+               : !error && <p className="col-span-full text-center text-muted-foreground py-5">Nami couldn't find any specific recommendations right now.</p>
+            }
          </div>
       </section>
 
-       {/* TODO: Add more sections like "Trending Anime", "Popular Manga", "Community Uploads" */}
-       {/* Example Section */}
+       {/* Trending Anime Section */}
        <section className="mb-12">
-           <h2 className="text-2xl font-semibold mb-4">Trending Anime</h2>
-            {/* Placeholder for trending anime */}
-           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-               {Array.from({ length: 4 }).map((_, index) => <SkeletonCard key={`trending-${index}`} />)}
+           <div className="flex items-center justify-between mb-4">
+             <h2 className="text-2xl font-semibold flex items-center gap-2">
+                <Tv className="text-primary w-6 h-6"/> Trending Anime
+             </h2>
+             <Button variant="link" size="sm" asChild>
+                 <Link href="/anime">View All</Link>
+             </Button>
+           </div>
+           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+               {loadingTrending
+                 ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-anime-skel-${index}`} />)
+                 : trendingAnime.map((item) => <ItemCard key={`trending-${item.id}`} item={item} type="anime" />)
+               }
+               {!loadingTrending && trendingAnime.length === 0 && <p className="col-span-full text-center text-muted-foreground py-5">Could not load trending anime.</p>}
            </div>
        </section>
 
+       {/* Trending Manga Section */}
+       <section className="mb-12">
+            <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-semibold flex items-center gap-2">
+                    <BookText className="text-primary w-6 h-6"/> Trending Manga
+                </h2>
+                 <Button variant="link" size="sm" asChild>
+                    <Link href="/manga">View All</Link>
+                </Button>
+            </div>
+           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5">
+               {loadingTrending
+                 ? Array.from({ length: 6 }).map((_, index) => <SkeletonCard key={`trending-manga-skel-${index}`} />)
+                 : trendingManga.map((item) => <ItemCard key={`trending-${item.id}`} item={item} type="manga" />)
+                }
+                 {!loadingTrending && trendingManga.length === 0 && <p className="col-span-full text-center text-muted-foreground py-5">Could not load trending manga.</p>}
+           </div>
+       </section>
+
+       {/* TODO: Add Community Uploads Preview */}
+
     </div>
   );
+}
+
+
+// Basic text shadow utility class (add to globals.css or keep here if specific)
+const styles = `
+  .shadow-text {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+  }
+`;
+// Inject styles
+if (typeof window !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.type = "text/css";
+  styleSheet.innerText = styles;
+  document.head.appendChild(styleSheet);
 }

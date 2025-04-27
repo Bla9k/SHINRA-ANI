@@ -1,7 +1,11 @@
 /**
- * Represents an Anime.
+ * Represents an Anime based on AniList data structure.
  */
 export interface Anime {
+  /**
+   * The AniList ID of the anime.
+   */
+  id: number;
   /**
    * The title of the anime.
    */
@@ -13,103 +17,153 @@ export interface Anime {
   /**
    * The anime release year.
    */
-  releaseYear: number;
+  releaseYear: number | null; // Year can be null
   /**
-   * The anime rating.
+   * The anime average score (0-100). Rating will be this / 10.
    */
-  rating: number;
+  averageScore: number | null; // Score can be null
   /**
-   * The anime description.
+   * The anime rating (derived from averageScore).
    */
-  description: string;
+  rating: number | null;
   /**
-   * The anime image url.
+   * The anime description (HTML format).
    */
-  imageUrl: string;
+  description: string | null; // Description can be null
+  /**
+   * The anime cover image url.
+   */
+  imageUrl: string | null; // Image can be null
+   /**
+    * The anime status (e.g., RELEASING, FINISHED).
+    */
+   status: string | null;
+   /**
+    * Number of episodes.
+    */
+   episodes: number | null;
 }
 
+// AniList API endpoint
+const ANILIST_API_URL = 'https://graphql.anilist.co';
+
+// Basic GraphQL query to fetch trending anime with optional genre filter
+const ANIME_QUERY = `
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $search: String) {
+  Page(page: $page, perPage: $perPage) {
+    media(type: ANIME, sort: $sort, genre: $genre, search: $search, isAdult: false) {
+      id
+      title {
+        romaji
+        english
+        native
+      }
+      genres
+      startDate {
+        year
+      }
+      averageScore
+      description(asHtml: false)
+      coverImage {
+        large
+        extraLarge
+      }
+      status
+      episodes
+    }
+  }
+}
+`;
+
+// Helper function to map AniList response to our Anime interface
+const mapAniListDataToAnime = (media: any): Anime => {
+  const averageScore = media.averageScore;
+  const rating = averageScore ? parseFloat((averageScore / 10).toFixed(1)) : null; // Convert 0-100 to 0-10
+  return {
+    id: media.id,
+    title: media.title.english || media.title.romaji || media.title.native || 'Untitled', // Prioritize English title
+    genre: media.genres || [],
+    releaseYear: media.startDate?.year || null,
+    averageScore: averageScore,
+    rating: rating,
+    description: media.description || null,
+    imageUrl: media.coverImage?.extraLarge || media.coverImage?.large || null,
+    status: media.status || null,
+    episodes: media.episodes || null,
+  };
+};
+
+
 /**
- * Asynchronously retrieves anime with the given filters.
+ * Asynchronously retrieves anime from AniList with optional filters.
  *
  * @param genre The genre to filter animes on.
- * @param releaseYear The release year to filter animes on.
- * @param rating The rating to filter animes on.
+ * @param releaseYear The release year to filter animes on (Not directly supported by basic query, filtering done post-fetch).
+ * @param rating The minimum rating to filter animes on (0-10 scale, filtering done post-fetch).
+ * @param search Optional search term for the title.
  * @returns A promise that resolves to a list of Anime.
  */
 export async function getAnimes(
   genre?: string,
   releaseYear?: number,
-  rating?: number
+  rating?: number,
+  search?: string
 ): Promise<Anime[]> {
-  // TODO: Implement this by calling an API.
+  const variables = {
+    page: 1,
+    perPage: 40, // Fetch more items to allow for client-side filtering
+    sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'], // Sort by trending/popularity if no search
+    genre: genre || undefined, // Pass genre if provided
+    search: search || undefined, // Pass search term if provided
+  };
 
-  // Placeholder data
-  const allAnimes: Anime[] = [
-    {
-      title: 'Attack on Titan',
-      genre: ['Action', 'Drama', 'Fantasy', 'Mystery'],
-      releaseYear: 2013,
-      rating: 8.8,
-      description:
-        'After his hometown is destroyed, young Eren Yeager vows to cleanse the earth of the giant humanoid Titans that have brought humanity to the brink of extinction.',
-      imageUrl:
-        'https://m.media-amazon.com/images/M/MV5BNzc5MTczNDQtNDFjNi00ZDU5LWFkNzItOTE1NzQzMzdhNzE0XkEyXkFqcGdeQXVyNzEzNzYxMDA@._V1_.jpg',
-    },
-    {
-      title: 'One Piece',
-      genre: ['Adventure', 'Comedy', 'Action', 'Fantasy'],
-      releaseYear: 1999,
-      rating: 8.9, // Updated rating based on common consensus
-      description:
-        'Follows the adventures of Monkey D. Luffy and his pirate crew in order to find the greatest treasure ever left behind by the legendary Pirate, Gol D Roger. The famous mystery treasure is named "One Piece".', // Completed description
-      imageUrl:
-        'https://m.media-amazon.com/images/M/MV5BODcwNWE3OTMtMDc3MS00NDFjLWE1OTAtNDU3NjgxODMxY2UyXkEyXkFqcGdeQXVyNTAyODkwOQ@@._V1_FMjpg_UX1000_.jpg', // Found a more representative image URL
-    },
-    {
-      title: 'Jujutsu Kaisen',
-      genre: ['Action', 'Supernatural', 'Fantasy'],
-      releaseYear: 2020,
-      rating: 8.7,
-      description: 'A boy swallows a cursed talisman - the finger of a demon - and becomes cursed himself. He enters a shaman school to be able to locate the demon\'s other body parts and thus exorcise himself.',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BNGY4MTg3NzgtMmFkZi00NTg5LWExMmEtMWI3YzI1ODdmMWQ1XkEyXkFqcGdeQXVyMjQwMDg0Ng@@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      title: 'Spy x Family',
-      genre: ['Comedy', 'Action', 'Slice of Life'],
-      releaseYear: 2022,
-      rating: 8.6,
-      description: 'A spy on an undercover mission gets married and adopts a child, not realizing that the girl is a telepath, and the woman is an assassin.',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BMDIxMjY0YjgtYjA0MS00ZjY1LWIyZmUtNTIxMGYxMDg1NjQ5XkEyXkFqcGdeQXVyMzgxODM4NjM@._V1_.jpg'
-    },
-    {
-        title: 'Demon Slayer: Kimetsu no Yaiba',
-        genre: ['Action', 'Fantasy', 'Adventure'],
-        releaseYear: 2019,
-        rating: 8.7,
-        description: 'A family is attacked by demons and only two members survive - Tanjiro and his sister Nezuko, who is turning into a demon slowly. Tanjiro sets out to become a demon slayer to avenge his family and cure his sister.',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BZjZjNzI5MDctY2Y4YS00NmM4LTljMmItZTFkOTExNGI3ODRhXkEyXkFqcGdeQXVyNjc3MjQzNTI@._V1_FMjpg_UX1000_.jpg'
-    },
-     {
-        title: 'Fullmetal Alchemist: Brotherhood',
-        genre: ['Action', 'Adventure', 'Drama', 'Fantasy'],
-        releaseYear: 2009,
-        rating: 9.1,
-        description: 'Two brothers search for a Philosopher\'s Stone after an attempt to revive their deceased mother goes awry and leaves them in damaged physical forms.',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BZmEzN2YzOTItMDI5MS00MGU4LWI1NWQtOTg5ZThhNGQwYTEzXkEyXkFqcGdeQXVyNTA4NzY1MzY@._V1_FMjpg_UX1000_.jpg'
-    },
-  ];
+  try {
+    const response = await fetch(ANILIST_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query: ANIME_QUERY,
+        variables: variables,
+      }),
+       // Add cache control if needed, e.g., revalidate every hour
+      next: { revalidate: 3600 }
+    });
 
-  // Apply filters
-  let filteredAnimes = allAnimes;
-  if (genre) {
-    filteredAnimes = filteredAnimes.filter(anime => anime.genre.includes(genre));
-  }
-  if (releaseYear) {
-    filteredAnimes = filteredAnimes.filter(anime => anime.releaseYear === releaseYear);
-  }
-  if (rating) {
-    filteredAnimes = filteredAnimes.filter(anime => anime.rating >= rating);
-  }
+    if (!response.ok) {
+      console.error('AniList API response not OK:', response.status, response.statusText);
+       const errorBody = await response.text();
+       console.error('Error Body:', errorBody);
+      throw new Error(`AniList API request failed: ${response.status}`);
+    }
 
-  return filteredAnimes;
+    const jsonResponse = await response.json();
+
+    if (jsonResponse.errors) {
+      console.error('AniList API errors:', jsonResponse.errors);
+      throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
+    }
+
+    let animes = jsonResponse.data?.Page?.media?.map(mapAniListDataToAnime) || [];
+
+     // --- Client-side filtering (as basic query doesn't support all) ---
+     if (releaseYear) {
+       animes = animes.filter(anime => anime.releaseYear === releaseYear);
+     }
+     if (rating !== undefined && rating !== null) {
+       animes = animes.filter(anime => anime.rating !== null && anime.rating >= rating);
+     }
+     // Limit results after filtering if necessary
+     animes = animes.slice(0, 20); // Limit to 20 results after filtering
+
+    return animes;
+
+  } catch (error) {
+    console.error('Failed to fetch anime from AniList:', error);
+    // Return empty array or re-throw error based on desired behavior
+    return [];
+    // throw error; // Or re-throw the error
+  }
 }

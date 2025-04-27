@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getAnimes, Anime } from '@/services/anime'; // Import anime service
-import { Tv } from 'lucide-react'; // Icon for Anime
+import { getAnimes, Anime } from '@/services/anime'; // Import updated anime service
+import { Tv, Star, CalendarDays, Film, AlertCircle } from 'lucide-react'; // Icons
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"; // Import Alert components
 
 export default function AnimePage() {
   const [animeList, setAnimeList] = useState<Anime[]>([]);
@@ -21,11 +22,12 @@ export default function AnimePage() {
       setLoading(true);
       setError(null);
       try {
-        const animes = await getAnimes(); // Fetch all anime for now
+        // Fetch trending anime initially
+        const animes = await getAnimes(undefined, undefined, undefined);
         setAnimeList(animes);
-      } catch (err) {
+      } catch (err: any) {
         console.error("Failed to fetch anime:", err);
-        setError("Couldn't load anime list. Please try again later.");
+        setError(err.message || "Couldn't load anime list. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -34,34 +36,56 @@ export default function AnimePage() {
     fetchAnime();
   }, []);
 
-  // Reusable Card Component for Anime
+  // Reusable Card Component for Anime with enhanced details
   const AnimeCard = ({ item }: { item: Anime }) => (
-     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-105 group">
-      <CardHeader className="p-0 relative h-48 md:h-64">
-        <Image
-          src={item.imageUrl || 'https://picsum.photos/400/600?grayscale'}
-          alt={item.title}
-          fill
-          sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className="object-cover transition-transform duration-300 group-hover:scale-110"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-         <div className="absolute bottom-2 left-2 right-2">
-           <CardTitle className="text-lg font-semibold text-primary-foreground line-clamp-2">{item.title}</CardTitle>
+     <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.03] group flex flex-col h-full">
+      <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden"> {/* Aspect ratio for cover */}
+        {item.imageUrl ? (
+          <Image
+            src={item.imageUrl}
+            alt={item.title}
+            fill
+            sizes="(max-width: 640px) 90vw, (max-width: 768px) 45vw, (max-width: 1024px) 30vw, 23vw" // Responsive sizes
+            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            priority={false} // Only prioritize above-the-fold images if needed
+            unoptimized={false} // Let Next.js optimize images
+          />
+        ) : (
+           <div className="absolute inset-0 bg-muted flex items-center justify-center">
+              <Tv className="w-16 h-16 text-muted-foreground opacity-50" />
+           </div>
+         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none" /> {/* Darker gradient */}
+         <div className="absolute bottom-2 left-3 right-3">
+           <CardTitle className="text-md font-semibold text-primary-foreground line-clamp-2 shadow-text"> {/* Slightly smaller title */}
+             {item.title}
+           </CardTitle>
          </div>
       </CardHeader>
-      <CardContent className="p-4">
-         <div className="flex gap-1 mb-2 flex-wrap">
-           {item.genre.map(g => <Badge key={g} variant="secondary">{g}</Badge>)}
-           <Badge variant="outline">{item.releaseYear}</Badge>
-           <Badge variant="outline">⭐ {item.rating}</Badge>
+      <CardContent className="p-3 flex flex-col flex-grow"> {/* Reduced padding, flex-grow */}
+         <div className="flex gap-1.5 mb-2 flex-wrap"> {/* Increased gap */}
+           {item.genre.slice(0, 3).map(g => <Badge key={g} variant="secondary" className="text-xs">{g}</Badge>)} {/* Limit genres */}
          </div>
-        <CardDescription className="text-sm text-muted-foreground line-clamp-3 mb-3">
-           {item.description}
+        <CardDescription className="text-xs text-muted-foreground line-clamp-3 mb-3 flex-grow"> {/* Smaller text, flex-grow */}
+           {item.description || 'No description available.'}
          </CardDescription>
-        <div className="flex justify-end items-center">
-           <Button variant="link" size="sm" asChild>
-              <Link href={`/anime/${item.title.toLowerCase().replace(/\s+/g, '-')}`}>
+         {/* Additional Info Row */}
+         <div className="flex justify-between items-center text-xs text-muted-foreground border-t border-border/50 pt-2 mt-auto">
+           <span className="flex items-center gap-1">
+             <CalendarDays size={14} /> {item.releaseYear || 'N/A'}
+           </span>
+           <span className="flex items-center gap-1">
+              <Star size={14} className={item.rating ? 'text-yellow-400' : ''}/> {item.rating?.toFixed(1) ?? 'N/A'}
+            </span>
+           <span className="flex items-center gap-1">
+             <Film size={14} /> {item.episodes || 'N/A'} Ep
+           </span>
+         </div>
+         {/* View Details Button */}
+        <div className="flex justify-end mt-2">
+           <Button variant="link" size="sm" asChild className="text-xs p-0 h-auto">
+              {/* TODO: Update link based on anime ID or a slug */}
+              <Link href={`/anime/${item.id}-${item.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}>
                  View Details
               </Link>
            </Button>
@@ -70,22 +94,30 @@ export default function AnimePage() {
      </Card>
   );
 
- // Placeholder Skeleton Card
+ // Placeholder Skeleton Card with matching aspect ratio
  const SkeletonCard = () => (
-    <Card className="overflow-hidden glass">
-       <CardHeader className="p-0 h-48 md:h-64">
+    <Card className="overflow-hidden glass flex flex-col h-full">
+       <CardHeader className="p-0 relative aspect-[2/3] w-full">
           <Skeleton className="h-full w-full" />
        </CardHeader>
-       <CardContent className="p-4 space-y-2">
-          <Skeleton className="h-4 w-3/4" />
-           <div className="flex gap-1 mb-2 flex-wrap">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-12" />
-              <Skeleton className="h-4 w-10" />
+       <CardContent className="p-3 space-y-2 flex flex-col flex-grow">
+          <Skeleton className="h-4 w-3/4" /> {/* Title */}
+           <div className="flex gap-1.5 mb-1 flex-wrap"> {/* Genres */}
+              <Skeleton className="h-4 w-12 rounded-full" />
+              <Skeleton className="h-4 w-16 rounded-full" />
+              <Skeleton className="h-4 w-14 rounded-full" />
            </div>
-          <Skeleton className="h-3 w-full" />
-          <Skeleton className="h-3 w-5/6" />
-          <Skeleton className="h-6 w-1/3 float-right mt-2" />
+          <Skeleton className="h-3 w-full" /> {/* Description line 1 */}
+          <Skeleton className="h-3 w-5/6" /> {/* Description line 2 */}
+           <div className="flex-grow" /> {/* Pushes bottom content down */}
+           <div className="flex justify-between items-center border-t border-border/50 pt-2 mt-auto"> {/* Additional Info */}
+                <Skeleton className="h-3 w-10" />
+                <Skeleton className="h-3 w-8" />
+                <Skeleton className="h-3 w-12" />
+           </div>
+           <div className="flex justify-end mt-1"> {/* Button */}
+               <Skeleton className="h-5 w-1/4" />
+           </div>
        </CardContent>
     </Card>
  );
@@ -99,19 +131,47 @@ export default function AnimePage() {
              Browse Anime
            </h1>
             {/* TODO: Add Filtering/Sorting Options here */}
+            {/* Consider a Drawer or Popover for filters */}
             {/* <Button variant="outline">Filter</Button> */}
         </div>
-        {error && <p className="text-destructive text-center mb-4">{error}</p>}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+             <AlertCircle className="h-4 w-4" />
+             <AlertTitle>Error Loading Anime</AlertTitle>
+             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-5"> {/* Responsive grid with more columns */}
            {loading
-             ? Array.from({ length: 8 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />)
+             ? Array.from({ length: 12 }).map((_, index) => <SkeletonCard key={`skel-${index}`} />) // More skeletons
              : animeList.length > 0
                ? animeList.map((item) => (
-                 <AnimeCard key={item.title} item={item} />
+                 <AnimeCard key={item.id} item={item} /> // Use anime ID as key
                ))
-               : !error && <p className="text-center text-muted-foreground col-span-full mt-8">No anime found.</p>}
+               : !error && (
+                 <div className="col-span-full text-center py-10">
+                    <p className="text-muted-foreground">No anime found matching your criteria.</p>
+                    {/* Optionally add a button to clear filters */}
+                 </div>
+                )}
          </div>
       </section>
     </div>
   );
+}
+
+// Basic text shadow utility class (add to globals.css or keep here if specific)
+const styles = `
+  .shadow-text {
+    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+  }
+`;
+// Inject styles (consider moving to globals.css for cleaner approach)
+if (typeof window !== 'undefined') {
+  const styleSheet = document.createElement("style");
+  styleSheet.type = "text/css";
+  styleSheet.innerText = styles;
+  document.head.appendChild(styleSheet);
 }

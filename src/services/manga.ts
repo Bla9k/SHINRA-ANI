@@ -1,7 +1,11 @@
 /**
- * Represents a Manga.
+ * Represents a Manga based on AniList data structure.
  */
 export interface Manga {
+  /**
+   * The AniList ID of the manga.
+   */
+  id: number;
   /**
    * The title of the manga.
    */
@@ -11,83 +15,154 @@ export interface Manga {
    */
   genre: string[];
   /**
-   * The manga status.
+   * The manga status (e.g., RELEASING, FINISHED).
    */
-  status: string;
+  status: string | null; // Status can be null
   /**
-   * The manga description.
+   * The manga description (HTML format).
    */
-  description: string;
+  description: string | null; // Description can be null
   /**
-   * The manga image url.
+   * The manga cover image url.
    */
-  imageUrl: string;
+  imageUrl: string | null; // Image can be null
+   /**
+    * The manga average score (0-100).
+    */
+   averageScore: number | null;
+   /**
+    * Number of chapters.
+    */
+   chapters: number | null;
+   /**
+    * Number of volumes.
+    */
+   volumes: number | null;
+    /**
+    * The release year.
+    */
+   releaseYear: number | null;
 }
 
+// AniList API endpoint
+const ANILIST_API_URL = 'https://graphql.anilist.co';
+
+// Basic GraphQL query to fetch trending manga with optional genre/status filter
+const MANGA_QUERY = `
+query ($page: Int, $perPage: Int, $sort: [MediaSort], $genre: String, $status: MediaStatus, $search: String) {
+  Page(page: $page, perPage: $perPage) {
+    media(type: MANGA, sort: $sort, genre: $genre, status: $status, search: $search, isAdult: false) {
+      id
+      title {
+        romaji
+        english
+        native
+      }
+      genres
+      startDate {
+        year
+      }
+      averageScore
+      description(asHtml: false)
+      coverImage {
+        large
+        extraLarge
+      }
+      status
+      chapters
+      volumes
+    }
+  }
+}
+`;
+
+// Helper function to map AniList response to our Manga interface
+const mapAniListDataToManga = (media: any): Manga => {
+  return {
+    id: media.id,
+    title: media.title.english || media.title.romaji || media.title.native || 'Untitled',
+    genre: media.genres || [],
+    status: media.status || null,
+    description: media.description || null,
+    imageUrl: media.coverImage?.extraLarge || media.coverImage?.large || null,
+    averageScore: media.averageScore || null,
+    chapters: media.chapters || null,
+    volumes: media.volumes || null,
+    releaseYear: media.startDate?.year || null,
+  };
+};
+
 /**
- * Asynchronously retrieves mangas with the given filters.
+ * Asynchronously retrieves manga from AniList with optional filters.
  *
  * @param genre The genre to filter mangas on.
- * @param status The status to filter mangas on.
+ * @param status The status to filter mangas on (e.g., RELEASING, FINISHED, NOT_YET_RELEASED, CANCELLED, HIATUS).
+ * @param search Optional search term for the title.
  * @returns A promise that resolves to a list of Manga.
  */
 export async function getMangas(
   genre?: string,
-  status?: string
+  status?: string,
+  search?: string
 ): Promise<Manga[]> {
-  // TODO: Implement this by calling an API.
+  const variables: {
+      page: number;
+      perPage: number;
+      sort: string[];
+      genre?: string;
+      status?: string;
+      search?: string;
+    } = {
+    page: 1,
+    perPage: 40, // Fetch more for potential filtering
+    sort: search ? ['SEARCH_MATCH'] : ['TRENDING_DESC', 'POPULARITY_DESC'],
+    genre: genre || undefined,
+    // Map user-friendly status to AniList MediaStatus enum if needed
+    status: status ? status.toUpperCase().replace(' ', '_') : undefined, // Basic mapping
+    search: search || undefined,
+  };
 
-  // Placeholder data
-  const allMangas: Manga[] = [
-    {
-      title: 'Berserk',
-      genre: ['Action', 'Dark Fantasy', 'Adventure', 'Horror'],
-      status: 'Ongoing', // Note: Often on Hiatus
-      description:
-        'Guts, a former mercenary now known as the "Black Swordsman," is out for revenge. After a tumultuous childhood, he finally finds someone he respects and believes he can trust, only to have everything fall apart when this person takes away everything Guts cares about.',
-      imageUrl:
-        'https://m.media-amazon.com/images/M/MV5BNjRmY2NjZGEtOGU5Mi00NmFmLWE0ZDQtNzMxNjBkNWQ2MmNjXkEyXkFqcGdeQXVyNTAyODkwOQ@@._V1_.jpg',
-    },
-    {
-      title: 'Vagabond',
-      genre: ['Action', 'Adventure', 'Historical', 'Drama'],
-      status: 'Hiatus', // Often on Hiatus
-      description:
-        'Based on the novel "Musashi" by Eiji Yoshikawa, Vagabond follows the journey of Shinmen Takezou, later known as Miyamoto Musashi, as he strives to become the greatest swordsman under the sun.',
-      imageUrl:
-        'https://m.media-amazon.com/images/M/MV5BMjE5NzA4OTE5MV5BMl5BanBnXkFtZTcwMjU4NzYwNw@@._V1_FMjpg_UX1000_.jpg', // Fixed image URL
-    },
-    {
-      title: 'One Punch Man',
-      genre: ['Action', 'Comedy', 'Sci-Fi', 'Super Power'],
-      status: 'Ongoing',
-      description: 'The story of Saitama, a hero that does it just for fun & can defeat enemies with a single punch.',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BZjJlNzE5ZjItZWQyYy00MmFlLTg5YjktMzJiMzk5ZjIwYTEyXkEyXkFqcGdeQXVyMzgxODM4NjM@._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-      title: 'Chainsaw Man',
-      genre: ['Action', 'Dark Fantasy', 'Supernatural'],
-      status: 'Ongoing',
-      description: 'Following a betrayal, a young man left for dead is reborn as a powerful devil-human hybrid after merging with his pet devil and is soon enlisted into an organization dedicated to hunting devils.',
-      imageUrl: 'https://m.media-amazon.com/images/M/MV5BMzRmMGVkMzItMzA1ZS00ZGMxLTgzMzItNDRhODA1NGE5YTg5XkEyXkFqcGdeQXVyMTE0MTY2Mzk2._V1_FMjpg_UX1000_.jpg'
-    },
-    {
-        title: 'Monster',
-        genre: ['Mystery', 'Psychological', 'Thriller', 'Drama'],
-        status: 'Completed',
-        description: 'Dr. Kenzo Tenma, an elite neurosurgeon, is confronted with a series of suspicious deaths that intertwine with his past decision to save a young boy over the town\'s mayor.',
-        imageUrl: 'https://m.media-amazon.com/images/M/MV5BZmJhZTMyYWUtMTVlZS00OTQ5LTg0MzItMDIwMWIzZmRjNTAxXkEyXkFqcGdeQXVyNjc2NjA5MTU@._V1_FMjpg_UX1000_.jpg'
-    },
-  ];
 
-  // Apply filters
-  let filteredMangas = allMangas;
-  if (genre) {
-    filteredMangas = filteredMangas.filter(manga => manga.genre.includes(genre));
+  try {
+    const response = await fetch(ANILIST_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({
+        query: MANGA_QUERY,
+        variables: variables,
+      }),
+       // Add cache control if needed, e.g., revalidate every hour
+      next: { revalidate: 3600 }
+    });
+
+     if (!response.ok) {
+      console.error('AniList API response not OK:', response.status, response.statusText);
+      const errorBody = await response.text();
+      console.error('Error Body:', errorBody);
+      throw new Error(`AniList API request failed: ${response.status}`);
+     }
+
+    const jsonResponse = await response.json();
+
+     if (jsonResponse.errors) {
+       console.error('AniList API errors:', jsonResponse.errors);
+       throw new Error(`AniList API errors: ${jsonResponse.errors.map((e: any) => e.message).join(', ')}`);
+     }
+
+
+    let mangas = jsonResponse.data?.Page?.media?.map(mapAniListDataToManga) || [];
+
+     // Limit results if needed (after potential filtering, though filtering here is basic)
+     mangas = mangas.slice(0, 20);
+
+    return mangas;
+
+  } catch (error) {
+    console.error('Failed to fetch manga from AniList:', error);
+    return [];
+    // throw error;
   }
-  if (status) {
-    filteredMangas = filteredMangas.filter(manga => manga.status === status);
-  }
-
-  return filteredMangas;
 }
