@@ -45,7 +45,7 @@ export default function AnimeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [episodeError, setEpisodeError] = useState<string | null>(null);
+  const [episodeError, setEpisodeError] = useState<string | null>(null); // Store specific episode loading error message
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -58,47 +58,39 @@ export default function AnimeDetailPage() {
       setLoading(true);
       setLoadingEpisodes(true); // Start loading episodes too
       setError(null);
-      setEpisodeError(null);
+      setEpisodeError(null); // Reset episode specific error
 
       try {
-        // Fetch metadata (Jikan) and episodes (Consumet) concurrently
-        const [detailsData, episodesData] = await Promise.allSettled([
-          getAnimeDetails(id),
-          getAnimeEpisodes(id) // Fetch episodes using MAL ID
-        ]);
-
-        // Handle Metadata Result
-        if (detailsData.status === 'fulfilled' && detailsData.value) {
-          setAnime(detailsData.value);
+        // Fetch metadata (Jikan)
+        const detailsData = await getAnimeDetails(id);
+        if (detailsData) {
+          setAnime(detailsData);
         } else {
-          const reason = detailsData.status === 'rejected' ? detailsData.reason : 'Anime not found';
-          console.error(`Error fetching anime details for ID ${id}:`, reason);
-          setError(reason instanceof Error ? reason.message : String(reason));
-           // If metadata fails critically (e.g., not found), trigger notFound
-           if (detailsData.status === 'rejected' || !detailsData.value) {
-               notFound();
-           }
+          console.error(`Error fetching anime details for ID ${id}: Anime not found or API error.`);
+          setError('Anime details not found.'); // Set main error
+          notFound(); // Trigger Next.js not found mechanism
+          return; // Stop execution if details fail critically
         }
 
-        // Handle Episodes Result
-        if (episodesData.status === 'fulfilled') {
-          setEpisodes(episodesData.value || []);
-          if (!episodesData.value || episodesData.value.length === 0) {
-             console.warn(`No episodes found for Anime ID ${id} via Consumet.`);
-             setEpisodeError("No streaming episodes found for this anime."); // Inform user
-          }
-        } else {
-          console.error(`Error fetching anime episodes for ID ${id}:`, episodesData.reason);
-          setEpisodeError(episodesData.reason instanceof Error ? episodesData.reason.message : String(episodesData.reason));
+        // Fetch episodes (Consumet) - now returns [] on failure
+        const episodesData = await getAnimeEpisodes(id);
+        setEpisodes(episodesData);
+        if (episodesData.length === 0) {
+            console.warn(`No episodes found for Anime ID ${id} via Consumet, or episode fetching failed.`);
+            // Don't set episodeError here yet, let the UI handle the empty state initially
         }
+
 
       } catch (err: any) {
-        // Catch any unexpected errors during Promise.allSettled or setup
+        // Catch any unexpected errors during setup or non-API related issues
         console.error(`Unexpected error fetching data for Anime ID ${id}:`, err);
         setError(err.message || 'Failed to load anime data.');
+        // Potentially clear state or handle specific errors
+        setAnime(null); // Clear anime details on major error
+        setEpisodes([]); // Clear episodes
       } finally {
         setLoading(false);
-        setLoadingEpisodes(false);
+        setLoadingEpisodes(false); // Always stop episode loading indicator
       }
     }
 
@@ -109,7 +101,7 @@ export default function AnimeDetailPage() {
     return <AnimeDetailSkeleton />;
   }
 
-  if (error && !anime) { // Show main error only if anime details failed critically
+  if (error && !loading) { // Show main error only if anime details failed critically during initial load
     return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
          <Alert variant="destructive" className="max-w-md glass">
@@ -121,10 +113,11 @@ export default function AnimeDetailPage() {
     );
   }
 
-  // If anime details loaded but episodes failed, show the details page with an episode error message.
+  // If anime details loaded but episodes might be empty (or failed silently)
   if (!anime) {
-    // This path might be reached if details are null but no error was thrown (should be rare)
-    return <AnimeDetailSkeleton />; // Fallback to skeleton or a generic not found message
+    // This path might be reached if loading is done but anime is still null (e.g., error caught in fetchAllData)
+    // Return skeleton or a generic not found message, error state should already be set above if it was critical
+    return <AnimeDetailSkeleton />;
   }
 
 
@@ -169,11 +162,14 @@ export default function AnimeDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                           <Button size="sm" className="w-full neon-glow-hover" asChild>
-                              <Link href={`/watch/anime/${anime.id}`}> {/* Link to potential watch page */}
-                                  <PlayCircle size={16} className="mr-2"/> Watch Now
-                              </Link>
-                           </Button>
+                           {episodes.length > 0 && ( // Only show "Watch Now" if episodes exist
+                             <Button size="sm" className="w-full neon-glow-hover" asChild>
+                                 {/* Link to the first episode if available */}
+                                 <Link href={`/watch/anime/${anime.id}/${episodes[0].id}`}>
+                                     <PlayCircle size={16} className="mr-2"/> Watch Now
+                                 </Link>
+                             </Button>
+                           )}
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={anime.url} target="_blank" rel="noopener noreferrer">
@@ -269,6 +265,7 @@ export default function AnimeDetailPage() {
                                 <span className="ml-2 text-muted-foreground">Loading episodes...</span>
                             </div>
                          )}
+                        {/* Display error message if episodeError is set */}
                         {episodeError && !loadingEpisodes && (
                            <Alert variant="destructive" className="my-4">
                                <Info className="h-4 w-4" />
@@ -276,6 +273,11 @@ export default function AnimeDetailPage() {
                                <AlertDescription>{episodeError}</AlertDescription>
                            </Alert>
                          )}
+                         {/* Handle case where loading is done, no specific error, but list is empty */}
+                         {!loadingEpisodes && !episodeError && episodes.length === 0 && (
+                              <p className="text-center text-muted-foreground py-6">No episode information available or failed to load.</p>
+                         )}
+                         {/* Display episode list if loading is done, no error, and episodes exist */}
                         {!loadingEpisodes && !episodeError && episodes.length > 0 && (
                             <ScrollArea className="h-[400px] pr-3"> {/* Adjust height as needed */}
                                 <div className="space-y-2">
@@ -297,13 +299,9 @@ export default function AnimeDetailPage() {
                                 </div>
                             </ScrollArea>
                          )}
-                        {!loadingEpisodes && !episodeError && episodes.length === 0 && (
-                             <p className="text-center text-muted-foreground py-6">No episode information available for this anime.</p>
-                         )}
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
-
 
         </div>
     </div>
@@ -371,7 +369,8 @@ function AnimeDetailSkeleton() {
                </div>
             </Card>
             {/* Episodes Skeleton */}
-             <Card className="glass border-primary/20 shadow-lg rounded-lg backdrop-blur-lg bg-card/60">
+             <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
+                <AccordionItem value="item-1" className="glass border-primary/20 shadow-lg rounded-lg backdrop-blur-lg bg-card/60">
                  <AccordionTrigger className="px-4 py-3 text-lg font-semibold hover:no-underline">
                      <span className="flex items-center gap-2">
                         <ListVideo size={20} className="text-primary"/> Episodes (...)
@@ -383,33 +382,9 @@ function AnimeDetailSkeleton() {
                          <span className="ml-2 text-muted-foreground">Loading episodes...</span>
                     </div>
                  </AccordionContent>
-             </Card>
+                </AccordionItem>
+             </Accordion>
        </div>
     </div>
   );
 }
-
-// Helper component for AccordionTrigger - Needs to be properly integrated
-const AccordionTrigger = React.forwardRef<
-  React.ElementRef<typeof AccordionPrimitive.Trigger>,
-  React.ComponentPropsWithoutRef<typeof AccordionPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
-  <AccordionPrimitive.Header className="flex">
-    <AccordionPrimitive.Trigger
-      ref={ref}
-      className={cn(
-        "flex flex-1 items-center justify-between py-4 font-medium transition-all hover:underline [&[data-state=open]>svg]:rotate-180",
-        className
-      )}
-      {...props}
-    >
-      {children}
-      {/* <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" /> */}
-    </AccordionPrimitive.Trigger>
-  </AccordionPrimitive.Header>
-));
-AccordionTrigger.displayName = AccordionPrimitive.Trigger.displayName;
-
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
-import { cn } from "@/lib/utils"
-import React from 'react' // Ensure React is imported if not already
