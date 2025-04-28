@@ -1,5 +1,6 @@
 
-import weebapi from 'weeb-api'; // Correct package name with hyphen
+
+// import weebapi from '@shineiichijo/weeb-api'; // Correct scoped package name - Commented out as package is unavailable
 
 // Define interfaces based on expected weebapi responses (these might need adjustment)
 // Based on library usage, it seems simpler:
@@ -8,7 +9,7 @@ export interface WeebapiEpisode {
     player_url?: string; // URL to the player page for the episode
     // weebapi might not provide separate streaming links directly, often just the player page URL
     // The player page likely handles fetching actual sources.
-    id?: string; // Need to determine a stable ID for linking
+    id?: string; // Need to determine a stable ID for linking if not provided directly
     title?: string; // If available
 }
 
@@ -27,14 +28,17 @@ export interface WeebapiWatchResponse {
 /**
  * Fetches the episodes for a specific anime using the weeb-api library.
  * Note: weeb-api often requires searching by title/slug rather than MAL ID.
+ * THIS FUNCTION IS CURRENTLY A PLACEHOLDER as the library is unavailable.
  *
  * @param animeTitle The title of the anime (fetched from Jikan/other source).
  * @returns A promise that resolves to an array of episode objects.
  * @throws Throws an error if the fetch fails or no episodes are found.
  */
 export async function getAnimeEpisodesWeebapi(animeTitle: string): Promise<WeebapiEpisode[]> {
-    console.log(`[getAnimeEpisodesWeebapi] Attempting fetch for title: "${animeTitle}"`);
-
+    console.warn(`[getAnimeEpisodesWeebapi] SKIPPING fetch for title: "${animeTitle}" - Library unavailable.`);
+    // Return empty array as the library cannot be used
+    return [];
+    /*
     try {
         // weeb-api search might return multiple results, assume the first is correct for now
         const searchResults = await weebapi.anime(animeTitle);
@@ -64,19 +68,21 @@ export async function getAnimeEpisodesWeebapi(animeTitle: string): Promise<Weeba
         // Return empty array on error
         return [];
     }
+    */
 }
 
 /**
  * Fetches the streaming sources for a specific anime episode using weeb-api.
  * This often involves getting a player URL and then potentially scraping/resolving it.
  * weeb-api itself might only provide the player URL directly.
+ * THIS FUNCTION IS CURRENTLY A PLACEHOLDER as the library is unavailable.
  *
- * @param episodePlayerUrl The player URL obtained from getAnimeEpisodesWeebapi.
+ * @param episodePlayerUrlOrId The player URL or a potential ID obtained from getAnimeEpisodesWeebapi.
  * @returns A promise that resolves to an object containing streaming sources.
  * @throws Throws an error if fetching/resolving fails.
  */
-export async function getAnimeStreamingLinkWeebapi(episodePlayerUrl: string): Promise<WeebapiWatchResponse> {
-    console.log(`[getAnimeStreamingLinkWeebapi] Fetching stream links for player URL: ${episodePlayerUrl}`);
+export async function getAnimeStreamingLinkWeebapi(episodePlayerUrlOrId: string): Promise<WeebapiWatchResponse> {
+    console.warn(`[getAnimeStreamingLinkWeebapi] SKIPPING stream link fetch for: ${episodePlayerUrlOrId} - Library unavailable.`);
 
     // Placeholder: weeb-api often doesn't give direct stream links.
     // You would typically need to:
@@ -85,25 +91,11 @@ export async function getAnimeStreamingLinkWeebapi(episodePlayerUrl: string): Pr
     // 3. Resolve those source URLs (e.g., using Kwik resolver logic).
     // This is complex and brittle (scraping).
 
-    // For now, let's simulate finding a direct (but likely fake) M3U8 link.
-    // In a real scenario, this would involve network requests and parsing.
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate fetch/parse delay
+    // Simulate failure as the library isn't available
+    await new Promise(resolve => setTimeout(resolve, 100)); // Simulate small delay
 
-    try {
-        // Simulate finding one source after "processing" the player URL
-        const simulatedSource: WeebapiStreamingSource = {
-            url: `https://placeholder-cdn.net/stream/${episodePlayerUrl.split('/').pop()}.m3u8`, // Fake M3U8
-            quality: "default",
-            isM3U8: true,
-        };
-
-        console.log(`[getAnimeStreamingLinkWeebapi] Simulated finding source: ${simulatedSource.url}`);
-
-        return {
-            sources: [simulatedSource],
-        };
-    } catch (error: any) {
-        console.error(`[getAnimeStreamingLinkWeebapi] Error processing player URL ${episodePlayerUrl}:`, error);
-        throw new Error(`Could not process player URL: ${error.message}`);
-    }
+    // Return an empty response or throw an error, indicating failure
+     return { sources: [] };
+    // Or throw:
+    // throw new Error(`Could not process player URL: Library unavailable.`);
 }

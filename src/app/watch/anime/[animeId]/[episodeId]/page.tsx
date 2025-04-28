@@ -1,9 +1,9 @@
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
-// Use Weebapi services
+// Use Weebapi services (currently placeholder)
 import { getAnimeEpisodesWeebapi, getAnimeStreamingLinkWeebapi, WeebapiEpisode, WeebapiWatchResponse } from '@/services/weebapi';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Still use Jikan for metadata
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -17,6 +17,7 @@ import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Use Select for quality
 import { Badge } from '@/components/ui/badge'; // Import Badge
+import { cn } from '@/lib/utils';
 
 export default function WatchAnimeEpisodePage() {
     const params = useParams();
@@ -66,14 +67,21 @@ export default function WatchAnimeEpisodePage() {
 
                  // Fetch episode list from weebapi using the title
                 if (details.title) {
-                     const fetchedEpisodes = await getAnimeEpisodesWeebapi(details.title);
-                     setEpisodes(fetchedEpisodes);
-                     if (fetchedEpisodes.length === 0) {
-                         console.warn(`[WatchPage] No episodes found for Anime ID ${animeId} via Weebapi.`);
-                         // Don't set error yet, maybe the specific episode link works
+                     try {
+                         const fetchedEpisodes = await getAnimeEpisodesWeebapi(details.title);
+                         setEpisodes(fetchedEpisodes);
+                         if (fetchedEpisodes.length === 0) {
+                              console.warn(`[WatchPage] No episodes found for Anime ID ${animeId} via Weebapi.`);
+                              setError("No episode data available for this anime currently."); // Set error if list is empty
+                         }
+                     } catch (epError: any) {
+                         console.error(`[WatchPage] Error fetching Weebapi episodes: ${epError.message}`);
+                         setError("Could not load episode list.");
+                         setEpisodes([]);
                      }
                  } else {
                       console.warn(`[WatchPage] Cannot fetch Weebapi episodes for Anime ID ${animeId}: Title is missing.`);
+                      setError("Cannot load episode list: Anime title is missing.");
                       setEpisodes([]);
                  }
 
@@ -95,23 +103,21 @@ export default function WatchAnimeEpisodePage() {
     // Fetch Streaming Link (Runs when episodeId changes or episodes list loads)
     useEffect(() => {
         // Wait for episode list (or at least metadata) before proceeding
-        if (loadingMetadata || !episodeId) return;
+        if (loadingMetadata || !episodeId || episodes.length === 0) {
+            // Don't fetch if metadata/episodes are loading or if there are no episodes
+            // If episodes are empty, error state should be set by the previous effect
+            if (!loadingMetadata && episodes.length === 0) {
+                setLoadingStream(false); // Ensure stream loading stops if no episodes
+                setLoading(false);
+            }
+            return;
+        };
 
         // Find the current episode details from the loaded list
         const foundEpisode = episodes.find(ep => ep.id === episodeId);
-        setCurrentEpisode(foundEpisode || { id: episodeId, episode_num: episodeId.replace('ep-','') }); // Use fallback if not in list yet
+        setCurrentEpisode(foundEpisode || { id: episodeId, episode_num: episodeId.replace('ep-','') }); // Use fallback if not in list
 
-        if (!foundEpisode?.player_url) {
-            // If the episode isn't in the list OR lacks a player_url, we might not be able to get stream links
-            console.warn(`[WatchPage] Player URL missing for episode ID ${episodeId}. Cannot fetch stream link.`);
-            // setError(`Streaming information unavailable for this episode.`);
-            // setLoadingStream(false);
-            // setLoading(false);
-            // For now, let's try fetching anyway, assuming our stream service might work directly with the ID
-            // return;
-        }
-
-        const playerUrl = foundEpisode?.player_url; // Get player URL if available
+        const playerUrlOrId = foundEpisode?.player_url || episodeId; // Use player_url if available, else the ID itself
 
         async function fetchStreamingLink() {
             setLoadingStream(true);
@@ -122,15 +128,8 @@ export default function WatchAnimeEpisodePage() {
             if (videoRef.current) { videoRef.current.src = ''; }
 
             try {
-                // We need the player URL to pass to the streaming link service
-                if (!playerUrl) {
-                    // If no player URL, attempt might fail, show user message
-                    console.warn(`[WatchPage] Missing player URL for episode ${episodeId}, attempting stream fetch directly.`);
-                    // Consider showing a specific warning or trying a fallback if your service allows ID-based fetch
-                }
-                 // Use the placeholder URL or actual ID if playerUrl isn't available
-                const targetIdentifier = playerUrl || episodeId;
-                const data = await getAnimeStreamingLinkWeebapi(targetIdentifier);
+                console.log(`[WatchPage] Fetching streaming link for identifier: ${playerUrlOrId}`);
+                const data = await getAnimeStreamingLinkWeebapi(playerUrlOrId);
 
                  if (data && data.sources && data.sources.length > 0) {
                     setStreamingData(data);
@@ -140,11 +139,21 @@ export default function WatchAnimeEpisodePage() {
                     console.log("[WatchPage] Stream data fetched (Weebapi), selected quality:", defaultSource?.quality);
                 } else {
                      console.error('[WatchPage] Weebapi streaming link fetch succeeded but no sources found.');
-                     setError('No streaming sources found for this episode.');
+                     // Check if this is due to placeholder implementation
+                     if (data && data.sources.length === 0) {
+                        setError('Streaming source fetching is currently unavailable.');
+                     } else {
+                         setError('No streaming sources found for this episode.');
+                     }
                 }
             } catch (err: any) {
                  console.error('[WatchPage] Error fetching Weebapi streaming link:', err);
-                 setError(err.message || 'Could not load streaming source.');
+                 // Check if error message indicates library unavailable
+                 if (err.message.includes('Library unavailable')) {
+                     setError('Streaming source fetching is currently unavailable.');
+                 } else {
+                     setError(err.message || 'Could not load streaming source.');
+                 }
             } finally {
                  setLoadingStream(false);
                  setLoading(loadingMetadata); // Only set overall loading to false if metadata is also done
@@ -239,7 +248,7 @@ export default function WatchAnimeEpisodePage() {
     }
 
     // Critical Error State (cannot load metadata/episodes OR initial stream)
-    if (error && !loadingStream) { // Show error if stream failed after metadata loaded, or if metadata itself failed
+    if (error && !loadingStream && !loadingMetadata) { // Show error if stream failed after metadata loaded, or if metadata itself failed
         return (
             <div className="bg-black min-h-screen flex flex-col items-center justify-center text-white">
                 <Alert variant="destructive" className="max-w-lg glass bg-destructive/20 text-destructive-foreground border-destructive">
@@ -326,8 +335,10 @@ export default function WatchAnimeEpisodePage() {
                      <CardTitle className="text-base flex items-center gap-2"><ListVideo size={18} className="text-primary"/> Episodes</CardTitle>
                 </CardHeader>
                 <ScrollArea className="flex-grow p-2">
-                     {loadingMetadata ? (
-                        <div className="p-4 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground"/></div>
+                     {loadingMetadata && episodes.length === 0 ? ( // Show loading skeleton only if metadata is loading AND episodes are empty
+                        <div className="space-y-1 p-2">
+                           {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-8 w-full bg-muted/50 rounded" />)}
+                        </div>
                      ) : episodes.length > 0 ? (
                         <div className="space-y-1">
                             {episodes.map((ep) => (
@@ -335,10 +346,10 @@ export default function WatchAnimeEpisodePage() {
                                     key={ep.id} // Use the generated ID
                                     variant={ep.id === episodeId ? "secondary" : "ghost"}
                                     onClick={() => navigateToEpisode(ep.id)}
-                                    className="w-full justify-start text-left h-auto py-1.5 px-2 text-xs font-normal group disabled:opacity-100"
+                                    className="w-full justify-start text-left h-auto py-1.5 px-2 text-xs font-normal group disabled:opacity-50" // Reduced opacity on disabled
                                     disabled={ep.id === episodeId || loadingStream} // Disable current and during stream load
                                 >
-                                    <PlayCircle size={14} className={`mr-2 flex-shrink-0 ${ep.id === episodeId ? 'text-primary animate-pulse' : 'text-muted-foreground group-hover:text-foreground'}`}/>
+                                    <PlayCircle size={14} className={cn("mr-2 flex-shrink-0 transition-colors", ep.id === episodeId ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')}/>
                                     <span className="truncate flex-grow">
                                         Ep {ep.episode_num} {ep.title ? `- ${ep.title}` : ''}
                                     </span>
