@@ -1,6 +1,6 @@
 
 
-// import weebapi from '@shineiichijo/weeb-api'; // Correct scoped package name - Commented out as package is unavailable
+// import weebapi from '@shineiichijo/weeb-api'; // Correct scoped package name - Package seems unavailable
 
 // Define interfaces based on expected weebapi responses (these might need adjustment)
 // Based on library usage, it seems simpler:
@@ -9,7 +9,7 @@ export interface WeebapiEpisode {
     player_url?: string; // URL to the player page for the episode
     // weebapi might not provide separate streaming links directly, often just the player page URL
     // The player page likely handles fetching actual sources.
-    id?: string; // Need to determine a stable ID for linking if not provided directly
+    id: string; // Use a definite ID, we'll generate one if needed
     title?: string; // If available
 }
 
@@ -41,7 +41,7 @@ export async function getAnimeEpisodesWeebapi(animeTitle: string): Promise<Weeba
     /*
     try {
         // weeb-api search might return multiple results, assume the first is correct for now
-        const searchResults = await weebapi.anime(animeTitle);
+        // const searchResults = await weebapi.anime(animeTitle); // Original library call commented out
         if (!searchResults || searchResults.length === 0 || !searchResults[0]?.episodes) {
             console.warn(`[getAnimeEpisodesWeebapi] No results or episodes found for "${animeTitle}"`);
             return []; // Return empty if no results or episodes in the first result
