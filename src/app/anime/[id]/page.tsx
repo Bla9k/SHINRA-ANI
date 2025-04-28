@@ -48,6 +48,7 @@ export default function AnimeDetailPage() {
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
+  const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable.";
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -93,13 +94,19 @@ export default function AnimeDetailPage() {
                      // We added a console.warn in the service placeholder
                      console.warn(`[AnimeDetailPage] No episodes returned for Anime ID ${id} via Weebapi, or library is unavailable.`);
                      // Provide a more specific message if we know the library is the issue (e.g., based on a specific error or the placeholder nature)
-                     setEpisodeError("Episode fetching is currently unavailable.");
+                     setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
                      episodesUnavailable = true;
                  }
             } catch (weebapiError: any) {
                  console.error(`Error calling getAnimeEpisodesWeebapi: ${weebapiError.message}`);
-                 setEpisodeError("Failed to load episode list.");
-                 episodesFailed = true;
+                 // Check if error indicates unavailability
+                 if (weebapiError.message.includes('Library unavailable')) {
+                     setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
+                     episodesUnavailable = true;
+                 } else {
+                     setEpisodeError("Failed to load episode list.");
+                     episodesFailed = true;
+                 }
                  setEpisodes([]);
             }
         } else {
@@ -195,7 +202,7 @@ export default function AnimeDetailPage() {
                              </Button>
                            )}
                            {/* Show disabled Watch Now if episodes are unavailable */}
-                           {episodeError && !loadingEpisodes && episodes.length === 0 && (
+                           {episodeError === EPISODE_UNAVAILABLE_MESSAGE && !loadingEpisodes && (
                                <Button size="sm" className="w-full" disabled>
                                    <PlayCircle size={16} className="mr-2"/> Episodes Unavailable
                                </Button>
@@ -296,10 +303,10 @@ export default function AnimeDetailPage() {
                             </div>
                          )}
                         {episodeError && !loadingEpisodes && (
-                           <Alert variant="destructive" className="my-4">
+                           <Alert variant={episodeError === EPISODE_UNAVAILABLE_MESSAGE ? "default" : "destructive"} className={cn("my-4", episodeError === EPISODE_UNAVAILABLE_MESSAGE && "bg-muted/50 border-muted-foreground/30")}>
                                <Info className="h-4 w-4" />
-                               <AlertTitle>Could Not Load Episodes</AlertTitle>
-                               <AlertDescription>{episodeError}</AlertDescription>
+                               <AlertTitle>{episodeError === EPISODE_UNAVAILABLE_MESSAGE ? "Information" : "Could Not Load Episodes"}</AlertTitle>
+                               <AlertDescription>{episodeError}</AlertDescription> {/* Directly display the error */}
                            </Alert>
                          )}
                          {!loadingEpisodes && !episodeError && episodes.length === 0 && (
@@ -431,3 +438,4 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
+

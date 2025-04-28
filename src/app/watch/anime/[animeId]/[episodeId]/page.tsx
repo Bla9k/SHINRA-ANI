@@ -38,6 +38,7 @@ export default function WatchAnimeEpisodePage() {
     const [loadingStream, setLoadingStream] = useState(true); // Separate loading for stream links
     const [error, setError] = useState<string | null>(null);
     const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
+    const STREAMING_UNAVAILABLE_MESSAGE = "Streaming source fetching is currently unavailable.";
 
     // Fetch Metadata and Episode List (Runs once per animeId)
     useEffect(() => {
@@ -72,12 +73,13 @@ export default function WatchAnimeEpisodePage() {
                          setEpisodes(fetchedEpisodes);
                          if (fetchedEpisodes.length === 0) {
                               console.warn(`[WatchPage] No episodes found for Anime ID ${animeId} via Weebapi.`);
-                              setError("No episode data available for this anime currently."); // Set error if list is empty
+                              // Don't set error here, stream fetching handles unavailability
                          }
                      } catch (epError: any) {
                          console.error(`[WatchPage] Error fetching Weebapi episodes: ${epError.message}`);
-                         setError("Could not load episode list.");
-                         setEpisodes([]);
+                         // If episode list fetch itself fails catastrophically
+                          setError("Could not load episode list.");
+                          setEpisodes([]);
                      }
                  } else {
                       console.warn(`[WatchPage] Cannot fetch Weebapi episodes for Anime ID ${animeId}: Title is missing.`);
@@ -103,13 +105,7 @@ export default function WatchAnimeEpisodePage() {
     // Fetch Streaming Link (Runs when episodeId changes or episodes list loads)
     useEffect(() => {
         // Wait for episode list (or at least metadata) before proceeding
-        if (loadingMetadata || !episodeId || episodes.length === 0) {
-            // Don't fetch if metadata/episodes are loading or if there are no episodes
-            // If episodes are empty, error state should be set by the previous effect
-            if (!loadingMetadata && episodes.length === 0) {
-                setLoadingStream(false); // Ensure stream loading stops if no episodes
-                setLoading(false);
-            }
+        if (loadingMetadata || !episodeId) {
             return;
         };
 
@@ -140,17 +136,13 @@ export default function WatchAnimeEpisodePage() {
                 } else {
                      console.error('[WatchPage] Weebapi streaming link fetch succeeded but no sources found.');
                      // Check if this is due to placeholder implementation
-                     if (data && data.sources.length === 0) {
-                        setError('Streaming source fetching is currently unavailable.');
-                     } else {
-                         setError('No streaming sources found for this episode.');
-                     }
+                     setError(STREAMING_UNAVAILABLE_MESSAGE); // Set specific error message
                 }
             } catch (err: any) {
                  console.error('[WatchPage] Error fetching Weebapi streaming link:', err);
                  // Check if error message indicates library unavailable
                  if (err.message.includes('Library unavailable')) {
-                     setError('Streaming source fetching is currently unavailable.');
+                     setError(STREAMING_UNAVAILABLE_MESSAGE); // Set specific error message
                  } else {
                      setError(err.message || 'Could not load streaming source.');
                  }
@@ -248,7 +240,7 @@ export default function WatchAnimeEpisodePage() {
     }
 
     // Critical Error State (cannot load metadata/episodes OR initial stream)
-    if (error && !loadingStream && !loadingMetadata) { // Show error if stream failed after metadata loaded, or if metadata itself failed
+    if (error && !loadingStream && !loadingMetadata && error !== STREAMING_UNAVAILABLE_MESSAGE) { // Show error if stream failed after metadata loaded, or if metadata itself failed, excluding unavailable message
         return (
             <div className="bg-black min-h-screen flex flex-col items-center justify-center text-white">
                 <Alert variant="destructive" className="max-w-lg glass bg-destructive/20 text-destructive-foreground border-destructive">
@@ -316,7 +308,15 @@ export default function WatchAnimeEpisodePage() {
                 <AspectRatio ratio={16 / 9} className="w-full bg-black flex-grow relative">
                      {/* Loading/Error Overlay specific to video */}
                      {loadingStream && <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}
-                     {error && !loadingStream && <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20 p-4"><Alert variant="destructive" className="max-w-md"><AlertCircle className="h-4 w-4" /><AlertTitle>Playback Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert></div>}
+                     {error && !loadingStream && ( // Show error overlay if stream loading finished with an error
+                         <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20 p-4">
+                             <Alert variant={error === STREAMING_UNAVAILABLE_MESSAGE ? "default" : "destructive"} className={cn("max-w-md", error === STREAMING_UNAVAILABLE_MESSAGE && "bg-muted/50 border-muted-foreground/30")}>
+                                 <AlertCircle className="h-4 w-4" />
+                                 <AlertTitle>{error === STREAMING_UNAVAILABLE_MESSAGE ? "Information" : "Playback Error"}</AlertTitle>
+                                 <AlertDescription>{error}</AlertDescription>
+                             </Alert>
+                         </div>
+                     )}
                      <video
                         ref={videoRef}
                         controls
@@ -388,3 +388,4 @@ export default function WatchAnimeEpisodePage() {
         </div>
     );
 }
+
