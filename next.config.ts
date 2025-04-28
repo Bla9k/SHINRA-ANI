@@ -41,18 +41,40 @@ const nextConfig: NextConfig = {
           port: '',
           pathname: '/**',
       },
-      // Removed m.media-amazon.com as it wasn't in the previous config after last update
-      // Removed s4.anilist.co
+      // Removed m.media-amazon.com
+      {
+        protocol: 'https',
+        hostname: 's4.anilist.co', // Add AniList CDN hostname
+        port: '',
+        pathname: '/**',
+      },
+      // Add AnimePahe snapshot host if needed
+      {
+        protocol: 'https',
+        hostname: 'i.animepahe.ru', // Common host for AnimePahe snapshots/posters
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // Add webpack configuration to handle server-only modules
   webpack: (config, { isServer }) => {
-    // Mark 'async_hooks' as external for the client bundle
+    // Mark server-only modules as external for the client bundle
     // This prevents client-side code from trying to bundle Node.js built-in modules
-    // which are often dependencies of server-side packages like OpenTelemetry.
+    // or heavy server-side libraries like JSDOM.
     if (!isServer) {
-      // Add 'async_hooks' to externals if it's not already there
-      config.externals = [...(config.externals || []), 'async_hooks'];
+      config.externals = [
+        ...(config.externals || []),
+        'async_hooks',
+        'jsdom', // Add 'jsdom' to externals for the client bundle
+        'child_process', // Also mark child_process as external
+        'http', // Mark http as external
+        'https', // Mark https as external
+        'zlib', // Mark zlib as external
+        'fs', // Mark fs as external
+        'net', // Mark net as external
+        'tls', // Mark tls as external
+      ];
     }
 
     // Important: return the modified config

@@ -1,12 +1,12 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Jikan-based service for metadata
-import { getAnimeEpisodesPahe, AnimePaheEpisode } from '@/services/animepahe'; // Use AnimePahe service
+import { getAnimeEpisodesPahe, getAnimePaheSession, AnimePaheEpisode } from '@/services/animepahe'; // Import AnimePahe services
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,9 +40,10 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
 export default function AnimeDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params.id ? parseInt(params.id as string, 10) : NaN;
+  const malId = params.id ? parseInt(params.id as string, 10) : NaN;
 
   const [anime, setAnime] = useState<Anime | null>(null);
+  const [animePaheId, setAnimePaheId] = useState<string | null>(null); // Store the AnimePahe ID
   const [episodes, setEpisodes] = useState<AnimePaheEpisode[]>([]); // Use AnimePaheEpisode type
   const [loading, setLoading] = useState(true);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
@@ -50,8 +51,59 @@ export default function AnimeDetailPage() {
   const [episodeError, setEpisodeError] = useState<string | null>(null);
   const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable.";
 
+  // Fetch AnimePahe ID based on title from Jikan
+  const fetchAnimePaheId = useCallback(async (title: string) => {
+    setLoadingEpisodes(true); // Indicate loading starts here
+    setEpisodeError(null);
+    try {
+        console.log(`[AnimeDetailPage] Searching AnimePahe for title: "${title}"`);
+        const session = await getAnimePaheSession(title);
+        if (session && session.id) {
+            console.log(`[AnimeDetailPage] Found AnimePahe ID: ${session.id} for title "${title}"`);
+            setAnimePaheId(session.id);
+            return session.id;
+        } else {
+            console.warn(`[AnimeDetailPage] Could not find AnimePahe ID for title "${title}".`);
+             setEpisodeError("Could not find this anime on the streaming provider.");
+            return null;
+        }
+    } catch (searchError: any) {
+         console.error(`[AnimeDetailPage] Error searching AnimePahe:`, searchError);
+         setEpisodeError("Error contacting the streaming provider to find this anime.");
+         return null;
+    } finally {
+        // setLoadingEpisodes(false); // Loading continues in fetchEpisodes
+    }
+  }, []);
+
+  // Fetch Episodes using AnimePahe ID
+  const fetchEpisodes = useCallback(async (paheId: string) => {
+    // setLoadingEpisodes(true); // Already set in fetchAnimePaheId or fetchAllData
+    setEpisodeError(null);
+    try {
+      console.log(`[AnimeDetailPage] Fetching AnimePahe episodes for AnimePahe ID: ${paheId}`);
+      const fetchedEpisodes = await getAnimeEpisodesPahe(paheId);
+      setEpisodes(fetchedEpisodes);
+      if (fetchedEpisodes.length === 0) {
+        console.warn(`[AnimeDetailPage] No episodes returned for AnimePahe ID ${paheId}.`);
+        setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
+      }
+    } catch (paheError: any) {
+      console.error(`[AnimeDetailPage] Error calling getAnimeEpisodesPahe: ${paheError.message}`);
+      if (paheError.message.includes('Library unavailable') || paheError.message.includes('No episodes found')) {
+        setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
+      } else {
+        setEpisodeError("Failed to load episode list.");
+      }
+      setEpisodes([]);
+    } finally {
+        setLoadingEpisodes(false); // Episodes loading finishes here
+    }
+  }, []);
+
+  // Main data fetching effect
   useEffect(() => {
-    if (isNaN(id)) {
+    if (isNaN(malId)) {
       setError('Invalid Anime ID.');
       setLoading(false);
       return;
@@ -59,74 +111,56 @@ export default function AnimeDetailPage() {
 
     async function fetchAllData() {
       setLoading(true);
-      setLoadingEpisodes(true);
+      setLoadingEpisodes(true); // Start episode loading indicator
       setError(null);
       setEpisodeError(null);
-
-      let fetchedEpisodes: AnimePaheEpisode[] = [];
-      let fetchedAnime: Anime | null = null;
-      let episodesFailed = false;
-      let episodesUnavailable = false; // Flag for unavailable library
+      setAnime(null);
+      setAnimePaheId(null);
+      setEpisodes([]);
 
       try {
-        // Fetch metadata (Jikan) first
-        fetchedAnime = await getAnimeDetails(id);
+        // 1. Fetch metadata from Jikan
+        console.log(`[AnimeDetailPage] Fetching Jikan details for MAL ID: ${malId}`);
+        const fetchedAnime = await getAnimeDetails(malId);
         setAnime(fetchedAnime);
 
-        if (!fetchedAnime) {
-            console.error(`Error fetching anime details for ID ${id}`);
+        if (!fetchedAnime || !fetchedAnime.title) {
+            console.error(`[AnimeDetailPage] Jikan details not found or missing title for MAL ID ${malId}`);
             setError('Anime details not found.');
-            notFound();
+            notFound(); // Trigger 404
             setLoading(false);
             setLoadingEpisodes(false);
             return;
         }
+        console.log(`[AnimeDetailPage] Jikan details fetched: ${fetchedAnime.title}`);
 
-        // Fetch episodes using AnimePahe API based on the MAL ID
-        if (fetchedAnime.mal_id) {
-            console.log(`Fetching AnimePahe episodes for MAL ID: ${fetchedAnime.mal_id}`);
-            // Handle potential error if AnimePahe library is unavailable
-            try {
-                 fetchedEpisodes = await getAnimeEpisodesPahe(fetchedAnime.mal_id.toString());
-                 setEpisodes(fetchedEpisodes);
-                 if (fetchedEpisodes.length === 0) {
-                     // Check if it's because the library is unavailable or just no episodes
-                     console.warn(`[AnimeDetailPage] No episodes returned for Anime ID ${id} via AnimePahe.`);
-                     setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
-                     episodesUnavailable = true;
-                 }
-            } catch (paheError: any) {
-                 console.error(`Error calling getAnimeEpisodesPahe: ${paheError.message}`);
-                 // Check if error indicates unavailability or a specific AnimePahe error message
-                 if (paheError.message.includes('Library unavailable') || paheError.message.includes('No episodes found')) {
-                     setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
-                     episodesUnavailable = true;
-                 } else {
-                     setEpisodeError("Failed to load episode list.");
-                     episodesFailed = true;
-                 }
-                 setEpisodes([]);
-            }
+
+        // 2. Fetch AnimePahe ID using the title from Jikan
+        const paheId = await fetchAnimePaheId(fetchedAnime.title);
+
+        // 3. If AnimePahe ID is found, fetch episodes
+        if (paheId) {
+            await fetchEpisodes(paheId);
         } else {
-            console.warn(`Cannot fetch AnimePahe episodes for Anime ID ${id}: MAL ID is missing.`);
-            setEpisodeError("Cannot fetch episodes: Anime MAL ID is missing.");
-            episodesFailed = true;
-            setEpisodes([]);
+             // Error state already set by fetchAnimePaheId
+             setLoadingEpisodes(false); // Ensure loading stops if ID search fails
         }
 
       } catch (err: any) {
-        console.error(`Unexpected error fetching data for Anime ID ${id}:`, err);
+        console.error(`[AnimeDetailPage] Unexpected error fetching data for MAL ID ${malId}:`, err);
         setError(err.message || 'Failed to load anime data.');
         setAnime(null);
         setEpisodes([]);
+        setLoadingEpisodes(false); // Stop loading indicators on error
       } finally {
-        setLoading(false);
-        setLoadingEpisodes(false);
+        setLoading(false); // Overall loading stops here
       }
     }
 
     fetchAllData();
-  }, [id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [malId]); // Only re-run when MAL ID changes
+
 
   if (loading && !anime) {
     return <AnimeDetailSkeleton />;
@@ -145,7 +179,8 @@ export default function AnimeDetailPage() {
   }
 
   if (!anime) {
-    return <AnimeDetailSkeleton />;
+    // Fallback if anime details are null after loading (should be caught by error or notFound)
+    return <AnimeDetailSkeleton />; // Or a specific "not found" component
   }
 
 
@@ -191,18 +226,23 @@ export default function AnimeDetailPage() {
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
                            {/* Conditionally render Watch Now based on episodes */}
-                           {!loadingEpisodes && episodes.length > 0 && episodes[0].id && (
+                           {!loadingEpisodes && episodes.length > 0 && episodes[0].id && animePaheId && (
                              <Button size="sm" className="w-full neon-glow-hover" asChild>
-                                 {/* Link to the watch page using AnimePahe episode ID */}
-                                 <Link href={`/watch/anime/${anime.mal_id}/${encodeURIComponent(episodes[0].id)}`}>
+                                 {/* Link to the watch page using AnimePahe IDs */}
+                                 <Link href={`/watch/anime/${animePaheId}/${encodeURIComponent(episodes[0].id)}`}>
                                      <PlayCircle size={16} className="mr-2"/> Watch Now
                                  </Link>
                              </Button>
                            )}
-                           {/* Show disabled Watch Now if episodes are unavailable */}
-                           {episodeError === EPISODE_UNAVAILABLE_MESSAGE && !loadingEpisodes && (
-                               <Button size="sm" className="w-full" disabled>
-                                   <PlayCircle size={16} className="mr-2"/> Episodes Unavailable
+                           {/* Show loading or unavailable states */}
+                           {loadingEpisodes && (
+                                <Button size="sm" className="w-full" disabled>
+                                   <Loader2 size={16} className="mr-2 animate-spin"/> Checking Episodes...
+                               </Button>
+                           )}
+                           {episodeError && !loadingEpisodes && (
+                               <Button size="sm" className="w-full" disabled title={episodeError}>
+                                   <PlayCircle size={16} className="mr-2 opacity-50"/> Episodes Unavailable
                                </Button>
                            )}
                            {anime.url && (
@@ -304,19 +344,19 @@ export default function AnimeDetailPage() {
                            <Alert variant={episodeError === EPISODE_UNAVAILABLE_MESSAGE ? "default" : "destructive"} className={cn("my-4", episodeError === EPISODE_UNAVAILABLE_MESSAGE && "bg-muted/50 border-muted-foreground/30")}>
                                <Info className="h-4 w-4" />
                                <AlertTitle>{episodeError === EPISODE_UNAVAILABLE_MESSAGE ? "Information" : "Could Not Load Episodes"}</AlertTitle>
-                               <AlertDescription>{episodeError}</AlertDescription> {/* Directly display the error */}
+                               <AlertDescription>{episodeError}</AlertDescription>
                            </Alert>
                          )}
                          {!loadingEpisodes && !episodeError && episodes.length === 0 && (
                               <p className="text-center text-muted-foreground py-6">No episode information currently available.</p>
                          )}
-                        {!loadingEpisodes && !episodeError && episodes.length > 0 && (
+                        {!loadingEpisodes && !episodeError && episodes.length > 0 && animePaheId && (
                             <ScrollArea className="h-[400px] pr-3">
                                 <div className="space-y-2">
                                     {episodes.map((ep) => (
-                                        // Link uses AnimePahe episode ID now
+                                        // Link uses AnimePahe IDs now
                                         ep.id ? (
-                                            <Link key={ep.id} href={`/watch/anime/${anime.mal_id}/${encodeURIComponent(ep.id)}`} passHref legacyBehavior>
+                                            <Link key={ep.id} href={`/watch/anime/${animePaheId}/${encodeURIComponent(ep.id)}`} passHref legacyBehavior>
                                                 <a className="block group">
                                                     <Card className={cn(
                                                          "p-3 glass transition-colors duration-200 border border-transparent",
@@ -328,12 +368,11 @@ export default function AnimeDetailPage() {
                                                             </span>
                                                             <PlayCircle size={18} className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
                                                         </div>
-                                                        {/* Add duration or other info if available in WeebapiEpisode */}
                                                     </Card>
                                                 </a>
                                             </Link>
                                         ) : (
-                                            // Optionally render differently if no ID (though we generate one)
+                                            // Optionally render differently if no ID
                                             <Card key={`no-id-${ep.episode}`} className="p-3 glass opacity-50 cursor-not-allowed">
                                                  <div className="flex items-center justify-between gap-3">
                                                     <span className="text-sm font-medium truncate">
@@ -435,4 +474,3 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
-
