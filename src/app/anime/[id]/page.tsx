@@ -36,6 +36,10 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
     );
 };
 
+const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable for this source.";
+const ANIME_NOT_FOUND_PROVIDER = "Could not find this anime on the streaming provider.";
+const ERROR_CONTACTING_PROVIDER = "Error contacting the streaming provider to find this anime.";
+const FAILED_LOAD_EPISODES = "Failed to load episode list.";
 
 export default function AnimeDetailPage() {
   const params = useParams();
@@ -49,37 +53,44 @@ export default function AnimeDetailPage() {
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
-  const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable.";
+
 
   // Fetch AnimePahe ID based on title from Jikan
-  const fetchAnimePaheId = useCallback(async (title: string) => {
+  const fetchAnimePaheId = useCallback(async (title: string): Promise<string | null> => {
     setLoadingEpisodes(true); // Indicate loading starts here
     setEpisodeError(null);
     try {
         console.log(`[AnimeDetailPage] Searching AnimePahe for title: "${title}"`);
-        const session = await getAnimePaheSession(title);
-        if (session && session.id) {
-            console.log(`[AnimeDetailPage] Found AnimePahe ID: ${session.id} for title "${title}"`);
-            setAnimePaheId(session.id);
-            return session.id;
+        // The service now returns null if not found, or throws on error
+        const sessionInfo = await getAnimePaheSession(title);
+        const paheId = sessionInfo?.id; // Extract ID
+
+        if (paheId) {
+            console.log(`[AnimeDetailPage] Found AnimePahe ID: ${paheId} for title "${title}"`);
+            setAnimePaheId(paheId);
+            return paheId;
         } else {
             console.warn(`[AnimeDetailPage] Could not find AnimePahe ID for title "${title}".`);
-             setEpisodeError("Could not find this anime on the streaming provider.");
+            setEpisodeError(ANIME_NOT_FOUND_PROVIDER); // Set specific error
+            setAnimePaheId(null); // Clear any previous ID
+            setEpisodes([]); // Clear episodes if ID not found
             return null;
         }
     } catch (searchError: any) {
          console.error(`[AnimeDetailPage] Error searching AnimePahe:`, searchError);
-         setEpisodeError("Error contacting the streaming provider to find this anime.");
+         setEpisodeError(ERROR_CONTACTING_PROVIDER); // Set specific error
+         setAnimePaheId(null); // Clear ID on error
+         setEpisodes([]); // Clear episodes on error
          return null;
     } finally {
-        // setLoadingEpisodes(false); // Loading continues in fetchEpisodes
+        // setLoadingEpisodes(false); // Loading continues in fetchEpisodes or stops if ID search fails
     }
-  }, []);
+  }, []); // Removed setEpisodeError from dependencies
 
   // Fetch Episodes using AnimePahe ID
   const fetchEpisodes = useCallback(async (paheId: string) => {
     // setLoadingEpisodes(true); // Already set in fetchAnimePaheId or fetchAllData
-    setEpisodeError(null);
+    setEpisodeError(null); // Clear previous errors
     try {
       console.log(`[AnimeDetailPage] Fetching AnimePahe episodes for AnimePahe ID: ${paheId}`);
       const fetchedEpisodes = await getAnimeEpisodesPahe(paheId);
@@ -90,16 +101,17 @@ export default function AnimeDetailPage() {
       }
     } catch (paheError: any) {
       console.error(`[AnimeDetailPage] Error calling getAnimeEpisodesPahe: ${paheError.message}`);
-      if (paheError.message.includes('Library unavailable') || paheError.message.includes('No episodes found')) {
-        setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
-      } else {
-        setEpisodeError("Failed to load episode list.");
-      }
-      setEpisodes([]);
+       // Check error message for specific provider issues
+       if (paheError.message.includes('No episodes found')) {
+            setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
+       } else {
+           setEpisodeError(FAILED_LOAD_EPISODES);
+       }
+      setEpisodes([]); // Clear episodes on error
     } finally {
         setLoadingEpisodes(false); // Episodes loading finishes here
     }
-  }, []);
+  }, []); // Removed setEpisodeError from dependencies
 
   // Main data fetching effect
   useEffect(() => {
@@ -127,9 +139,9 @@ export default function AnimeDetailPage() {
         if (!fetchedAnime || !fetchedAnime.title) {
             console.error(`[AnimeDetailPage] Jikan details not found or missing title for MAL ID ${malId}`);
             setError('Anime details not found.');
-            notFound(); // Trigger 404
             setLoading(false);
             setLoadingEpisodes(false);
+            notFound(); // Trigger 404 if Jikan fails
             return;
         }
         console.log(`[AnimeDetailPage] Jikan details fetched: ${fetchedAnime.title}`);
@@ -142,7 +154,8 @@ export default function AnimeDetailPage() {
         if (paheId) {
             await fetchEpisodes(paheId);
         } else {
-             // Error state already set by fetchAnimePaheId
+             // Error state and episode clearing are handled within fetchAnimePaheId
+             console.log(`[AnimeDetailPage] No AnimePahe ID found, stopping episode fetch.`);
              setLoadingEpisodes(false); // Ensure loading stops if ID search fails
         }
 
@@ -242,7 +255,7 @@ export default function AnimeDetailPage() {
                            )}
                            {episodeError && !loadingEpisodes && (
                                <Button size="sm" className="w-full" disabled title={episodeError}>
-                                   <PlayCircle size={16} className="mr-2 opacity-50"/> Episodes Unavailable
+                                   <PlayCircle size={16} className="mr-2 opacity-50"/> Watch Unavailable
                                </Button>
                            )}
                            {anime.url && (
@@ -341,9 +354,9 @@ export default function AnimeDetailPage() {
                             </div>
                          )}
                         {episodeError && !loadingEpisodes && (
-                           <Alert variant={episodeError === EPISODE_UNAVAILABLE_MESSAGE ? "default" : "destructive"} className={cn("my-4", episodeError === EPISODE_UNAVAILABLE_MESSAGE && "bg-muted/50 border-muted-foreground/30")}>
+                           <Alert variant={episodeError === EPISODE_UNAVAILABLE_MESSAGE || episodeError === ANIME_NOT_FOUND_PROVIDER ? "default" : "destructive"} className={cn("my-4", (episodeError === EPISODE_UNAVAILABLE_MESSAGE || episodeError === ANIME_NOT_FOUND_PROVIDER) && "bg-muted/50 border-muted-foreground/30")}>
                                <Info className="h-4 w-4" />
-                               <AlertTitle>{episodeError === EPISODE_UNAVAILABLE_MESSAGE ? "Information" : "Could Not Load Episodes"}</AlertTitle>
+                               <AlertTitle>{episodeError === EPISODE_UNAVAILABLE_MESSAGE || episodeError === ANIME_NOT_FOUND_PROVIDER ? "Information" : "Could Not Load Episodes"}</AlertTitle>
                                <AlertDescription>{episodeError}</AlertDescription>
                            </Alert>
                          )}
@@ -474,3 +487,4 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
+

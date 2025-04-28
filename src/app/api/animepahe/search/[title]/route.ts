@@ -43,11 +43,12 @@ export async function GET(
     // Use the AnimePahe API for searching first
     const SEARCH_API_URL = 'https://animepahe.org/api';
     const targetURL = `${SEARCH_API_URL}?m=search&q=${encodeURIComponent(animeTitle)}`;
-    let response: Response | undefined;
+    let apiResponse: Response | undefined;
+    let pageResponse: Response | undefined;
 
     console.log(`[API/animepahe/search] Searching AnimePahe API for: "${animeTitle}" at ${targetURL}`);
     try {
-        response = await fetch(targetURL, {
+        apiResponse = await fetch(targetURL, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
                 'Accept': 'application/json',
@@ -55,12 +56,12 @@ export async function GET(
             cache: 'no-store',
         });
 
-        if (!response.ok) {
-            const errorBody = await response.text();
-            console.error(`[API/animepahe/search] Search API failed. Status: ${response.status}: ${errorBody}`);
-            // If API fails, proceed to scraping fallback
+        if (!apiResponse.ok) {
+            const errorBody = await apiResponse.text();
+            console.warn(`[API/animepahe/search] Search API failed. Status: ${apiResponse.status}: ${errorBody}. Proceeding to scraping fallback.`);
+            // If API fails, proceed to scraping fallback without throwing immediately
         } else {
-            const searchResponse: AnimePaheSearchResponse = await response.json();
+            const searchResponse: AnimePaheSearchResponse = await apiResponse.json();
             if (searchResponse?.data?.length > 0) {
                 const firstResult = searchResponse.data[0];
                 const sessionId = firstResult?.session;
@@ -77,7 +78,7 @@ export async function GET(
         // --- Fallback: Scrape search results page if API fails or yields no ID ---
         console.log(`[API/animepahe/search] Falling back to scraping search page for "${animeTitle}"`);
         const SEARCH_PAGE_URL = `https://animepahe.org/search?q=${encodeURIComponent(animeTitle)}`;
-        const pageResponse = await fetch(SEARCH_PAGE_URL, {
+        pageResponse = await fetch(SEARCH_PAGE_URL, {
             headers: {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0',
                 'Accept': 'text/html',
@@ -86,8 +87,9 @@ export async function GET(
         });
 
         if (!pageResponse.ok) {
-            console.error(`[API/animepahe/search] Scraping fallback failed. Status: ${pageResponse.status}`);
-            return NextResponse.json({ message: 'Failed to search AnimePahe (Scraping Error)' }, { status: 502 });
+             const scrapingErrorBody = await pageResponse.text().catch(() => "Could not read error body");
+             console.error(`[API/animepahe/search] Scraping fallback failed. Status: ${pageResponse.status} ${pageResponse.statusText}. Body: ${scrapingErrorBody.substring(0, 500)}...`); // Log status text and beginning of body
+            return NextResponse.json({ message: `Failed to search AnimePahe (Scraping Error: ${pageResponse.status})` }, { status: 502 });
         }
 
         const html = await pageResponse.text();
@@ -123,10 +125,14 @@ export async function GET(
 
     } catch (error: any) {
         console.error(`[API/animepahe/search] Unexpected error searching for "${animeTitle}". URL: ${targetURL}`);
-        if(response) {
-            console.error('[API/animepahe/search] Response Status:', response.status, response.statusText);
+        if(apiResponse) {
+            console.error('[API/animepahe/search] API Response Status:', apiResponse.status, apiResponse.statusText);
+        }
+        if(pageResponse) {
+             console.error('[API/animepahe/search] Scraping Response Status:', pageResponse.status, pageResponse.statusText);
         }
         console.error('[API/animepahe/search] Error Details:', error.message);
         return NextResponse.json({ message: 'Internal server error during AnimePahe search.', error: error.message }, { status: 500 });
     }
 }
+

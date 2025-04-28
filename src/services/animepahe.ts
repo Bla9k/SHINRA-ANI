@@ -1,8 +1,7 @@
 
 import { cache } from 'react';
 import { config } from '@/config';
-// Removed top-level import of JSDOM: import { JSDOM } from 'jsdom';
-// JSDOM will be used dynamically ONLY within API routes (server-side).
+// No direct import of JSDOM here
 
 // --- Interfaces ---
 export interface AnimePaheEpisode {
@@ -72,22 +71,23 @@ export const getAnimeEpisodesPahe = cache(
       });
 
       if (!response.ok) {
-        const errorBody = await response.text();
-        console.error(
-          `[getAnimeEpisodesPahe] API responded with status ${response.status}: ${errorBody}`
-        );
-        if (response.status === 404) {
-          console.warn(
-            `[getAnimeEpisodesPahe] No episodes found (404) for AnimePahe ID ${animePaheId}`
-          );
-           // Throw a more specific error message
-           throw new Error(`No episodes found for this anime on AnimePahe (ID: ${animePaheId}). It might not be available or the ID is incorrect.`);
-        }
-         throw new Error(
-           `AnimePahe Episode API request failed: ${response.status} ${response.statusText}`
-         );
+        const errorBody = await response.text().catch(() => "Failed to read error body");
+        console.error(`[getAnimeEpisodesPahe] API responded with status ${response.status}: ${errorBody}`);
+         if (response.status === 404) {
+             console.warn(`[getAnimeEpisodesPahe] No episodes found (404) for AnimePahe ID ${animePaheId}`);
+             // Throw a more specific error message for the frontend to catch
+             throw new Error(`No episodes found for this anime on AnimePahe (ID: ${animePaheId}). It might not be available or the ID is incorrect.`);
+         }
+         // Throw a general error for other non-OK responses
+         throw new Error(`AnimePahe Episode API request failed: ${response.status} ${response.statusText}`);
       }
       const data: AnimePaheResult = await response.json();
+
+      // Check if data itself indicates no episodes even with 200 OK (unlikely but possible)
+      if (!data || !data.data || data.data.length === 0) {
+          console.warn(`[getAnimeEpisodesPahe] Response OK but no episode data found for AnimePahe ID ${animePaheId}`);
+          throw new Error(`No episodes found for this anime on AnimePahe (ID: ${animePaheId}). Response was empty.`);
+      }
 
       // Map response data
        const mappedEpisodes: AnimePaheEpisode[] = (data.data || []).map(ep => ({
@@ -109,7 +109,7 @@ export const getAnimeEpisodesPahe = cache(
             console.error('[getAnimeEpisodesPahe] Response Status:', response.status, response.statusText);
        }
        console.error('[getAnimeEpisodesPahe] Fetch Error Details:', error.message);
-       // Re-throw or return empty based on desired error handling in the calling context (API route)
+       // Re-throw the original error or a new one to be handled by the caller
        throw new Error(`Failed to fetch episodes from AnimePahe: ${error.message}`);
     }
   }
@@ -154,39 +154,43 @@ export const getAnimeStreamingLinkPahe = cache(async (animePaheId: string, episo
  * Fetches the AnimePahe session ID for a given anime title.
  * This function now relies on an API route to handle the searching/scraping with JSDOM.
  * @param animeTitle: string The title to search for.
- * @returns Promise<string | null> The AnimePahe ID (session) if found, otherwise null.
+ * @returns Promise<{ id: string | null } | null> An object containing the AnimePahe ID (session) if found, otherwise null. Returns null if the API call fails unexpectedly.
  */
  export const getAnimePaheSession = cache(async (animeTitle: string): Promise<{ id: string | null } | null> => {
      const apiUrl = `/api/animepahe/search/${encodeURIComponent(animeTitle)}`;
      console.log(`[getAnimePaheSession] Fetching from internal API: ${apiUrl}`);
+     let response: Response | undefined;
      try {
-         const response = await fetch(apiUrl, { cache: 'no-store' }); // Fetch from our API route
+         response = await fetch(apiUrl, { cache: 'no-store' }); // Fetch from our API route
 
          if (!response.ok) {
              const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
              console.error(`[getAnimePaheSession] Internal API error ${response.status}:`, errorData.message || response.statusText);
              if (response.status === 404) {
                  console.warn(`[getAnimePaheSession] Anime title "${animeTitle}" not found via internal API.`);
-                 return null; // Not found is not necessarily a hard error
+                 return { id: null }; // Return object with null ID if specifically not found
              }
+             // For other errors (like 502 Bad Gateway from scraping), throw to indicate a real failure
              throw new Error(errorData.message || `Failed to search AnimePahe ID: ${response.statusText}`);
          }
 
          const data = await response.json();
 
          if (!data || typeof data.animePaheId === 'undefined') { // API should return { animePaheId: '...' or null }
+             console.error("[getAnimePaheSession] Invalid response format from search API:", data);
              throw new Error("Invalid response format from search API.");
          }
 
          if (data.animePaheId) {
              console.log(`[getAnimePaheSession] Successfully found AnimePahe ID ${data.animePaheId} for "${animeTitle}" via internal API.`);
          } else {
-             console.log(`[getAnimePaheSession] AnimePahe ID not found for "${animeTitle}" via internal API.`);
+             console.log(`[getAnimePaheSession] AnimePahe ID not found for "${animeTitle}" via internal API (API returned null).`);
          }
-         return { id: data.animePaheId }; // Return the ID wrapped in an object
+         return { id: data.animePaheId }; // Return the ID (or null) wrapped in an object
 
      } catch (error: any) {
          console.error(`[getAnimePaheSession] Error fetching from internal API ${apiUrl}:`, error.message);
-         throw new Error(`Failed to search AnimePahe ID: ${error.message}`);
+          // Return null to indicate the operation failed, distinguish from "not found"
+         return null;
      }
  });
