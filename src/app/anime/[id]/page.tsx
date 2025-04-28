@@ -6,8 +6,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Jikan-based service for metadata
-// Switch to AnimePahe service for episodes
-import { getAnimeEpisodesPahe, AnimepaheEpisode } from '@/services/animepahe';
+// Switch to Weebapi service for episodes
+import { getAnimeEpisodesWeebapi, WeebapiEpisode } from '@/services/weebapi';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -42,7 +42,7 @@ export default function AnimeDetailPage() {
   const id = params.id ? parseInt(params.id as string, 10) : NaN;
 
   const [anime, setAnime] = useState<Anime | null>(null);
-  const [episodes, setEpisodes] = useState<AnimepaheEpisode[]>([]); // Use AnimepaheEpisode type
+  const [episodes, setEpisodes] = useState<WeebapiEpisode[]>([]); // Use WeebapiEpisode type
   const [loading, setLoading] = useState(true);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,22 +61,17 @@ export default function AnimeDetailPage() {
       setError(null);
       setEpisodeError(null);
 
-      let fetchedEpisodes: AnimepaheEpisode[] = [];
+      let fetchedEpisodes: WeebapiEpisode[] = [];
+      let fetchedAnime: Anime | null = null;
       let episodesFailed = false;
 
       try {
-        // Fetch metadata (Jikan) and episodes (AnimePahe via internal API) concurrently
-        const [detailsResult, episodesResult] = await Promise.allSettled([
-            getAnimeDetails(id),
-            getAnimeEpisodesPahe(id) // Use AnimePahe service
-        ]);
+        // Fetch metadata (Jikan) first
+        fetchedAnime = await getAnimeDetails(id);
+        setAnime(fetchedAnime);
 
-        // Process Details Result
-        if (detailsResult.status === 'fulfilled' && detailsResult.value) {
-            setAnime(detailsResult.value);
-        } else {
-            const reason = detailsResult.status === 'rejected' ? detailsResult.reason : 'Anime details not found';
-            console.error(`Error fetching anime details for ID ${id}:`, reason);
+        if (!fetchedAnime) {
+            console.error(`Error fetching anime details for ID ${id}`);
             setError('Anime details not found.');
             notFound();
             setLoading(false);
@@ -84,18 +79,19 @@ export default function AnimeDetailPage() {
             return;
         }
 
-        // Process Episodes Result
-        if (episodesResult.status === 'fulfilled') {
-            fetchedEpisodes = episodesResult.value || [];
-             setEpisodes(fetchedEpisodes);
-             if (fetchedEpisodes.length === 0) {
-                console.warn(`No episodes found for Anime ID ${id} via AnimePahe, or API returned empty list.`);
-             }
+        // Fetch episodes using weebapi based on the title from Jikan
+        if (fetchedAnime.title) {
+            console.log(`Fetching weebapi episodes for title: "${fetchedAnime.title}"`);
+            fetchedEpisodes = await getAnimeEpisodesWeebapi(fetchedAnime.title);
+            setEpisodes(fetchedEpisodes);
+            if (fetchedEpisodes.length === 0) {
+                console.warn(`No episodes found for Anime ID ${id} via Weebapi, or API returned empty list.`);
+                setEpisodeError("Could not load episode list from Weebapi.");
+            }
         } else {
+            console.warn(`Cannot fetch weebapi episodes for Anime ID ${id}: Title is missing.`);
+            setEpisodeError("Cannot fetch episodes: Anime title is missing.");
             episodesFailed = true;
-            const reason = episodesResult.reason instanceof Error ? episodesResult.reason.message : 'Unknown error';
-            console.error(`Error fetching episodes for Anime ID ${id} via AnimePahe API:`, reason);
-            setEpisodeError(`Could not load episode list: ${reason}.`);
             setEpisodes([]);
         }
 
@@ -175,10 +171,10 @@ export default function AnimeDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                           {episodes.length > 0 && (
+                           {episodes.length > 0 && episodes[0].id && ( // Check if first episode has an ID
                              <Button size="sm" className="w-full neon-glow-hover" asChild>
-                                 {/* Link to the watch page using AnimePahe episode ID */}
-                                 <Link href={`/watch/anime/${anime.id}/${episodes[0].id}`}>
+                                 {/* Link to the watch page using weebapi episode ID */}
+                                 <Link href={`/watch/anime/${anime.id}/${encodeURIComponent(episodes[0].id)}`}>
                                      <PlayCircle size={16} className="mr-2"/> Watch Now
                                  </Link>
                              </Button>
@@ -292,21 +288,32 @@ export default function AnimeDetailPage() {
                             <ScrollArea className="h-[400px] pr-3">
                                 <div className="space-y-2">
                                     {episodes.map((ep) => (
-                                        // Link uses AnimePahe episode ID now
-                                        <Link key={ep.id} href={`/watch/anime/${anime.id}/${ep.id}`} passHref legacyBehavior>
-                                            <a className="block group">
-                                                <Card className="p-3 glass transition-colors duration-200 border border-transparent group-hover:border-primary/50 group-hover:bg-accent/10">
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <span className="text-sm font-medium truncate group-hover:text-primary">
-                                                           Ep {ep.number} {ep.title ? `- ${ep.title}` : ''}
-                                                        </span>
-                                                        <PlayCircle size={18} className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
-                                                    </div>
-                                                    {/* Add duration or other info if available in AnimepaheEpisode */}
-                                                    {/* {ep.duration && <p className="text-xs text-muted-foreground mt-0.5">Duration: {Math.floor(ep.duration / 60)}m</p>} */}
-                                                </Card>
-                                            </a>
-                                        </Link>
+                                        // Link uses weebapi episode ID now (e.g., ep.id or encoded ep.player_url)
+                                        // Ensure ep.id exists and is suitable for URL param
+                                        ep.id ? (
+                                            <Link key={ep.id} href={`/watch/anime/${anime.id}/${encodeURIComponent(ep.id)}`} passHref legacyBehavior>
+                                                <a className="block group">
+                                                    <Card className="p-3 glass transition-colors duration-200 border border-transparent group-hover:border-primary/50 group-hover:bg-accent/10">
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <span className="text-sm font-medium truncate group-hover:text-primary">
+                                                               Ep {ep.episode_num} {ep.title ? `- ${ep.title}` : ''}
+                                                            </span>
+                                                            <PlayCircle size={18} className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
+                                                        </div>
+                                                        {/* Add duration or other info if available in WeebapiEpisode */}
+                                                    </Card>
+                                                </a>
+                                            </Link>
+                                        ) : (
+                                            // Optionally render differently if no ID (though we generate one)
+                                            <Card key={`no-id-${ep.episode_num}`} className="p-3 glass opacity-50 cursor-not-allowed">
+                                                 <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-sm font-medium truncate">
+                                                        Ep {ep.episode_num} {ep.title ? `- ${ep.title}` : ''} (Link unavailable)
+                                                    </span>
+                                                </div>
+                                            </Card>
+                                        )
                                     ))}
                                 </div>
                             </ScrollArea>
