@@ -1,12 +1,3 @@
-'use server';
-
-/**
- * @fileOverview Defines functions for interacting with AnimePahe API.
- *
- * - getAnimeEpisodesPahe - A function that handles the AI-powered search process.
- * - getAnimeStreamingLinkPahe - A function that handles the AI-powered search process.
- */
-
 import { cache } from 'react';
 import { config } from '@/config';
 import { JSDOM } from 'jsdom';
