@@ -4,10 +4,9 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound, useParams } from 'next/navigation';
+import { notFound, useParams, useRouter } from 'next/navigation';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Jikan-based service for metadata
-// Switch to Weebapi service for episodes (currently placeholder)
-import { getAnimeEpisodesWeebapi, WeebapiEpisode } from '@/services/weebapi';
+import { getAnimeEpisodesPahe, AnimePaheEpisode } from '@/services/animepahe'; // Use AnimePahe service
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -40,10 +39,11 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
 
 export default function AnimeDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = params.id ? parseInt(params.id as string, 10) : NaN;
 
   const [anime, setAnime] = useState<Anime | null>(null);
-  const [episodes, setEpisodes] = useState<WeebapiEpisode[]>([]); // Use WeebapiEpisode type
+  const [episodes, setEpisodes] = useState<AnimePaheEpisode[]>([]); // Use AnimePaheEpisode type
   const [loading, setLoading] = useState(true);
   const [loadingEpisodes, setLoadingEpisodes] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export default function AnimeDetailPage() {
       setError(null);
       setEpisodeError(null);
 
-      let fetchedEpisodes: WeebapiEpisode[] = [];
+      let fetchedEpisodes: AnimePaheEpisode[] = [];
       let fetchedAnime: Anime | null = null;
       let episodesFailed = false;
       let episodesUnavailable = false; // Flag for unavailable library
@@ -82,25 +82,23 @@ export default function AnimeDetailPage() {
             return;
         }
 
-        // Fetch episodes using weebapi based on the title from Jikan
-        if (fetchedAnime.title) {
-            console.log(`Fetching weebapi episodes for title: "${fetchedAnime.title}"`);
-            // Handle potential error if weebapi library is unavailable
+        // Fetch episodes using AnimePahe API based on the MAL ID
+        if (fetchedAnime.mal_id) {
+            console.log(`Fetching AnimePahe episodes for MAL ID: ${fetchedAnime.mal_id}`);
+            // Handle potential error if AnimePahe library is unavailable
             try {
-                 fetchedEpisodes = await getAnimeEpisodesWeebapi(fetchedAnime.title);
+                 fetchedEpisodes = await getAnimeEpisodesPahe(fetchedAnime.mal_id.toString());
                  setEpisodes(fetchedEpisodes);
                  if (fetchedEpisodes.length === 0) {
                      // Check if it's because the library is unavailable or just no episodes
-                     // We added a console.warn in the service placeholder
-                     console.warn(`[AnimeDetailPage] No episodes returned for Anime ID ${id} via Weebapi, or library is unavailable.`);
-                     // Provide a more specific message if we know the library is the issue (e.g., based on a specific error or the placeholder nature)
+                     console.warn(`[AnimeDetailPage] No episodes returned for Anime ID ${id} via AnimePahe.`);
                      setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
                      episodesUnavailable = true;
                  }
-            } catch (weebapiError: any) {
-                 console.error(`Error calling getAnimeEpisodesWeebapi: ${weebapiError.message}`);
-                 // Check if error indicates unavailability
-                 if (weebapiError.message.includes('Library unavailable')) {
+            } catch (paheError: any) {
+                 console.error(`Error calling getAnimeEpisodesPahe: ${paheError.message}`);
+                 // Check if error indicates unavailability or a specific AnimePahe error message
+                 if (paheError.message.includes('Library unavailable') || paheError.message.includes('No episodes found')) {
                      setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
                      episodesUnavailable = true;
                  } else {
@@ -110,8 +108,8 @@ export default function AnimeDetailPage() {
                  setEpisodes([]);
             }
         } else {
-            console.warn(`Cannot fetch weebapi episodes for Anime ID ${id}: Title is missing.`);
-            setEpisodeError("Cannot fetch episodes: Anime title is missing.");
+            console.warn(`Cannot fetch AnimePahe episodes for Anime ID ${id}: MAL ID is missing.`);
+            setEpisodeError("Cannot fetch episodes: Anime MAL ID is missing.");
             episodesFailed = true;
             setEpisodes([]);
         }
@@ -195,8 +193,8 @@ export default function AnimeDetailPage() {
                            {/* Conditionally render Watch Now based on episodes */}
                            {!loadingEpisodes && episodes.length > 0 && episodes[0].id && (
                              <Button size="sm" className="w-full neon-glow-hover" asChild>
-                                 {/* Link to the watch page using weebapi episode ID */}
-                                 <Link href={`/watch/anime/${anime.id}/${encodeURIComponent(episodes[0].id)}`}>
+                                 {/* Link to the watch page using AnimePahe episode ID */}
+                                 <Link href={`/watch/anime/${anime.mal_id}/${encodeURIComponent(episodes[0].id)}`}>
                                      <PlayCircle size={16} className="mr-2"/> Watch Now
                                  </Link>
                              </Button>
@@ -316,10 +314,9 @@ export default function AnimeDetailPage() {
                             <ScrollArea className="h-[400px] pr-3">
                                 <div className="space-y-2">
                                     {episodes.map((ep) => (
-                                        // Link uses weebapi episode ID now (e.g., ep.id or encoded ep.player_url)
-                                        // Ensure ep.id exists and is suitable for URL param
+                                        // Link uses AnimePahe episode ID now
                                         ep.id ? (
-                                            <Link key={ep.id} href={`/watch/anime/${anime.id}/${encodeURIComponent(ep.id)}`} passHref legacyBehavior>
+                                            <Link key={ep.id} href={`/watch/anime/${anime.mal_id}/${encodeURIComponent(ep.id)}`} passHref legacyBehavior>
                                                 <a className="block group">
                                                     <Card className={cn(
                                                          "p-3 glass transition-colors duration-200 border border-transparent",
@@ -327,7 +324,7 @@ export default function AnimeDetailPage() {
                                                      )}>
                                                         <div className="flex items-center justify-between gap-3">
                                                             <span className="text-sm font-medium truncate group-hover:text-primary">
-                                                               Ep {ep.episode_num} {ep.title ? `- ${ep.title}` : ''}
+                                                               Ep {ep.episode} {ep.title ? `- ${ep.title}` : ''}
                                                             </span>
                                                             <PlayCircle size={18} className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
                                                         </div>
@@ -337,10 +334,10 @@ export default function AnimeDetailPage() {
                                             </Link>
                                         ) : (
                                             // Optionally render differently if no ID (though we generate one)
-                                            <Card key={`no-id-${ep.episode_num}`} className="p-3 glass opacity-50 cursor-not-allowed">
+                                            <Card key={`no-id-${ep.episode}`} className="p-3 glass opacity-50 cursor-not-allowed">
                                                  <div className="flex items-center justify-between gap-3">
                                                     <span className="text-sm font-medium truncate">
-                                                        Ep {ep.episode_num} {ep.title ? `- ${ep.title}` : ''} (Link unavailable)
+                                                        Ep {ep.episode} {ep.title ? `- ${ep.title}` : ''} (Link unavailable)
                                                     </span>
                                                 </div>
                                             </Card>

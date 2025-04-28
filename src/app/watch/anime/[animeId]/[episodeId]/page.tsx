@@ -3,9 +3,8 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, notFound, useRouter } from 'next/navigation';
-// Use Weebapi services (currently placeholder)
-import { getAnimeEpisodesWeebapi, getAnimeStreamingLinkWeebapi, WeebapiEpisode, WeebapiWatchResponse } from '@/services/weebapi';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Still use Jikan for metadata
+import { getAnimeStreamingLinkPahe, AnimePaheCDNLink } from '@/services/animepahe'; // Use AnimePahe
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -13,8 +12,7 @@ import { AlertCircle, Loader2, ArrowLeft, ListVideo, ArrowRight, PlayCircle, Tv 
 import Hls from 'hls.js'; // Import Hls.js for playback
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Button } from '@/components/ui/button';
-import Link from 'next/link';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Link } from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Use Select for quality
 import { Badge } from '@/components/ui/badge'; // Import Badge
 import { cn } from '@/lib/utils';
@@ -26,165 +24,98 @@ export default function WatchAnimeEpisodePage() {
     const hlsRef = useRef<Hls | null>(null);
 
     const animeId = params.animeId ? parseInt(params.animeId as string, 10) : NaN;
-    // This is now the weebapi episode ID (e.g., 'ep-1')
     const episodeId = params.episodeId ? decodeURIComponent(params.episodeId as string) : '';
 
-    const [streamingData, setStreamingData] = useState<WeebapiWatchResponse | null>(null);
+    const [streamingData, setStreamingData] = useState<AnimePaheCDNLink[] | null>(null);
     const [animeDetails, setAnimeDetails] = useState<Anime | null>(null);
-    const [episodes, setEpisodes] = useState<WeebapiEpisode[]>([]); // Use WeebapiEpisode type
-    const [currentEpisode, setCurrentEpisode] = useState<WeebapiEpisode | null>(null);
     const [loading, setLoading] = useState(true);
-    const [loadingMetadata, setLoadingMetadata] = useState(true); // Separate loading for metadata/ep list
-    const [loadingStream, setLoadingStream] = useState(true); // Separate loading for stream links
+    const [loadingMetadata, setLoadingMetadata] = useState(true);
+    const [loadingStream, setLoadingStream] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [selectedQuality, setSelectedQuality] = useState<string | null>(null);
-    const STREAMING_UNAVAILABLE_MESSAGE = "Streaming source fetching is currently unavailable.";
 
-    // Fetch Metadata and Episode List (Runs once per animeId)
+    // Fetch Metadata and Streaming Link
     useEffect(() => {
-         if (isNaN(animeId)) {
-            setError('Invalid Anime ID.');
-            setLoadingMetadata(false);
-            setLoading(false); // Overall loading stops
+        if (isNaN(animeId) || !episodeId) {
+            setError('Invalid Anime or Episode ID.');
+            setLoading(false);
             return;
         }
 
-         async function fetchMetadataAndEpisodes() {
+        async function fetchData() {
+            setLoading(true);
             setLoadingMetadata(true);
-            setError(null); // Clear previous errors for this stage
-            try {
-                 // Fetch metadata from Jikan first
-                const details = await getAnimeDetails(animeId);
-                setAnimeDetails(details);
-
-                if (!details) {
-                     console.warn(`[WatchPage] Anime details not found for ID ${animeId}`);
-                     setError("Could not load anime details.");
-                     setLoadingMetadata(false);
-                     setLoading(false);
-                     notFound(); // If details fail, we can't proceed
-                     return;
-                }
-
-                 // Fetch episode list from weebapi using the title
-                if (details.title) {
-                     try {
-                         const fetchedEpisodes = await getAnimeEpisodesWeebapi(details.title);
-                         setEpisodes(fetchedEpisodes);
-                         if (fetchedEpisodes.length === 0) {
-                              console.warn(`[WatchPage] No episodes found for Anime ID ${animeId} via Weebapi.`);
-                              // Don't set error here, stream fetching handles unavailability
-                         }
-                     } catch (epError: any) {
-                         console.error(`[WatchPage] Error fetching Weebapi episodes: ${epError.message}`);
-                         // If episode list fetch itself fails catastrophically
-                          setError("Could not load episode list.");
-                          setEpisodes([]);
-                     }
-                 } else {
-                      console.warn(`[WatchPage] Cannot fetch Weebapi episodes for Anime ID ${animeId}: Title is missing.`);
-                      setError("Cannot load episode list: Anime title is missing.");
-                      setEpisodes([]);
-                 }
-
-
-            } catch (err) {
-                console.error('[WatchPage] Unexpected error fetching metadata/episodes:', err);
-                setError("Failed to load initial page data.");
-                setAnimeDetails(null);
-                setEpisodes([]);
-            } finally {
-                 setLoadingMetadata(false);
-            }
-         }
-
-         fetchMetadataAndEpisodes();
-    }, [animeId]);
-
-
-    // Fetch Streaming Link (Runs when episodeId changes or episodes list loads)
-    useEffect(() => {
-        // Wait for episode list (or at least metadata) before proceeding
-        if (loadingMetadata || !episodeId) {
-            return;
-        };
-
-        // Find the current episode details from the loaded list
-        const foundEpisode = episodes.find(ep => ep.id === episodeId);
-        setCurrentEpisode(foundEpisode || { id: episodeId, episode_num: episodeId.replace('ep-','') }); // Use fallback if not in list
-
-        const playerUrlOrId = foundEpisode?.player_url || episodeId; // Use player_url if available, else the ID itself
-
-        async function fetchStreamingLink() {
             setLoadingStream(true);
-            setError(null); // Clear previous stream errors
+            setError(null);
             setStreamingData(null);
             setSelectedQuality(null);
             if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
             if (videoRef.current) { videoRef.current.src = ''; }
 
             try {
-                console.log(`[WatchPage] Fetching streaming link for identifier: ${playerUrlOrId}`);
-                const data = await getAnimeStreamingLinkWeebapi(playerUrlOrId);
+                // 1. Fetch metadata from Jikan
+                const details = await getAnimeDetails(animeId);
+                setAnimeDetails(details);
+                 setLoadingMetadata(false); // Metadata loaded
 
-                 if (data && data.sources && data.sources.length > 0) {
-                    setStreamingData(data);
-                    // Select best available quality (or just the first one)
-                    const defaultSource = data.sources[0];
-                    setSelectedQuality(defaultSource?.quality || 'default');
-                    console.log("[WatchPage] Stream data fetched (Weebapi), selected quality:", defaultSource?.quality);
-                } else {
-                     console.error('[WatchPage] Weebapi streaming link fetch succeeded but no sources found.');
-                     // Check if this is due to placeholder implementation
-                     setError(STREAMING_UNAVAILABLE_MESSAGE); // Set specific error message
+                if (!details) {
+                     console.warn(`Anime details not found for ID ${animeId}`);
+                     setError("Could not load anime details.");
+                     setLoading(false);
+                     return;
                 }
-            } catch (err: any) {
-                 console.error('[WatchPage] Error fetching Weebapi streaming link:', err);
-                 // Check if error message indicates library unavailable
-                 if (err.message.includes('Library unavailable')) {
-                     setError(STREAMING_UNAVAILABLE_MESSAGE); // Set specific error message
-                 } else {
-                     setError(err.message || 'Could not load streaming source.');
-                 }
-            } finally {
+
+
+                // 2. Fetch streaming link from AnimePahe API
+                console.log(`Fetching AnimePahe streaming link for episode ID: ${episodeId}`);
+                const paheSources = await getAnimeStreamingLinkPahe(episodeId);
+                 setStreamingData(paheSources);
                  setLoadingStream(false);
-                 setLoading(loadingMetadata); // Only set overall loading to false if metadata is also done
+
+                if (paheSources && paheSources.length > 0) {
+                  const defaultSource = paheSources[0];
+                   setSelectedQuality(defaultSource?.label || 'default');
+                   console.log("[WatchPage] Stream data fetched (AnimePahe), selected quality:", defaultSource?.label);
+                } else {
+                     console.warn('No streaming sources found from AnimePahe.');
+                    setError('No streaming sources found for this episode.');
+                }
+
+
+            } catch (err: any) {
+                console.error('Error fetching data:', err);
+                setError(err.message || 'Failed to load data.');
+            } finally {
+                 setLoading(false);
             }
         }
 
-        fetchStreamingLink();
+        fetchData();
 
-         // Cleanup HLS instance on component unmount or when episodeId changes
-        return () => {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-                 console.log("[WatchPage] HLS instance destroyed on unmount/episode change.");
-            }
-        };
+    }, [animeId, episodeId, router]);
 
-    }, [episodeId, episodes, loadingMetadata]); // Re-run when episodeId or the list of episodes changes
-
-
-    // Initialize HLS Player (Runs when streamingData or selectedQuality changes)
+     // Initialize HLS Player (Runs when streamingData or selectedQuality changes)
     useEffect(() => {
-        if (videoRef.current && streamingData && selectedQuality) {
-            // Find the source matching the selected quality (or default if not specified)
-            const source = streamingData.sources.find(s => s.quality === selectedQuality) || streamingData.sources[0];
+         if (videoRef.current && streamingData && selectedQuality) {
+             // Find the source matching the selected quality (or default if not specified)
+             const source = streamingData.find(s => s.label === selectedQuality) || streamingData[0];
 
             if (source && source.url) {
                 const videoElement = videoRef.current;
-                console.log(`[WatchPage] Setting video source (Weebapi): Quality=${selectedQuality}, URL=${source.url}`);
+                console.log(`[WatchPage] Setting video source (AnimePahe): Quality=${selectedQuality}, URL=${source.url}`);
 
                 // Destroy previous HLS instance if exists
                 if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
                 videoElement.removeAttribute('src'); // Clear previous source
                 videoElement.load(); // Reset video element state
 
-                if (Hls.isSupported() && (source.isM3U8 || source.url.includes('.m3u8'))) {
+                // Check if isM3U8
+                const isM3U8 = source.file.includes('.m3u8');
+
+                if (Hls.isSupported() && (isM3U8 || source.file.includes('.m3u8'))) {
                     console.log("[WatchPage] HLS is supported. Initializing HLS player...");
                     const hls = new Hls({ /* HLS config if needed */ });
-                    hls.loadSource(source.url);
+                    hls.loadSource(source.file); // HLS url from CDN link
                     hls.attachMedia(videoElement);
                     hls.on(Hls.Events.MANIFEST_PARSED, () => { console.log("[WatchPage] HLS Manifest parsed."); });
                     hls.on(Hls.Events.ERROR, (event, data) => {
@@ -198,11 +129,11 @@ export default function WatchAnimeEpisodePage() {
                     hlsRef.current = hls;
                 } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) { // Native HLS (Safari)
                     console.log("[WatchPage] Native HLS support detected.");
-                    videoElement.src = source.url;
+                    videoElement.src = source.file;
                 } else {
                     console.warn("[WatchPage] Browser may not support HLS or the provided format. Trying direct source.");
                      // Try setting src directly for potential MP4/other formats
-                     videoElement.src = source.url;
+                     videoElement.src = source.file;
                      // If direct src fails, we rely on browser's native error handling
                 }
             } else {
@@ -210,181 +141,99 @@ export default function WatchAnimeEpisodePage() {
                 setError("Could not find a valid video source for the selected quality.");
                 if(videoRef.current) { videoRef.current.src = ''; }
             }
-        }
-    // Dependency array includes only what's needed to set the player source
+         }
     }, [streamingData, selectedQuality]);
 
+     // Find related videos (other episodes)
+     const relatedEpisodes = () => {
+         if (!animeDetails?.mal_id) return [];
 
-    // Navigation helpers
-    const currentEpisodeIndex = episodes.findIndex(ep => ep.id === episodeId);
-    const prevEpisode = currentEpisodeIndex > 0 ? episodes[currentEpisodeIndex - 1] : null;
-    const nextEpisode = currentEpisodeIndex < episodes.length - 1 ? episodes[currentEpisodeIndex + 1] : null;
+         // TODO: replace with AnimePahe Logic, or replace/augment episodes state instead
+         return [];
+     }
 
-    const navigateToEpisode = (epId: string | undefined) => {
-        if (epId && epId !== episodeId) { // Prevent navigating to the same episode
-            console.log(`[WatchPage] Navigating to Weebapi episode: ${epId}`);
-            setLoading(true); // Show loading indicator immediately
-            setLoadingStream(true); // Specifically indicate stream loading
-            router.push(`/watch/anime/${animeId}/${encodeURIComponent(epId)}`);
-        }
-    };
-
-    // Combined Loading State for initial page load
-     if (loadingMetadata && !animeDetails && !error) { // Show full page loader only initially before metadata
-        return (
-            <div className="bg-black min-h-screen flex flex-col items-center justify-center text-white">
-                 <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">Loading episode...</p>
-            </div>
-        );
-    }
-
-    // Critical Error State (cannot load metadata/episodes OR initial stream)
-    if (error && !loadingStream && !loadingMetadata && error !== STREAMING_UNAVAILABLE_MESSAGE) { // Show error if stream failed after metadata loaded, or if metadata itself failed, excluding unavailable message
-        return (
-            <div className="bg-black min-h-screen flex flex-col items-center justify-center text-white">
-                <Alert variant="destructive" className="max-w-lg glass bg-destructive/20 text-destructive-foreground border-destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertTitle>Error Loading Episode</AlertTitle>
-                    <AlertDescription>{error}</AlertDescription>
-                    <Button variant="outline" onClick={() => router.back()} className="mt-4 text-destructive-foreground border-destructive/50 hover:bg-destructive/30">
-                        <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
-                    </Button>
-                </Alert>
-            </div>
-        );
-    }
-
-     // Main Player UI
     return (
-        <div className="bg-black min-h-screen flex flex-col lg:flex-row">
-            {/* Main Video Player Area */}
-            <div className="flex-grow flex flex-col bg-black">
-                 {/* Header */}
-                <div className="p-2 sm:p-4 flex items-center text-white bg-black/50 flex-shrink-0 z-10">
-                     <Button variant="ghost" size="icon" onClick={() => router.push(`/anime/${animeId}`)} className="mr-2 hover:bg-white/10 text-white h-8 w-8 sm:h-9 sm:w-9">
-                         <ArrowLeft size={18} />
-                     </Button>
-                     <div className="flex-1 truncate mr-2">
-                        {loadingMetadata ? <Skeleton className="h-6 w-48 bg-gray-700" />
-                         : animeDetails ? <Link href={`/anime/${animeId}`} className="text-base sm:text-lg font-semibold hover:underline truncate">{animeDetails.title}</Link>
-                         : <span className="text-base sm:text-lg font-semibold">Anime Details Unavailable</span>
-                        }
-                         {currentEpisode ? (
-                            <span className="ml-1 text-xs sm:text-sm text-muted-foreground"> - Ep {currentEpisode.episode_num} {currentEpisode.title ? `- ${currentEpisode.title}` : ''}</span>
-                          ) : !loadingMetadata && episodeId ? ( // Check !loadingMetadata before showing "loading info"
-                             <span className="ml-1 text-xs sm:text-sm text-muted-foreground"> - Loading episode info...</span>
-                          ) : null}
-                     </div>
-                     {/* Quality Selector */}
-                     {streamingData && streamingData.sources.length > 1 && ( // Only show selector if multiple qualities
-                         <Select
-                            value={selectedQuality || 'default'}
-                            onValueChange={(value) => value && setSelectedQuality(value)}
-                            disabled={loadingStream || !streamingData}
-                         >
-                             <SelectTrigger
-                                className="ml-auto bg-gray-800/70 border border-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary appearance-none h-8 sm:h-9 w-[80px] sm:w-[100px]"
-                                aria-label="Select video quality"
-                             >
-                                <SelectValue placeholder="Quality" />
-                             </SelectTrigger>
-                             <SelectContent className="glass bg-background border-border text-xs">
-                                 {streamingData.sources.map((source, index) => (
-                                     <SelectItem key={source.quality || `q-${index}`} value={source.quality || 'default'} className="text-xs">
-                                         {source.quality || 'Default'}
-                                     </SelectItem>
-                                 ))}
-                             </SelectContent>
-                         </Select>
-                     )}
-                     {streamingData && streamingData.sources.length === 1 && streamingData.sources[0].quality && (
-                         // Show quality label if only one source exists with a quality defined
-                         <Badge variant="secondary" className="ml-auto text-xs">{streamingData.sources[0].quality}</Badge>
-                     )}
-                </div>
-
-                 {/* Video Player Area */}
-                <AspectRatio ratio={16 / 9} className="w-full bg-black flex-grow relative">
-                     {/* Loading/Error Overlay specific to video */}
-                     {loadingStream && <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>}
-                     {error && !loadingStream && ( // Show error overlay if stream loading finished with an error
-                         <div className="absolute inset-0 flex items-center justify-center bg-black/70 z-20 p-4">
-                             <Alert variant={error === STREAMING_UNAVAILABLE_MESSAGE ? "default" : "destructive"} className={cn("max-w-md", error === STREAMING_UNAVAILABLE_MESSAGE && "bg-muted/50 border-muted-foreground/30")}>
-                                 <AlertCircle className="h-4 w-4" />
-                                 <AlertTitle>{error === STREAMING_UNAVAILABLE_MESSAGE ? "Information" : "Playback Error"}</AlertTitle>
-                                 <AlertDescription>{error}</AlertDescription>
-                             </Alert>
-                         </div>
-                     )}
-                     <video
-                        ref={videoRef}
-                        controls
-                        className="w-full h-full"
-                        playsInline
-                        poster={animeDetails?.imageUrl || ''} // Use main anime cover as poster
-                     >
-                        Your browser does not support the video tag.
-                    </video>
-                </AspectRatio>
-            </div>
-
-            {/* Sidebar */}
-            <div className="w-full lg:w-80 xl:w-96 bg-background/90 backdrop-blur-sm glass border-l border-border/50 flex-shrink-0 flex flex-col max-h-[50vh] lg:max-h-screen">
-                <CardHeader className="p-3 border-b border-border/50 flex-shrink-0">
-                     <CardTitle className="text-base flex items-center gap-2"><ListVideo size={18} className="text-primary"/> Episodes</CardTitle>
-                </CardHeader>
-                <ScrollArea className="flex-grow p-2">
-                     {loadingMetadata && episodes.length === 0 ? ( // Show loading skeleton only if metadata is loading AND episodes are empty
-                        <div className="space-y-1 p-2">
-                           {Array.from({ length: 10 }).map((_, i) => <Skeleton key={i} className="h-8 w-full bg-muted/50 rounded" />)}
-                        </div>
-                     ) : episodes.length > 0 ? (
-                        <div className="space-y-1">
-                            {episodes.map((ep) => (
-                                <Button
-                                    key={ep.id} // Use the generated ID
-                                    variant={ep.id === episodeId ? "secondary" : "ghost"}
-                                    onClick={() => navigateToEpisode(ep.id)}
-                                    className="w-full justify-start text-left h-auto py-1.5 px-2 text-xs font-normal group disabled:opacity-50" // Reduced opacity on disabled
-                                    disabled={ep.id === episodeId || loadingStream} // Disable current and during stream load
-                                >
-                                    <PlayCircle size={14} className={cn("mr-2 flex-shrink-0 transition-colors", ep.id === episodeId ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground')}/>
-                                    <span className="truncate flex-grow">
-                                        Ep {ep.episode_num} {ep.title ? `- ${ep.title}` : ''}
-                                    </span>
-                                     {ep.id === episodeId && <div className="w-1.5 h-1.5 bg-primary rounded-full ml-auto mr-1 animate-pulse"></div>}
-                                </Button>
-                            ))}
-                        </div>
-                     ) : (
-                         <div className="p-4 text-center text-muted-foreground text-sm">
-                            No episode list available.
-                         </div>
-                    )}
-                </ScrollArea>
-                 {/* Navigation Buttons */}
-                 <div className="p-2 border-t border-border/50 flex justify-between flex-shrink-0">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigateToEpisode(prevEpisode?.id)}
-                        disabled={!prevEpisode || loadingStream || loadingMetadata}
-                        className="text-xs glass"
-                    >
-                        <ArrowLeft className="mr-1 h-4 w-4" /> Prev Ep
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => navigateToEpisode(nextEpisode?.id)}
-                        disabled={!nextEpisode || loadingStream || loadingMetadata}
-                        className="text-xs glass"
-                    >
-                         Next Ep <ArrowRight className="ml-1 h-4 w-4" />
-                     </Button>
+        <div className="bg-black min-h-screen flex flex-col">
+            {/* Header */}
+            <header className="p-2 sm:p-4 flex items-center text-white bg-black/50 sticky top-0 z-20 border-b border-gray-700">
+                 <Button variant="ghost" size="icon" onClick={() => router.push(`/anime/${animeId}`)} className="mr-2 hover:bg-white/10 text-white h-8 w-8 sm:h-9 sm:w-9">
+                     <ArrowLeft size={18} />
+                 </Button>
+                 <div className="flex-1 truncate mr-2">
+                    {loadingMetadata ? <Skeleton className="h-6 w-48 bg-gray-700" />
+                     : animeDetails ? <Link href={`/anime/${animeId}`} className="text-base sm:text-lg font-semibold hover:underline truncate">{animeDetails.title}</Link>
+                     : <span className="text-base sm:text-lg font-semibold">Anime Details Unavailable</span>
+                    }
+                     {episodeId && (
+                        <span className="ml-1 text-xs sm:text-sm text-muted-foreground"> - Episode {episodeId}</span>
+                      )}
                  </div>
-            </div>
+
+                 {/* Quality Selector */}
+                 {streamingData && streamingData.length > 1 && ( // Only show selector if multiple qualities
+                     <Select
+                        value={selectedQuality || 'default'}
+                        onValueChange={(value) => value && setSelectedQuality(value)}
+                        disabled={loadingStream || !streamingData}
+                     >
+                         <SelectTrigger className="ml-auto bg-gray-800/70 border border-gray-700 text-white text-xs rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-primary appearance-none h-8 sm:h-9 w-[80px] sm:w-[100px]" aria-label="Select video quality">
+                             <SelectValue placeholder="Quality" />
+                         </SelectTrigger>
+                         <SelectContent className="glass bg-background border-border text-xs">
+                             {streamingData.map((source, index) => (
+                                 <SelectItem key={source.label || `q-${index}`} value={source.label || 'default'} className="text-xs">
+                                     {source.label || 'Default'}
+                                 </SelectItem>
+                             ))}
+                         </SelectContent>
+                     </Select>
+                 )}
+                 {streamingData && streamingData.length === 1 && streamingData[0].label && (
+                     // Show quality label if only one source exists with a quality defined
+                     <Badge variant="secondary" className="ml-auto text-xs">{streamingData[0].label}</Badge>
+                 )}
+            </header>
+
+            {/* Video Player Area */}
+            <main className="flex-grow flex items-center justify-center p-2 sm:p-4">
+               {loading && !animeDetails ? (
+                  <div className="flex items-center justify-center">
+                      <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                  </div>
+                ) : error ? (
+                    <Alert variant="destructive" className="max-w-lg">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Playback Error</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                ) : (
+                    <AspectRatio ratio={16 / 9} className="w-full max-w-screen-xl rounded-md overflow-hidden border border-border/50">
+                        <video
+                           ref={videoRef}
+                           controls
+                           className="w-full h-full"
+                           playsInline
+                           poster={animeDetails?.imageUrl || ''}
+                           muted // Muted attribute to attempt autoplay on more browsers
+                           autoPlay // Autoplay
+                        >
+                           Your browser does not support the video tag.
+                       </video>
+                    </AspectRatio>
+                )}
+            </main>
+
+            {/* Related Episodes - Example */}
+           {/*
+           <section className="bg-black/30 backdrop-blur-sm flex-shrink-0 p-4 border-t border-gray-700">
+                <h2 className="text-white font-semibold mb-2">Related Episodes</h2>
+                <div className="flex overflow-x-auto gap-3">
+                   {relatedEpisodes().map(ep => (
+                      <Button variant="outline" size="sm" key={ep.id}>Ep {ep.episode}</Button>
+                   ))}
+                </div>
+            </section>
+            */}
         </div>
     );
 }

@@ -1,4 +1,3 @@
-
 // Services Index
 
 export * from './anime';
@@ -9,4 +8,4 @@ export * from './weebapi'; // Export weebapi functions (currently placeholders)
 // Export other services as they are created
 // e.g., export * from './studios';
 // e.g., export * from './recommendations';
-
+export * from './animepahe';

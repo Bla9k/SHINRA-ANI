@@ -23,6 +23,24 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+          protocol: 'https',
+          hostname: 'img.flawlessfiles.com',
+          port: '',
+          pathname: '/**',
+      },
+      {
+          protocol: 'https',
+          hostname: 'm.witanime.tv',
+          port: '',
+          pathname: '/**',
+      },
+      {
+          protocol: 'https',
+          hostname: 'animepahe.org',
+          port: '',
+          pathname: '/**',
+      },
       // Removed m.media-amazon.com as it wasn't in the previous config after last update
       // Removed s4.anilist.co
     ],
