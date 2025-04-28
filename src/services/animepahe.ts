@@ -56,9 +56,13 @@ export async function getAnimeEpisodesPahe(malId: number): Promise<AnimepaheEpis
             console.error(`[getAnimeEpisodesPahe] API responded with status ${response.status}: ${errorBody}`);
              if (response.status === 404) {
                 console.warn(`[getAnimeEpisodesPahe] No episodes found (404) for MAL ID ${malId}`);
-                return []; // Return empty array if not found
+                return []; // Return empty array if API confirms not found
             }
-            throw new Error(`Failed to fetch episodes: ${response.statusText}`);
+             // For other errors, still return empty for now to avoid breaking UI, but log it
+            console.error(`Failed to fetch episodes, API returned ${response.status}. Returning empty array.`);
+            return [];
+            // Or re-throw if you want the UI to explicitly handle server errors:
+            // throw new Error(`Failed to fetch episodes: ${response.statusText}`);
         }
 
         // Assume the API returns an array directly

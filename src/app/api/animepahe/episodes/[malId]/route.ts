@@ -59,7 +59,7 @@ export async function GET(
                  isFiller: false,
              }));
         }
-        // Default empty for other IDs in placeholder
+        // Default empty for other IDs in placeholder - THIS WILL CAUSE 404 in the frontend service
         return [];
     };
     // --- End Placeholder Logic ---
@@ -68,8 +68,16 @@ export async function GET(
     try {
         const episodes = await fetchAnimePaheEpisodes(malId);
 
+        if (!Array.isArray(episodes)) {
+             console.error(`[API/animepahe/episodes] Fetch function for MAL ID ${malId} did not return an array.`);
+             // Ensure an array is returned even on internal error
+             return NextResponse.json({ message: 'Internal error fetching episode data.' }, { status: 500 });
+        }
+
+
         if (episodes.length === 0) {
-             console.warn(`[API/animepahe/episodes] No episodes found for MAL ID: ${malId}`);
+             console.warn(`[API/animepahe/episodes] No episodes found for MAL ID: ${malId}. Returning 404.`);
+             // Explicitly return 404 if the placeholder (or real logic) finds nothing
              return NextResponse.json({ message: 'No episodes found for this anime on AnimePahe.' }, { status: 404 });
         }
 
