@@ -1,9 +1,9 @@
 
 import { NextResponse } from 'next/server';
-import { config } from '@/config'; // Import app config for Consumet URL
 import type { ConsumetEpisode } from '@/services/consumet'; // Import type for consistency
 
 /**
+ * @deprecated This route is deprecated. Use /api/animepahe/episodes/[malId] instead.
  * Handles GET requests for anime episodes based on MAL ID using the configured Consumet API.
  *
  * @param request The incoming request.
@@ -15,7 +15,9 @@ export async function GET(
     { params }: { params: { malId: string } }
 ) {
     const { malId } = params;
-    const consumetUrl = config.consumetApiUrl; // Get Consumet URL from config
+    const consumetUrl = process.env.CONSUMET_API_URL; // Use actual environment variable now
+
+    console.warn(`[API/consumet/episodes] DEPRECATED route hit for MAL ID: ${malId}. Use /api/animepahe/episodes instead.`);
 
     if (!malId) {
         return NextResponse.json({ message: 'Missing MAL ID' }, { status: 400 });
@@ -25,10 +27,11 @@ export async function GET(
          return NextResponse.json({ message: 'Consumet API URL not configured' }, { status: 500 });
     }
 
+    // Construct the full external Consumet API URL
     const targetUrl = `${consumetUrl}/meta/anilist/episodes/${malId}`;
     const headers: HeadersInit = { 'Accept': 'application/json' };
 
-    console.log(`[API/consumet/episodes] Forwarding request for MAL ID ${malId} to: ${targetUrl}`);
+    console.log(`[API/consumet/episodes] Forwarding DEPRECATED request for MAL ID ${malId} to: ${targetUrl}`);
 
     try {
         const consumetResponse = await fetch(targetUrl, {

@@ -1,9 +1,9 @@
 
 import { NextResponse } from 'next/server';
-import { config } from '@/config'; // Import app config for Consumet URL
 import type { ConsumetWatchResponse } from '@/services/consumet'; // Import type for consistency
 
 /**
+ * @deprecated This route is deprecated. Use /api/animepahe/watch/[episodeId] instead.
  * Handles GET requests for streaming links based on an episode ID using the configured Consumet API.
  *
  * @param request The incoming request.
@@ -15,7 +15,10 @@ export async function GET(
     { params }: { params: { episodeId: string } }
 ) {
     const { episodeId } = params;
-    const consumetUrl = config.consumetApiUrl;
+    const consumetUrl = process.env.CONSUMET_API_URL; // Use actual environment variable now
+
+     console.warn(`[API/consumet/watch] DEPRECATED route hit for Episode ID: ${episodeId}. Use /api/animepahe/watch instead.`);
+
 
     if (!episodeId) {
         return NextResponse.json({ message: 'Missing Episode ID' }, { status: 400 });
@@ -27,10 +30,11 @@ export async function GET(
 
     // Consumet uses unencoded IDs in its path
     const decodedEpisodeId = decodeURIComponent(episodeId);
-    const targetUrl = `${consumetUrl}/meta/anilist/watch/${decodedEpisodeId}`; // Use decoded ID for the call
+    // Construct the full external Consumet API URL
+    const targetUrl = `${consumetUrl}/meta/anilist/watch/${decodedEpisodeId}`;
     const headers: HeadersInit = { 'Accept': 'application/json' };
 
-    console.log(`[API/consumet/watch] Forwarding request for Episode ID ${decodedEpisodeId} to: ${targetUrl}`);
+    console.log(`[API/consumet/watch] Forwarding DEPRECATED request for Episode ID ${decodedEpisodeId} to: ${targetUrl}`);
 
     try {
         // Note: Streaming links can be volatile, short cache time or no cache

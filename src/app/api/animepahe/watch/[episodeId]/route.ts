@@ -1,58 +1,78 @@
+
 // src/app/api/animepahe/watch/[episodeId]/route.ts
-// This file will handle requests for streaming links for a specific episode using the Animepahe source.
-// You will need to implement the logic here to fetch streaming links from Animepahe.
+// This file handles requests for streaming links for a specific AnimePahe episode ID.
 
 import { NextResponse } from 'next/server';
+import type { AnimepaheWatchResponse, AnimepaheStreamingSource } from '@/services/animepahe'; // Use the specific types
 
 /**
- * Handles GET requests for streaming links based on an episode ID using Animepahe.
+ * Handles GET requests for streaming links based on an AnimePahe episode ID.
  *
  * @param request The incoming request.
- * @param params The dynamic parameters from the URL, containing the episodeId.
+ * @param params The dynamic parameters from the URL, containing the AnimePahe episodeId.
  * @returns A NextResponse with the streaming data or an error.
  */
 export async function GET(
     request: Request,
     { params }: { params: { episodeId: string } }
 ) {
+    // The episodeId here is expected to be the AnimePahe internal episode ID (e.g., session ID)
     const { episodeId } = params;
 
-    console.log(`[API/animepahe/watch] Received request for Episode ID: ${episodeId}`);
+    if (!episodeId) {
+        return NextResponse.json({ message: 'Missing AnimePahe Episode ID' }, { status: 400 });
+    }
 
-    // TODO: Implement the logic here to fetch streaming links from the Animepahe source
-    // based on the provided episodeId. This might involve making HTTP requests
-    // to the Animepahe website or using a library.
-    // Remember to handle potential errors and different response scenarios.
+    // Decode if necessary, though AnimePahe IDs are usually simple
+    const decodedEpisodeId = decodeURIComponent(episodeId);
 
-    // Placeholder response structure (adjust according to your needs to match
-    // the expected structure in src/services/animepahe.ts -> getAnimeStreamingLinkPahe):
-    try {
-        // Replace this with actual logic to get watch links from Animepahe
-        // Example placeholder data structure (adjust according to your needs):
-        const streamingData = {
-            sources: [
-                {
-                    url: 'http://example.com/stream/episode-1-id.m3u8', // Example stream URL
-                    quality: '1080p',
-                    isM3U8: true,
-                },
-                // Add other sources/qualities if available
-            ],
-            // Other relevant data like subtitles, headers, etc.
-             intro: { start: 0, end: 0 }, // Example structure, adjust if Animepahe provides this
-             // You might need to define a type for this response in src/services/animepahe.ts
+    console.log(`[API/animepahe/watch] Received request for AnimePahe Episode ID: ${decodedEpisodeId}`);
+
+    // --- TODO: Implement REAL AnimePahe Streaming Link Fetching Logic ---
+    // This is where you would:
+    // 1. Make a request to the AnimePahe watch page using the `decodedEpisodeId`.
+    // 2. Parse the HTML or interact with their internal player API (often involves network inspection).
+    // 3. Extract the different quality stream URLs (kwik, etc.).
+    // 4. Format the data into the `AnimepaheWatchResponse` structure.
+
+    // --- Placeholder Logic ---
+    // Replace this with your actual implementation.
+    const fetchAnimePaheWatchLinks = async (id: string): Promise<AnimepaheWatchResponse> => {
+        console.warn(`[API/animepahe/watch] Placeholder: Simulating fetch for Episode ID ${id}. Implement actual fetching logic.`);
+        await new Promise(resolve => setTimeout(resolve, 400)); // Simulate network delay
+
+        // Return dummy data matching AnimepaheWatchResponse structure
+        // Use different links based on ID for testing
+        const sources: AnimepaheStreamingSource[] = [
+            { url: `https://example-cdn.com/stream/${id}_1080p.m3u8`, quality: "1080p" },
+            { url: `https://example-cdn.com/stream/${id}_720p.m3u8`, quality: "720p" },
+            { url: `https://example-cdn.com/stream/${id}_360p.m3u8`, quality: "360p" },
+        ];
+
+        return {
+            headers: {
+                Referer: `https://animepahe.com/play/some-anime-slug/${id}` // Example Referer, might be needed
+            },
+            sources: sources.map(s => ({...s, isM3U8: s.url.includes('.m3u8')})),
+            intro: { start: 0, end: 0 }, // Placeholder
         };
+    };
+    // --- End Placeholder Logic ---
+
+
+    try {
+        const streamingData = await fetchAnimePaheWatchLinks(decodedEpisodeId);
 
          if (!streamingData || !streamingData.sources || streamingData.sources.length === 0) {
-              console.warn(`[API/animepahe/watch] No streaming sources found for Episode ID: ${episodeId}`);
-              return NextResponse.json({ message: 'No streaming sources found' }, { status: 404 });
+              console.warn(`[API/animepahe/watch] No streaming sources found for Episode ID: ${decodedEpisodeId}`);
+              return NextResponse.json({ message: 'No streaming sources found from AnimePahe.' }, { status: 404 });
          }
 
-        console.log(`[API/animepahe/watch] Successfully fetched streaming data for Episode ID: ${episodeId}`);
+        console.log(`[API/animepahe/watch] Successfully fetched streaming data for Episode ID: ${decodedEpisodeId}`);
         return NextResponse.json(streamingData);
 
     } catch (error: any) {
-        console.error('[API/animepahe/watch] Error fetching streaming data:', error);
-        return NextResponse.json({ message: 'Error fetching streaming data', error: error.message }, { status: 500 });
+        console.error(`[API/animepahe/watch] Error fetching streaming data for ${decodedEpisodeId}:`, error);
+        return NextResponse.json({ message: 'Error fetching streaming data from source', error: error.message }, { status: 500 });
     }
 }

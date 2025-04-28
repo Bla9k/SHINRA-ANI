@@ -39,13 +39,15 @@ export interface ConsumetWatchResponse {
 
 
 /**
- * Fetches the list of episodes for a given anime ID using the internal API route.
+ * @deprecated This function is deprecated. Use getAnimeEpisodesPahe instead.
+ * Fetches the list of episodes for a given anime ID using the internal API route (pointing to Consumet).
  * Returns an empty array if fetching fails or no episodes are found.
  *
  * @param animeMalId The MyAnimeList ID of the anime.
  * @returns A promise that resolves to an array of ConsumetEpisode objects.
  */
 export async function getAnimeEpisodes(animeMalId: number): Promise<ConsumetEpisode[]> {
+     console.warn("[getAnimeEpisodes] This function is deprecated. Use getAnimeEpisodesPahe instead.");
     // Point to the internal API route
     const url = `/api/consumet/episodes/${animeMalId}`;
     const headers: HeadersInit = { 'Accept': 'application/json' };
@@ -102,13 +104,15 @@ export async function getAnimeEpisodes(animeMalId: number): Promise<ConsumetEpis
 }
 
 /**
- * Fetches the streaming sources for a specific anime episode using the internal API route.
+ * @deprecated This function is deprecated. Use getAnimeStreamingLinkPahe instead.
+ * Fetches the streaming sources for a specific anime episode using the internal API route (pointing to Consumet).
  *
  * @param episodeId The episode ID obtained from the `getAnimeEpisodes` response.
  * @returns A promise that resolves to a ConsumetWatchResponse containing streaming sources.
  * @throws Throws an error if the fetch fails or no sources are found (re-throwing the error from the internal API).
  */
 export async function getAnimeStreamingLink(episodeId: string): Promise<ConsumetWatchResponse> {
+    console.warn("[getAnimeStreamingLink] This function is deprecated. Use getAnimeStreamingLinkPahe instead.");
     // Ensure episodeId is properly encoded for the URL path segment
     const encodedEpisodeId = encodeURIComponent(episodeId);
     const url = `/api/consumet/watch/${encodedEpisodeId}`;
@@ -159,3 +163,4 @@ export async function getAnimeStreamingLink(episodeId: string): Promise<Consumet
         throw new Error(`Failed to fetch streaming data: ${error.message || 'Unknown fetch error'}`);
     }
 }
+
