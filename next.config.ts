@@ -41,7 +41,6 @@ const nextConfig: NextConfig = {
           port: '',
           pathname: '/**',
       },
-      // Removed m.media-amazon.com
       {
         protocol: 'https',
         hostname: 's4.anilist.co', // Add AniList CDN hostname
@@ -55,30 +54,49 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+       // Add Chrome Cast hosts if needed (less likely to fix the specific error)
+      {
+        protocol: 'https',
+        hostname: 'www.gstatic.com',
+      },
     ],
   },
   // Add webpack configuration to handle server-only modules
   webpack: (config, { isServer }) => {
     // Mark server-only modules as external for the client bundle
-    // This prevents client-side code from trying to bundle Node.js built-in modules
-    // or heavy server-side libraries like JSDOM.
+    // This prevents client-side code from trying to bundle Node.js built-in modules.
     if (!isServer) {
       config.externals = [
         ...(config.externals || []),
         'async_hooks',
-        'jsdom', // Add 'jsdom' to externals for the client bundle
-        'child_process', // Also mark child_process as external
-        'http', // Mark http as external
-        'https', // Mark https as external
-        'zlib', // Mark zlib as external
-        'fs', // Mark fs as external
-        'net', // Mark net as external
-        'tls', // Mark tls as external
+        // 'jsdom', // Removed jsdom - usage confined to API routes now
+        'child_process', // Keep other Node built-ins external
+        'http',
+        'https',
+        'zlib',
+        'fs',
+        'net',
+        'tls',
       ];
     }
 
     // Important: return the modified config
     return config;
+  },
+  async headers() {
+      return [
+        {
+          // Apply these headers to all routes in your application
+          source: '/:path*',
+          headers: [
+            {
+              key: 'Permissions-Policy',
+              // Add 'presentation' permission
+              value: 'autoplay=*, fullscreen=*, display-capture=*, presentation=*',
+            },
+          ],
+        },
+      ];
   },
 };
 
