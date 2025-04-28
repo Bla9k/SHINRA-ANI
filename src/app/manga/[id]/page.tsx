@@ -11,10 +11,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, PlayCircle, BookOpen } from 'lucide-react'; // Added BookOpen
+import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, VideoOff } from 'lucide-react'; // Added VideoOff for consistency
 import { Separator } from '@/components/ui/separator';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
-
+// Removed AspectRatio as no trailer equivalent for manga typically
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -137,11 +136,10 @@ export default function MangaDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                            <Button size="sm" className="w-full neon-glow-hover" asChild>
-                              <Link href={`/read/manga/${manga.id}`}> {/* Link to potential read page */}
-                                  <BookOpen size={16} className="mr-2"/> Read Now
-                              </Link>
-                           </Button>
+                            {/* Disabled Read Button */}
+                            <Button size="sm" className="w-full" disabled title="Manga reader coming soon!">
+                                <VideoOff size={16} className="mr-2 opacity-50"/> Read (Coming Soon)
+                            </Button>
                            {/* Add to List / Readlist Button (Example) */}
                            {/* <Button size="sm" className="w-full neon-glow-hover">
                               <PlusCircle size={16} className="mr-2"/> Add to Readlist
@@ -313,3 +311,4 @@ function MangaDetailSkeleton() {
     </div>
   );
 }
+        

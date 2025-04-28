@@ -6,13 +6,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams, useRouter } from 'next/navigation';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Jikan-based service for metadata
-import { getAnimeEpisodesPahe, getAnimePaheSession, AnimePaheEpisode } from '@/services/animepahe'; // Import AnimePahe services
+// Removed AnimePahe imports as streaming is disabled for now
+// import { getAnimeEpisodesPahe, getAnimePaheSession, AnimePaheEpisode } from '@/services/animepahe';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, Library, ListVideo, BookOpen, Info, Loader2 } from 'lucide-react';
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, Library, ListVideo, BookOpen, Info, Loader2, VideoOff } from 'lucide-react'; // Added VideoOff icon
 import { Separator } from '@/components/ui/separator';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,10 +37,11 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
     );
 };
 
-const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable for this source.";
-const ANIME_NOT_FOUND_PROVIDER = "Could not find this anime on the streaming provider.";
-const ERROR_CONTACTING_PROVIDER = "Error contacting the streaming provider to find this anime.";
-const FAILED_LOAD_EPISODES = "Failed to load episode list.";
+// Removed episode related constants
+// const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable for this source.";
+// const ANIME_NOT_FOUND_PROVIDER = "Could not find this anime on the streaming provider.";
+// const ERROR_CONTACTING_PROVIDER = "Error contacting the streaming provider to find this anime.";
+// const FAILED_LOAD_EPISODES = "Failed to load episode list.";
 
 export default function AnimeDetailPage() {
   const params = useParams();
@@ -47,73 +49,17 @@ export default function AnimeDetailPage() {
   const malId = params.id ? parseInt(params.id as string, 10) : NaN;
 
   const [anime, setAnime] = useState<Anime | null>(null);
-  const [animePaheId, setAnimePaheId] = useState<string | null>(null); // Store the AnimePahe ID
-  const [episodes, setEpisodes] = useState<AnimePaheEpisode[]>([]); // Use AnimePaheEpisode type
+  // Removed AnimePahe state
+  // const [animePaheId, setAnimePaheId] = useState<string | null>(null);
+  // const [episodes, setEpisodes] = useState<AnimePaheEpisode[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingEpisodes, setLoadingEpisodes] = useState(false);
+  // const [loadingEpisodes, setLoadingEpisodes] = useState(false); // Removed
   const [error, setError] = useState<string | null>(null);
-  const [episodeError, setEpisodeError] = useState<string | null>(null);
+  // const [episodeError, setEpisodeError] = useState<string | null>(null); // Removed
 
+  // Removed fetchAnimePaheId and fetchEpisodes functions
 
-  // Fetch AnimePahe ID based on title from Jikan
-  const fetchAnimePaheId = useCallback(async (title: string): Promise<string | null> => {
-    setLoadingEpisodes(true); // Indicate loading starts here
-    setEpisodeError(null);
-    try {
-        console.log(`[AnimeDetailPage] Searching AnimePahe for title: "${title}"`);
-        // The service now returns null if not found, or throws on error
-        const sessionInfo = await getAnimePaheSession(title);
-        const paheId = sessionInfo?.id; // Extract ID
-
-        if (paheId) {
-            console.log(`[AnimeDetailPage] Found AnimePahe ID: ${paheId} for title "${title}"`);
-            setAnimePaheId(paheId);
-            return paheId;
-        } else {
-            console.warn(`[AnimeDetailPage] Could not find AnimePahe ID for title "${title}".`);
-            setEpisodeError(ANIME_NOT_FOUND_PROVIDER); // Set specific error
-            setAnimePaheId(null); // Clear any previous ID
-            setEpisodes([]); // Clear episodes if ID not found
-            return null;
-        }
-    } catch (searchError: any) {
-         console.error(`[AnimeDetailPage] Error searching AnimePahe:`, searchError);
-         setEpisodeError(ERROR_CONTACTING_PROVIDER); // Set specific error
-         setAnimePaheId(null); // Clear ID on error
-         setEpisodes([]); // Clear episodes on error
-         return null;
-    } finally {
-        // setLoadingEpisodes(false); // Loading continues in fetchEpisodes or stops if ID search fails
-    }
-  }, []); // Removed setEpisodeError from dependencies
-
-  // Fetch Episodes using AnimePahe ID
-  const fetchEpisodes = useCallback(async (paheId: string) => {
-    // setLoadingEpisodes(true); // Already set in fetchAnimePaheId or fetchAllData
-    setEpisodeError(null); // Clear previous errors
-    try {
-      console.log(`[AnimeDetailPage] Fetching AnimePahe episodes for AnimePahe ID: ${paheId}`);
-      const fetchedEpisodes = await getAnimeEpisodesPahe(paheId);
-      setEpisodes(fetchedEpisodes);
-      if (fetchedEpisodes.length === 0) {
-        console.warn(`[AnimeDetailPage] No episodes returned for AnimePahe ID ${paheId}.`);
-        setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
-      }
-    } catch (paheError: any) {
-      console.error(`[AnimeDetailPage] Error calling getAnimeEpisodesPahe: ${paheError.message}`);
-       // Check error message for specific provider issues
-       if (paheError.message.includes('No episodes found')) {
-            setEpisodeError(EPISODE_UNAVAILABLE_MESSAGE);
-       } else {
-           setEpisodeError(FAILED_LOAD_EPISODES);
-       }
-      setEpisodes([]); // Clear episodes on error
-    } finally {
-        setLoadingEpisodes(false); // Episodes loading finishes here
-    }
-  }, []); // Removed setEpisodeError from dependencies
-
-  // Main data fetching effect
+  // Main data fetching effect (only fetches Jikan details now)
   useEffect(() => {
     if (isNaN(malId)) {
       setError('Invalid Anime ID.');
@@ -121,14 +67,14 @@ export default function AnimeDetailPage() {
       return;
     }
 
-    async function fetchAllData() {
+    async function fetchDetailsOnly() {
       setLoading(true);
-      setLoadingEpisodes(true); // Start episode loading indicator
+      // setLoadingEpisodes(true); // Removed
       setError(null);
-      setEpisodeError(null);
+      // setEpisodeError(null); // Removed
       setAnime(null);
-      setAnimePaheId(null);
-      setEpisodes([]);
+      // setAnimePaheId(null); // Removed
+      // setEpisodes([]); // Removed
 
       try {
         // 1. Fetch metadata from Jikan
@@ -140,37 +86,27 @@ export default function AnimeDetailPage() {
             console.error(`[AnimeDetailPage] Jikan details not found or missing title for MAL ID ${malId}`);
             setError('Anime details not found.');
             setLoading(false);
-            setLoadingEpisodes(false);
+            // setLoadingEpisodes(false); // Removed
             notFound(); // Trigger 404 if Jikan fails
             return;
         }
         console.log(`[AnimeDetailPage] Jikan details fetched: ${fetchedAnime.title}`);
 
-
-        // 2. Fetch AnimePahe ID using the title from Jikan
-        const paheId = await fetchAnimePaheId(fetchedAnime.title);
-
-        // 3. If AnimePahe ID is found, fetch episodes
-        if (paheId) {
-            await fetchEpisodes(paheId);
-        } else {
-             // Error state and episode clearing are handled within fetchAnimePaheId
-             console.log(`[AnimeDetailPage] No AnimePahe ID found, stopping episode fetch.`);
-             setLoadingEpisodes(false); // Ensure loading stops if ID search fails
-        }
+        // Removed steps 2 & 3 (AnimePahe ID and episode fetching)
 
       } catch (err: any) {
         console.error(`[AnimeDetailPage] Unexpected error fetching data for MAL ID ${malId}:`, err);
         setError(err.message || 'Failed to load anime data.');
         setAnime(null);
-        setEpisodes([]);
-        setLoadingEpisodes(false); // Stop loading indicators on error
+        // setEpisodes([]); // Removed
+        // setLoadingEpisodes(false); // Removed
       } finally {
         setLoading(false); // Overall loading stops here
+        // setLoadingEpisodes(false); // Ensure loading stops
       }
     }
 
-    fetchAllData();
+    fetchDetailsOnly();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [malId]); // Only re-run when MAL ID changes
 
@@ -238,26 +174,10 @@ export default function AnimeDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                           {/* Conditionally render Watch Now based on episodes */}
-                           {!loadingEpisodes && episodes.length > 0 && episodes[0].id && animePaheId && (
-                             <Button size="sm" className="w-full neon-glow-hover" asChild>
-                                 {/* Link to the watch page using AnimePahe IDs */}
-                                 <Link href={`/watch/anime/${animePaheId}/${encodeURIComponent(episodes[0].id)}`}>
-                                     <PlayCircle size={16} className="mr-2"/> Watch Now
-                                 </Link>
-                             </Button>
-                           )}
-                           {/* Show loading or unavailable states */}
-                           {loadingEpisodes && (
-                                <Button size="sm" className="w-full" disabled>
-                                   <Loader2 size={16} className="mr-2 animate-spin"/> Checking Episodes...
-                               </Button>
-                           )}
-                           {episodeError && !loadingEpisodes && (
-                               <Button size="sm" className="w-full" disabled title={episodeError}>
-                                   <PlayCircle size={16} className="mr-2 opacity-50"/> Watch Unavailable
-                               </Button>
-                           )}
+                           {/* Disabled Watch Button */}
+                           <Button size="sm" className="w-full" disabled title="Streaming coming soon!">
+                              <VideoOff size={16} className="mr-2 opacity-50"/> Watch (Coming Soon)
+                           </Button>
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={anime.url} target="_blank" rel="noopener noreferrer">
@@ -338,66 +258,21 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-            {/* Episodes Section */}
+            {/* Episodes Section - Placeholder */}
             <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
                 <AccordionItem value="item-1" className="glass border border-primary/20 shadow-lg rounded-lg backdrop-blur-lg bg-card/60">
                     <AccordionTrigger className="px-4 py-3 text-lg font-semibold hover:no-underline">
                         <span className="flex items-center gap-2">
-                            <ListVideo size={20} className="text-primary"/> Episodes ({loadingEpisodes ? '...' : episodes.length})
+                            <ListVideo size={20} className="text-primary"/> Episodes
                         </span>
                     </AccordionTrigger>
                     <AccordionContent className="px-4 pb-4">
-                        {loadingEpisodes && (
-                             <div className="flex justify-center items-center p-6">
-                                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                                <span className="ml-2 text-muted-foreground">Loading episodes...</span>
-                            </div>
-                         )}
-                        {episodeError && !loadingEpisodes && (
-                           <Alert variant={episodeError === EPISODE_UNAVAILABLE_MESSAGE || episodeError === ANIME_NOT_FOUND_PROVIDER ? "default" : "destructive"} className={cn("my-4", (episodeError === EPISODE_UNAVAILABLE_MESSAGE || episodeError === ANIME_NOT_FOUND_PROVIDER) && "bg-muted/50 border-muted-foreground/30")}>
-                               <Info className="h-4 w-4" />
-                               <AlertTitle>{episodeError === EPISODE_UNAVAILABLE_MESSAGE || episodeError === ANIME_NOT_FOUND_PROVIDER ? "Information" : "Could Not Load Episodes"}</AlertTitle>
-                               <AlertDescription>{episodeError}</AlertDescription>
-                           </Alert>
-                         )}
-                         {!loadingEpisodes && !episodeError && episodes.length === 0 && (
-                              <p className="text-center text-muted-foreground py-6">No episode information currently available.</p>
-                         )}
-                        {!loadingEpisodes && !episodeError && episodes.length > 0 && animePaheId && (
-                            <ScrollArea className="h-[400px] pr-3">
-                                <div className="space-y-2">
-                                    {episodes.map((ep) => (
-                                        // Link uses AnimePahe IDs now
-                                        ep.id ? (
-                                            <Link key={ep.id} href={`/watch/anime/${animePaheId}/${encodeURIComponent(ep.id)}`} passHref legacyBehavior>
-                                                <a className="block group">
-                                                    <Card className={cn(
-                                                         "p-3 glass transition-colors duration-200 border border-transparent",
-                                                         "group-hover:border-primary/50 group-hover:bg-accent/10"
-                                                     )}>
-                                                        <div className="flex items-center justify-between gap-3">
-                                                            <span className="text-sm font-medium truncate group-hover:text-primary">
-                                                               Ep {ep.episode} {ep.title ? `- ${ep.title}` : ''}
-                                                            </span>
-                                                            <PlayCircle size={18} className="text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0"/>
-                                                        </div>
-                                                    </Card>
-                                                </a>
-                                            </Link>
-                                        ) : (
-                                            // Optionally render differently if no ID
-                                            <Card key={`no-id-${ep.episode}`} className="p-3 glass opacity-50 cursor-not-allowed">
-                                                 <div className="flex items-center justify-between gap-3">
-                                                    <span className="text-sm font-medium truncate">
-                                                        Ep {ep.episode} {ep.title ? `- ${ep.title}` : ''} (Link unavailable)
-                                                    </span>
-                                                </div>
-                                            </Card>
-                                        )
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                         )}
+                         {/* Placeholder content */}
+                         <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                             <VideoOff size={40} className="mb-3 opacity-50"/>
+                             <p className="font-medium">Anime Streaming Coming Soon!</p>
+                             <p className="text-sm">We're working hard to bring you direct streaming capabilities.</p>
+                         </div>
                     </AccordionContent>
                 </AccordionItem>
             </Accordion>
@@ -407,7 +282,7 @@ export default function AnimeDetailPage() {
   );
 }
 
-// --- Skeleton Component ---
+// --- Skeleton Component (No changes needed here) ---
 function AnimeDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
@@ -472,14 +347,16 @@ function AnimeDetailSkeleton() {
                 <AccordionItem value="item-1" className="glass border-primary/20 shadow-lg rounded-lg backdrop-blur-lg bg-card/60">
                  <AccordionTrigger className="px-4 py-3 text-lg font-semibold hover:no-underline">
                      <span className="flex items-center gap-2">
-                        <ListVideo size={20} className="text-primary"/> Episodes (...)
+                        <ListVideo size={20} className="text-primary"/> Episodes
                      </span>
                  </AccordionTrigger>
                  <AccordionContent className="px-4 pb-4">
-                     <div className="flex justify-center items-center p-6">
-                        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                         <span className="ml-2 text-muted-foreground">Loading episodes...</span>
-                    </div>
+                      {/* Placeholder content for skeleton */}
+                      <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
+                         <VideoOff size={40} className="mb-3 opacity-50"/>
+                         <Skeleton className="h-5 w-48 mb-2" />
+                         <Skeleton className="h-4 w-64" />
+                     </div>
                  </AccordionContent>
                 </AccordionItem>
              </Accordion>
@@ -487,4 +364,4 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
-
+        
