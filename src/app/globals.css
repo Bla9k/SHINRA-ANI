@@ -7,56 +7,37 @@ body {
   font-family: var(--font-poppins), sans-serif; /* Use Poppins font */
 }
 
+/* Define base and dark theme variables */
 @layer base {
   :root {
+    /* Default Dark Theme (Vanilla) */
     --background: 240 10% 3.9%; /* #0A0A0A */
     --foreground: 0 0% 98%; /* #FAFAFA */
-
-    --card: 240 10% 10%; /* #1A1A1A - Slightly lighter dark for cards */
+    --card: 240 10% 10%; /* #1A1A1A */
     --card-foreground: 0 0% 98%; /* #FAFAFA */
-
     --popover: 240 10% 3.9%; /* #0A0A0A */
     --popover-foreground: 0 0% 98%; /* #FAFAFA */
-
     --primary: 221 83% 53%; /* Electric Blue #1D4ED8 */
     --primary-foreground: 0 0% 98%; /* #FAFAFA */
-
     --secondary: 240 4% 16%; /* Darker Gray #292929 */
     --secondary-foreground: 0 0% 98%; /* #FAFAFA */
-
     --muted: 240 4% 16%; /* Darker Gray #292929 */
     --muted-foreground: 240 5% 65%; /* Lighter Gray #A1A1AA */
-
     --accent: 221 83% 53%; /* Electric Blue #1D4ED8 */
-    --accent-foreground: 0 0% 98%; /* #FAFAFA - Ensure high contrast */
-
+    --accent-foreground: 0 0% 98%; /* #FAFAFA */
     --destructive: 0 72% 51%; /* Red */
     --destructive-foreground: 0 0% 98%; /* #FAFAFA */
-
     --border: 240 4% 20%; /* Slightly lighter border #333333 */
     --input: 240 4% 20%; /* #333333 */
     --ring: 221 83% 53%; /* Electric Blue #1D4ED8 */
-
     --chart-1: 221 83% 53%; /* Electric Blue */
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-
     --radius: 0.5rem;
-
-    /* Sidebar specific dark theme (can be repurposed or removed if sidebar not used) */
-    --sidebar-background: 240 10% 7%; /* Slightly lighter than main background #121212 */
-    --sidebar-foreground: 0 0% 80%; /* #CCCCCC */
-    --sidebar-primary: 221 83% 53%; /* Electric Blue */
-    --sidebar-primary-foreground: 0 0% 98%; /* White */
-    --sidebar-accent: 240 10% 15%; /* Darker accent for hover #262626 */
-    --sidebar-accent-foreground: 0 0% 98%; /* White */
-    --sidebar-border: 240 4% 20%; /* #333333 */
-    --sidebar-ring: 221 83% 53%; /* Electric Blue */
   }
 
-  /* Force dark theme */
   .dark {
      /* Re-apply variables for consistency, although :root should suffice */
     --background: 240 10% 3.9%;
@@ -83,16 +64,64 @@ body {
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --sidebar-background: 240 10% 7%;
-    --sidebar-foreground: 0 0% 80%;
-    --sidebar-primary: 221 83% 53%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 10% 15%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 240 4% 20%;
-    --sidebar-ring: 221 83% 53%;
   }
 }
+
+/* Hypercharged Theme Variables */
+@layer base {
+  body[data-theme="hypercharged"] {
+    --background: 230 20% 5%; /* Deep Space Blue #0B0C10 */
+    --foreground: 180 100% 85%; /* Light Cyan tint */
+
+    --card: 275 50% 15%; /* Dark Purple with transparency */
+    --card-foreground: 180 100% 85%;
+
+    --popover: 230 20% 5%;
+    --popover-foreground: 180 100% 85%;
+
+    --primary: 275 70% 60%; /* Neon Purple #9B59B6 */
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 180 100% 50%; /* Neon Cyan #00FFFF */
+    --secondary-foreground: 230 20% 5%; /* Dark background for contrast */
+
+    --muted: 230 15% 15%; /* Slightly lighter deep blue */
+    --muted-foreground: 230 10% 60%; /* Muted cyan/gray */
+
+    --accent: 95 100% 50%; /* Electric Green #7CFC00 */
+    --accent-foreground: 230 20% 5%;
+
+    --destructive: 0 80% 60%; /* Bright Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 275 70% 60%; /* Neon Purple border */
+    --input: 275 50% 20%; /* Darker Purple for inputs */
+    --ring: 180 100% 50%; /* Neon Cyan ring */
+
+    /* Apply dynamic background */
+    background-image: linear-gradient(rgba(11, 12, 16, 0.9), rgba(11, 12, 16, 0.9)),
+                      url('/images/nebula-bg.jpg'); /* Add your nebula/cityscape image */
+    background-size: cover;
+    background-attachment: fixed;
+    animation: shift-background 60s linear infinite alternate;
+  }
+
+  body[data-theme="hypercharged"] .glass {
+    @apply bg-card/70 backdrop-blur-xl border border-primary shadow-[0_0_15px_theme(colors.secondary),_0_0_30px_theme(colors.secondary)];
+  }
+
+  body[data-theme="hypercharged"] .neon-glow-hover:hover,
+  body[data-theme="hypercharged"] .neon-glow:hover {
+     @apply shadow-[0_0_10px_theme(colors.accent),_0_0_20px_theme(colors.accent)];
+  }
+  body[data-theme="hypercharged"] .neon-glow {
+     @apply shadow-[0_0_5px_theme(colors.primary),_0_0_10px_theme(colors.primary)];
+  }
+   body[data-theme="hypercharged"] .neon-glow-focus:focus-visible {
+     @apply shadow-[0_0_10px_theme(colors.accent),_0_0_20px_theme(colors.accent)];
+  }
+}
+
 
 @layer base {
   * {
@@ -103,16 +132,18 @@ body {
   }
   body {
     @apply bg-background text-foreground;
-    /* Ensure dark theme is applied */
+    /* Default to dark theme */
     @apply dark;
+    /* Transition for theme change */
+    @apply transition-colors duration-500 ease-in-out;
   }
 
-  /* Add base styles for glassmorphism */
+  /* Default glassmorphism */
   .glass {
-    @apply bg-neutral-800/30 backdrop-blur-lg border border-neutral-700/50 shadow-lg;
+    @apply bg-neutral-800/30 backdrop-blur-lg border border-neutral-700/50 shadow-lg transition-all duration-300;
   }
 
-  /* Add base styles for neon glows with smoother transitions */
+  /* Default neon glows */
   .neon-glow {
      @apply shadow-[0_0_5px_theme(colors.primary),_0_0_10px_theme(colors.primary)] transition-shadow duration-300 ease-in-out;
   }
@@ -124,12 +155,12 @@ body {
   }
 }
 
-/* Add smooth scroll behavior */
+/* Smooth scroll behavior */
 html {
   scroll-behavior: smooth;
 }
 
-/* Add animations */
+/* Base animations */
 @layer utilities {
   @keyframes fade-in {
     from { opacity: 0; transform: translateY(5px); }
@@ -157,9 +188,75 @@ html {
    .transition-smooth {
       @apply transition-all duration-300 ease-in-out;
    }
+
+   /* Dynamic background animation */
+   @keyframes shift-background {
+     0% { background-position: 0% 50%; }
+     50% { background-position: 100% 50%; }
+     100% { background-position: 0% 50%; }
+   }
+
+   /* Text typing effect (example placeholder) */
+    @keyframes typing {
+      from { width: 0 }
+      to { width: 100% }
+    }
+    @keyframes blink-caret {
+      from, to { border-color: transparent }
+      50% { border-color: orange; }
+    }
+    .animate-typing {
+      overflow: hidden;
+      border-right: .15em solid orange;
+      white-space: nowrap;
+      margin: 0 auto;
+      letter-spacing: .15em;
+      animation:
+        typing 3.5s steps(40, end),
+        blink-caret .75s step-end infinite;
+    }
+
+    /* Ash out effect placeholder */
+    @keyframes ash-out {
+        0% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+        100% { opacity: 0; transform: scale(0.8) translateY(-50px); filter: blur(10px); }
+    }
+    .animate-ash-out {
+        animation: ash-out 0.8s ease-out forwards;
+    }
+
+    /* Katana Slash effect placeholder */
+    .katana-slash-effect {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); /* Initial state: hidden */
+        animation: katana-slash 0.5s ease-in-out forwards;
+        z-index: 100; /* Ensure it's on top */
+    }
+
+    @keyframes katana-slash {
+        0% { clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); }
+        50% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%); } /* Reveal */
+        100% { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); } /* Hide */
+    }
+
+     /* Button hover pulse */
+    @keyframes pulse-glow {
+      0%, 100% { box-shadow: 0 0 5px var(--tw-shadow-color), 0 0 10px var(--tw-shadow-color); }
+      50% { box-shadow: 0 0 10px var(--tw-shadow-color), 0 0 20px var(--tw-shadow-color); }
+    }
+    body[data-theme="hypercharged"] .button-pulse-hover:hover {
+        --tw-shadow-color: hsl(var(--accent));
+        animation: pulse-glow 1.5s infinite;
+    }
+
 }
 
-/* Keep pulse animation for skeletons or loaders */
+/* Keep default pulse animation */
 @keyframes pulse {
   0%, 100% {
     opacity: 1;
@@ -203,4 +300,15 @@ html {
 /* Utility for text shadow */
 .shadow-text {
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+/* Hypercharge specific scrollbar */
+body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--primary) / 0.6);
+}
+body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(var(--primary) / 0.9);
+}
+body[data-theme="hypercharged"] .scrollbar-thin {
+    scrollbar-color: hsl(var(--primary) / 0.6) transparent;
 }
