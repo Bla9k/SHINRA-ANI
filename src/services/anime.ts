@@ -1,5 +1,5 @@
 
-import { env } from '@/env';
+import { config } from '@/config';
 
 /**
  * Represents an Anime based on Jikan API v4 data structure.
@@ -115,6 +115,33 @@ export interface JikanSingleAnimeResponse {
 }
 
 /**
+ * Represents a single anime recommendation entry from Jikan API.
+ */
+export interface JikanAnimeRecommendationEntry {
+    entry: {
+        mal_id: number;
+        url: string;
+        images: any; // Use the same images structure as Anime interface
+        title: string;
+    };
+    url: string;
+    votes: number;
+}
+
+/**
+ * Represents the response structure for Jikan anime recommendations fetch operations.
+ */
+export interface JikanAnimeRecommendationsResponse {
+    data?: JikanAnimeRecommendationEntry[];
+    // Potential error fields
+    status?: number;
+    type?: string;
+    message?: string;
+    error?: string;
+}
+
+
+/**
  * Represents the response structure for anime fetch operations using our Anime interface.
  */
 export interface AnimeResponse {
@@ -130,7 +157,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max to be safe
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 4000; // 4 seconds - adjust as needed based on rate limit issues
+const JIKAN_DELAY = config.jikanApiDelayMs;
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -269,19 +296,32 @@ export async function getAnimes(
        // Improved logging for rate limiting
        if (response.status === 429) {
           console.warn("[getAnimes] Jikan API rate limit likely exceeded (429). Consider increasing JIKAN_DELAY or reducing requests.");
+          // Provide a specific error message for rate limiting
+          // Consider returning an empty response or a specific error object
+           return {
+               animes: [],
+               hasNextPage: false,
+               currentPage: page,
+               lastPage: page, // Assume current page is last on error
+           };
        }
       // Try parsing for structured error
       let parsedError = null;
       try {
           parsedError = JSON.parse(errorBody);
           if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
-              console.warn('[getAnimes] Parsed Jikan error body was empty.');
+              // Empty JSON object received
+              console.warn('[getAnimes] Parsed Jikan error body was an empty JSON object.');
           } else if (parsedError) {
+              // Log parsed error structure
               console.error('[getAnimes] Parsed Jikan Error Body:', parsedError);
           } else {
+              // Log if parsing failed
               console.warn('[getAnimes] Could not parse Jikan error body as JSON.');
           }
-      } catch {}
+      } catch {
+           console.warn('[getAnimes] Failed to parse Jikan error body as JSON.');
+      }
       // Instead of throwing, return an empty response
         return {
             animes: [],
@@ -437,4 +477,68 @@ export async function getAnimeById(mal_id: number): Promise<Anime | null> {
 export async function getAnimeDetails(id: number): Promise<Anime | null> {
   // For now, fetching by ID gives sufficient detail from Jikan
   return getAnimeById(id);
+}
+
+/**
+ * Fetches anime recommendations based on a given MAL ID using Jikan API.
+ * Includes delay to mitigate rate limiting.
+ *
+ * @param mal_id The MyAnimeList ID of the anime for which to fetch recommendations.
+ * @returns A promise that resolves to an array of Anime objects (recommendations).
+ */
+export async function getAnimeRecommendations(mal_id: number): Promise<Anime[]> {
+    const url = `${JIKAN_API_URL}/anime/${mal_id}/recommendations`;
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    let response: Response | undefined;
+
+    console.log(`[getAnimeRecommendations] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
+    await delay(JIKAN_DELAY); // Wait before making the API call
+
+    try {
+        response = await fetch(url, {
+            method: 'GET',
+            headers: headers,
+            next: { revalidate: 3600 * 12 }, // Cache recommendations for 12 hours
+        });
+
+        console.log(`[getAnimeRecommendations] Response status for ${url}: ${response.status}`);
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error('[getAnimeRecommendations] Jikan API response not OK:', response.status, response.statusText);
+            console.error('[getAnimeRecommendations] Jikan Error Body:', errorBody);
+            console.error('[getAnimeRecommendations] Jikan Request URL:', url);
+            if (response.status === 429) {
+                console.warn("[getAnimeRecommendations] Jikan API rate limit likely exceeded (429).");
+            }
+            // Return empty array on error
+            return [];
+        }
+
+        const jsonResponse: JikanAnimeRecommendationsResponse = await response.json();
+
+        if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+            console.warn('[getAnimeRecommendations] Jikan API error: Response OK but missing or invalid "data" field.');
+            console.warn('[getAnimeRecommendations] Jikan Response:', JSON.stringify(jsonResponse));
+            console.warn('[getAnimeRecommendations] Jikan Request URL:', url);
+            return [];
+        }
+
+        // Map the Jikan recommendation structure to our Anime interface
+        // The 'entry' object within the recommendation data matches our Anime structure closely
+        const recommendations = jsonResponse.data
+            .map(rec => mapJikanDataToAnime(rec.entry)) // Map the 'entry' object
+            .filter((anime): anime is Anime => anime !== null); // Filter out null results
+
+        console.log(`[getAnimeRecommendations] Successfully fetched ${recommendations.length} recommendations for MAL ID ${mal_id}.`);
+        return recommendations;
+
+    } catch (error: any) {
+        console.error(`[getAnimeRecommendations] Failed to fetch recommendations for MAL ID ${mal_id} from Jikan. URL: ${url}`);
+        if(response) {
+            console.error('[getAnimeRecommendations] Response Status on Catch:', response.status, response.statusText);
+        }
+        console.error('[getAnimeRecommendations] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        return []; // Return empty array on fetch error
+    }
 }

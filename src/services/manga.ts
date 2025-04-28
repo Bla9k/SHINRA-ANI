@@ -1,5 +1,5 @@
 
-import { env } from '@/env';
+import { config } from '@/config';
 
 /**
  * Represents a Manga based on Jikan API v4 data structure.
@@ -107,6 +107,32 @@ export interface JikanSingleMangaResponse {
 }
 
 /**
+ * Represents a single manga recommendation entry from Jikan API.
+ */
+export interface JikanMangaRecommendationEntry {
+    entry: {
+        mal_id: number;
+        url: string;
+        images: any; // Use the same images structure as Manga interface
+        title: string;
+    };
+    url: string;
+    votes: number;
+}
+
+/**
+ * Represents the response structure for Jikan manga recommendations fetch operations.
+ */
+export interface JikanMangaRecommendationsResponse {
+    data?: JikanMangaRecommendationEntry[];
+    // Potential error fields
+    status?: number;
+    type?: string;
+    message?: string;
+    error?: string;
+}
+
+/**
  * Represents the response structure for manga fetch operations using our Manga interface.
  */
 export interface MangaResponse {
@@ -121,7 +147,7 @@ const JIKAN_API_URL = 'https://api.jikan.moe/v4';
 // Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24; // Keep it slightly below max
 // Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = 4000; // 4 seconds - adjust as needed based on rate limit issues
+const JIKAN_DELAY = config.jikanApiDelayMs;
 
 // Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -264,13 +290,15 @@ export async function getMangas(
             parsedError = JSON.parse(errorBody);
              // Improved logging for parsed error body
              if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
-                 console.warn('[getMangas] Parsed Jikan error body was empty.');
+                 console.warn('[getMangas] Parsed Jikan error body was an empty JSON object.');
              } else if (parsedError) {
-                 console.error('[getMangas] Parsed Jikan Error Body:', parsedError);
+                 //console.error('[getMangas] Parsed Jikan Error Body:', parsedError);
              } else {
-                 console.warn('[getMangas] Could not parse Jikan error body as JSON.');
+                 //console.warn('[getMangas] Could not parse Jikan error body as JSON.');
              }
-        } catch {}
+        } catch {
+            //console.warn('[getMangas] Failed to parse Jikan error body as JSON.');
+        }
         // Instead of throwing, return an empty response to allow the UI to handle it gracefully
         return {
             mangas: [],
@@ -382,9 +410,9 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
                  if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
                     console.warn('[getMangaById] Parsed Jikan error body was empty.');
                 } else if (parsedError) {
-                    console.error('[getMangaById] Parsed Jikan Error Body:', parsedError);
+                    //console.error('[getMangaById] Parsed Jikan Error Body:', parsedError);
                 } else {
-                    console.warn('[getMangaById] Could not parse Jikan error body as JSON.');
+                    //console.warn('[getMangaById] Could not parse Jikan error body as JSON.');
                 }
             } catch {}
             // Return null on failure as per function signature
@@ -431,4 +459,68 @@ export async function getMangaById(mal_id: number): Promise<Manga | null> {
  */
 export async function getMangaDetails(id: number): Promise<Manga | null> {
   return getMangaById(id);
+}
+
+/**
+ * Fetches manga recommendations based on a given MAL ID using Jikan API.
+ * Includes delay to mitigate rate limiting.
+ *
+ * @param mal_id The MyAnimeList ID of the manga for which to fetch recommendations.
+ * @returns A promise that resolves to an array of Manga objects (recommendations).
+ */
+export async function getMangaRecommendations(mal_id: number): Promise<Manga[]> {
+    const url = `${JIKAN_API_URL}/manga/${mal_id}/recommendations`;
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    let response: Response | undefined;
+
+    console.log(`[getMangaRecommendations] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
+    await delay(JIKAN_DELAY); // Wait before making the API call
+
+    try {
+        response = await fetch(url, {
+            method: 'GET',
+            headers: headers,
+            next: { revalidate: 3600 * 12 }, // Cache recommendations for 12 hours
+        });
+
+        console.log(`[getMangaRecommendations] Response status for ${url}: ${response.status}`);
+
+        if (!response.ok) {
+            const errorBody = await response.text();
+            console.error('[getMangaRecommendations] Jikan API response not OK:', response.status, response.statusText);
+            console.error('[getMangaRecommendations] Jikan Error Body:', errorBody);
+            console.error('[getMangaRecommendations] Jikan Request URL:', url);
+            if (response.status === 429) {
+                console.warn("[getMangaRecommendations] Jikan API rate limit likely exceeded (429).");
+            }
+            // Return empty array on error
+            return [];
+        }
+
+        const jsonResponse: JikanMangaRecommendationsResponse = await response.json();
+
+        if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+            console.warn('[getMangaRecommendations] Jikan API error: Response OK but missing or invalid "data" field.');
+            console.warn('[getMangaRecommendations] Jikan Response:', JSON.stringify(jsonResponse));
+            console.warn('[getMangaRecommendations] Jikan Request URL:', url);
+            return [];
+        }
+
+        // Map the Jikan recommendation structure to our Manga interface
+        // The 'entry' object within the recommendation data matches our Manga structure closely
+        const recommendations = jsonResponse.data
+            .map(rec => mapJikanDataToManga(rec.entry)) // Map the 'entry' object
+            .filter((manga): manga is Manga => manga !== null); // Filter out nulls
+
+        console.log(`[getMangaRecommendations] Successfully fetched ${recommendations.length} recommendations for MAL ID ${mal_id}.`);
+        return recommendations;
+
+    } catch (error: any) {
+        console.error(`[getMangaRecommendations] Failed to fetch recommendations for MAL ID ${mal_id} from Jikan. URL: ${url}`);
+        if(response) {
+            console.error('[getMangaRecommendations] Response Status on Catch:', response.status, response.statusText);
+        }
+        console.error('[getMangaRecommendations] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+        return []; // Return empty array on fetch error
+    }
 }

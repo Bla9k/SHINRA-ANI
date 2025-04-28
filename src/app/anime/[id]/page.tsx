@@ -4,21 +4,21 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound, useParams, useRouter } from 'next/navigation';
-import { getAnimeDetails, Anime } from '@/services/anime'; // Jikan-based service for metadata
-// Removed AnimePahe imports as streaming is disabled for now
-// import { getAnimeEpisodesPahe, getAnimePaheSession, AnimePaheEpisode } from '@/services/animepahe';
+import { notFound, useParams } from 'next/navigation';
+import { getAnimeDetails, Anime, getAnimeRecommendations } from '@/services/anime'; // Import getAnimeRecommendations
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, Library, ListVideo, BookOpen, Info, Loader2, VideoOff } from 'lucide-react'; // Added VideoOff icon
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, VideoOff, Sparkles, ArrowRight, MessageSquare, User } from 'lucide-react'; // Import Sparkles, ArrowRight, MessageSquare, User
 import { Separator } from '@/components/ui/separator';
-import { AspectRatio } from '@/components/ui/aspect-ratio';
+import { AspectRatio } from '@/components/ui/aspect-ratio'; // For trailer
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
+import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Import ItemCard components
+import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations'; // Import Nami AI flow
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -37,78 +37,128 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
     );
 };
 
-// Removed episode related constants
-// const EPISODE_UNAVAILABLE_MESSAGE = "Episode fetching is currently unavailable for this source.";
-// const ANIME_NOT_FOUND_PROVIDER = "Could not find this anime on the streaming provider.";
-// const ERROR_CONTACTING_PROVIDER = "Error contacting the streaming provider to find this anime.";
-// const FAILED_LOAD_EPISODES = "Failed to load episode list.";
+// Helper to render a horizontal scrollable section
+const renderHorizontalSection = (
+    title: string,
+    icon: React.ElementType,
+    items: Anime[] | null | undefined,
+    isLoading: boolean,
+    emptyMessage: string = "Nothing to show here right now.",
+    itemComponent: React.FC<{ item: Anime }> = ItemCard,
+    skeletonComponent: React.FC = SkeletonItemCard
+) => {
+    const validItems = Array.isArray(items) ? items : [];
+
+    return (
+        <section className="mb-8">
+            <div className="flex items-center justify-between mb-3 md:mb-4 px-0">
+                <h3 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
+                    {React.createElement(icon, { className: "text-primary w-5 h-5 md:w-6 md:h-6" })} {title}
+                </h3>
+                {/* Optional: Add View All Link */}
+            </div>
+            <div className="relative">
+                <div className={cn(
+                    "flex space-x-3 md:space-x-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-primary/50 scrollbar-track-transparent",
+                    "snap-x snap-mandatory"
+                )}>
+                    {isLoading && validItems.length === 0
+                        ? Array.from({ length: 5 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` }))
+                        : validItems.length > 0
+                            ? validItems.map((item, index) => item && item.id ? React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item }) : null)
+                            : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">{emptyMessage}</p>}
+                </div>
+            </div>
+        </section>
+    );
+};
 
 export default function AnimeDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const malId = params.id ? parseInt(params.id as string, 10) : NaN;
 
   const [anime, setAnime] = useState<Anime | null>(null);
-  // Removed AnimePahe state
-  // const [animePaheId, setAnimePaheId] = useState<string | null>(null);
-  // const [episodes, setEpisodes] = useState<AnimePaheEpisode[]>([]);
+  const [recommendations, setRecommendations] = useState<Anime[]>([]);
+  const [namiRecommendations, setNamiRecommendations] = useState<Anime[]>([]);
   const [loading, setLoading] = useState(true);
-  // const [loadingEpisodes, setLoadingEpisodes] = useState(false); // Removed
+  const [loadingRecs, setLoadingRecs] = useState(true);
+  const [loadingNamiRecs, setLoadingNamiRecs] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // const [episodeError, setEpisodeError] = useState<string | null>(null); // Removed
+  const [namiError, setNamiError] = useState<string | null>(null);
 
-  // Removed fetchAnimePaheId and fetchEpisodes functions
-
-  // Main data fetching effect (only fetches Jikan details now)
+  // Fetch main details and recommendations
   useEffect(() => {
     if (isNaN(malId)) {
       setError('Invalid Anime ID.');
       setLoading(false);
+      setLoadingRecs(false);
+      setLoadingNamiRecs(false);
       return;
     }
 
-    async function fetchDetailsOnly() {
+    async function fetchAllData() {
       setLoading(true);
-      // setLoadingEpisodes(true); // Removed
+      setLoadingRecs(true);
+      setLoadingNamiRecs(true);
       setError(null);
-      // setEpisodeError(null); // Removed
+      setNamiError(null);
       setAnime(null);
-      // setAnimePaheId(null); // Removed
-      // setEpisodes([]); // Removed
+      setRecommendations([]);
+      setNamiRecommendations([]);
 
       try {
-        // 1. Fetch metadata from Jikan
-        console.log(`[AnimeDetailPage] Fetching Jikan details for MAL ID: ${malId}`);
+        // Fetch main details
         const fetchedAnime = await getAnimeDetails(malId);
-        setAnime(fetchedAnime);
-
-        if (!fetchedAnime || !fetchedAnime.title) {
-            console.error(`[AnimeDetailPage] Jikan details not found or missing title for MAL ID ${malId}`);
-            setError('Anime details not found.');
-            setLoading(false);
-            // setLoadingEpisodes(false); // Removed
-            notFound(); // Trigger 404 if Jikan fails
-            return;
+        if (!fetchedAnime) {
+          setError('Anime details not found.');
+          notFound(); // Trigger 404
+          return;
         }
-        console.log(`[AnimeDetailPage] Jikan details fetched: ${fetchedAnime.title}`);
+        setAnime(fetchedAnime);
+        setLoading(false); // Main details loaded
 
-        // Removed steps 2 & 3 (AnimePahe ID and episode fetching)
+        // Fetch Jikan recommendations concurrently
+        getAnimeRecommendations(malId).then(recs => {
+            setRecommendations(recs);
+        }).catch(err => {
+            console.error("Failed to load Jikan recommendations:", err);
+            // Don't set main error, just log for recs
+        }).finally(() => setLoadingRecs(false));
+
+
+        // Fetch Nami AI recommendations concurrently
+        // Use current anime details for context
+        const namiInput = {
+            mood: "Similar to this", // Simple mood based on current anime
+            watchHistory: [fetchedAnime.title], // Seed history with current title
+            profileActivity: `Interested in anime like ${fetchedAnime.title}, particularly genres: ${fetchedAnime.genres.map(g => g.name).join(', ')}.`, // Basic profile activity
+        };
+        getMoodBasedRecommendations(namiInput).then(namiRecs => {
+             // Filter AI results to only include Anime for this context
+             setNamiRecommendations(namiRecs.animeRecommendations || []);
+        }).catch(err => {
+             console.error("Failed to load Nami recommendations:", err);
+             setNamiError("Nami couldn't find recommendations right now.");
+        }).finally(() => setLoadingNamiRecs(false));
+
 
       } catch (err: any) {
         console.error(`[AnimeDetailPage] Unexpected error fetching data for MAL ID ${malId}:`, err);
         setError(err.message || 'Failed to load anime data.');
         setAnime(null);
-        // setEpisodes([]); // Removed
-        // setLoadingEpisodes(false); // Removed
+        setRecommendations([]);
+        setNamiRecommendations([]);
       } finally {
-        setLoading(false); // Overall loading stops here
-        // setLoadingEpisodes(false); // Ensure loading stops
+        // Ensure all loading states are false if not already set
+        setLoading(false);
+        setLoadingRecs(false);
+        setLoadingNamiRecs(false);
       }
     }
 
-    fetchDetailsOnly();
+    fetchAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [malId]); // Only re-run when MAL ID changes
+  }, [malId]);
 
 
   if (loading && !anime) {
@@ -128,21 +178,20 @@ export default function AnimeDetailPage() {
   }
 
   if (!anime) {
-    // Fallback if anime details are null after loading (should be caught by error or notFound)
     return <AnimeDetailSkeleton />; // Or a specific "not found" component
   }
 
 
   return (
     <div className="container mx-auto px-4 py-8">
-        {/* Background Image Section - Subtle */}
-        <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[50vh] -z-10 overflow-hidden">
+        {/* Background Image Section */}
+        <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
              {anime.imageUrl && (
                  <Image
                      src={anime.imageUrl}
                      alt={`${anime.title} backdrop`}
                      fill
-                     className="object-cover object-top opacity-20 blur-md scale-110"
+                     className="object-cover object-top opacity-15 blur-md scale-110" // Slightly less opacity
                      aria-hidden="true"
                      priority
                  />
@@ -150,12 +199,12 @@ export default function AnimeDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/80 to-background" />
         </div>
 
-        <div className="relative mt-16 md:mt-24">
+        <div className="relative mt-16 md:mt-32"> {/* Increased top margin */}
             {/* Main Details Card */}
-            <Card className="overflow-visible glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mb-8">
+            <Card className="overflow-visible glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mb-12">
                 <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
                     {/* Left Column: Cover Image & Actions */}
-                    <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-16 md:-mt-24 z-10">
+                    <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10">
                         <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow border-2 border-primary/50 w-48 md:w-full mx-auto">
                            {anime.imageUrl ? (
                               <Image
@@ -174,10 +223,13 @@ export default function AnimeDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                           {/* Disabled Watch Button */}
                            <Button size="sm" className="w-full" disabled title="Streaming coming soon!">
                               <VideoOff size={16} className="mr-2 opacity-50"/> Watch (Coming Soon)
                            </Button>
+                           {/* Add to List / Watchlist Button (Example) */}
+                           {/* <Button size="sm" className="w-full neon-glow-hover">
+                              <PlusCircle size={16} className="mr-2"/> Add to Watchlist
+                           </Button> */}
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={anime.url} target="_blank" rel="noopener noreferrer">
@@ -231,10 +283,12 @@ export default function AnimeDetailPage() {
                          {/* Synopsis */}
                         <CardContent className="p-0 flex-grow">
                             <div className="space-y-2">
-                               <h3 className="text-xl font-semibold">Synopsis</h3>
-                               <CardDescription className="text-base leading-relaxed prose prose-invert prose-sm max-w-none">
-                                   {anime.synopsis || 'No synopsis available.'}
-                               </CardDescription>
+                               <h3 className="text-xl font-semibold mb-2">Synopsis</h3>
+                               <ScrollArea className="h-24 pr-3"> {/* Limit synopsis height */}
+                                   <CardDescription className="text-base leading-relaxed prose prose-invert prose-sm max-w-none">
+                                       {anime.synopsis || 'No synopsis available.'}
+                                   </CardDescription>
+                                </ScrollArea>
                             </div>
 
                              {/* Trailer */}
@@ -258,24 +312,51 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-            {/* Episodes Section - Placeholder */}
-            <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
-                <AccordionItem value="item-1" className="glass border border-primary/20 shadow-lg rounded-lg backdrop-blur-lg bg-card/60">
-                    <AccordionTrigger className="px-4 py-3 text-lg font-semibold hover:no-underline">
-                        <span className="flex items-center gap-2">
-                            <ListVideo size={20} className="text-primary"/> Episodes
-                        </span>
-                    </AccordionTrigger>
-                    <AccordionContent className="px-4 pb-4">
-                         {/* Placeholder content */}
-                         <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-                             <VideoOff size={40} className="mb-3 opacity-50"/>
-                             <p className="font-medium">Anime Streaming Coming Soon!</p>
-                             <p className="text-sm">We're working hard to bring you direct streaming capabilities.</p>
-                         </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+             {/* Episodes Section - Disabled */}
+            <section className="mb-12">
+                 <h3 className="text-2xl font-semibold mb-4">Episodes</h3>
+                 <Card className="glass p-6 flex flex-col items-center justify-center text-center border-border/50">
+                     <VideoOff size={40} className="mb-3 text-muted-foreground opacity-50"/>
+                     <p className="font-medium text-muted-foreground">Anime Streaming Coming Soon!</p>
+                     <p className="text-sm text-muted-foreground">We're working hard to bring you direct streaming capabilities.</p>
+                 </Card>
+            </section>
+
+             {/* Nami AI Recommendations Section */}
+            <section className="mb-12">
+                 <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
+                     <Sparkles className="text-primary"/> Nami's Picks For You
+                </h3>
+                 {namiError && !loadingNamiRecs && (
+                     <Alert variant="destructive" className="glass">
+                         <AlertCircle className="h-4 w-4" />
+                         <AlertTitle>Nami Error</AlertTitle>
+                         <AlertDescription>{namiError}</AlertDescription>
+                     </Alert>
+                 )}
+                {renderHorizontalSection(
+                    "", // Title already present
+                    () => null, // No icon needed here
+                    namiRecommendations,
+                    loadingNamiRecs,
+                    "Nami couldn't find any recommendations based on this anime right now.",
+                    ItemCard,
+                    SkeletonItemCard
+                )}
+            </section>
+
+            {/* Related Anime Section (Jikan Recommendations) */}
+             {renderHorizontalSection(
+                "Related Anime",
+                Tv, // Changed Icon
+                recommendations,
+                loadingRecs,
+                "No related anime found.",
+                ItemCard,
+                SkeletonItemCard
+            )}
+
+             {/* Optional: Add Characters, Staff, Reviews sections here */}
 
         </div>
     </div>
@@ -287,17 +368,17 @@ function AnimeDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
       {/* Skeleton Background */}
-      <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[50vh] -z-10 overflow-hidden">
-            <Skeleton className="h-full w-full opacity-20 blur-md scale-110" />
+      <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
+            <Skeleton className="h-full w-full opacity-15 blur-md scale-110" />
            <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/80 to-background" />
        </div>
 
-       <div className="relative mt-16 md:mt-24">
+       <div className="relative mt-16 md:mt-32">
             {/* Main Details Card Skeleton */}
-            <Card className="overflow-visible glass border-primary/20 bg-card/60 mb-8">
+            <Card className="overflow-visible glass border-primary/20 bg-card/60 mb-12">
                <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
                  {/* Left Column: Cover Image & Actions Skeleton */}
-                  <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-16 md:-mt-24 z-10">
+                  <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10">
                       <Card className="overflow-hidden aspect-[2/3] relative border-2 border-primary/50 w-48 md:w-full mx-auto">
                           <Skeleton className="h-full w-full" />
                       </Card>
@@ -328,11 +409,13 @@ function AnimeDetailSkeleton() {
                       </Card>
                       <Separator className="my-4 bg-border/50" />
                       <CardContent className="p-0 flex-grow">
-                          <div className="space-y-2">
+                          <div className="space-y-2 mb-6">
                             <Skeleton className="h-7 w-32 mb-2" /> {/* Synopsis Title */}
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-full" />
-                            <Skeleton className="h-4 w-5/6" />
+                            <div className="h-24 pr-3 space-y-2"> {/* Matching ScrollArea height */}
+                               <Skeleton className="h-4 w-full" />
+                               <Skeleton className="h-4 w-full" />
+                               <Skeleton className="h-4 w-5/6" />
+                            </div>
                           </div>
                            <div className="mt-6 space-y-3">
                                <Skeleton className="h-7 w-28 mb-2" /> {/* Trailer Title */}
@@ -343,25 +426,32 @@ function AnimeDetailSkeleton() {
                </div>
             </Card>
             {/* Episodes Skeleton */}
-             <Accordion type="single" collapsible className="w-full" defaultValue='item-1'>
-                <AccordionItem value="item-1" className="glass border-primary/20 shadow-lg rounded-lg backdrop-blur-lg bg-card/60">
-                 <AccordionTrigger className="px-4 py-3 text-lg font-semibold hover:no-underline">
-                     <span className="flex items-center gap-2">
-                        <ListVideo size={20} className="text-primary"/> Episodes
-                     </span>
-                 </AccordionTrigger>
-                 <AccordionContent className="px-4 pb-4">
-                      {/* Placeholder content for skeleton */}
-                      <div className="flex flex-col items-center justify-center text-center p-6 text-muted-foreground">
-                         <VideoOff size={40} className="mb-3 opacity-50"/>
+             <section className="mb-12">
+                <Skeleton className="h-8 w-36 mb-4" />
+                <Card className="glass p-6">
+                    <div className="flex flex-col items-center justify-center text-center">
+                         <Skeleton className="h-10 w-10 rounded-full mb-3" />
                          <Skeleton className="h-5 w-48 mb-2" />
                          <Skeleton className="h-4 w-64" />
                      </div>
-                 </AccordionContent>
-                </AccordionItem>
-             </Accordion>
+                </Card>
+             </section>
+
+            {/* Recommendations Skeleton */}
+            <section className="mb-12">
+                <Skeleton className="h-8 w-48 mb-4" />
+                 <div className="flex space-x-3 md:space-x-4 overflow-x-auto pb-4">
+                    {Array.from({ length: 5 }).map((_, index) => <SkeletonItemCard key={`rec-skel-${index}`} />)}
+                </div>
+            </section>
+             <section>
+                <Skeleton className="h-8 w-52 mb-4" />
+                 <div className="flex space-x-3 md:space-x-4 overflow-x-auto pb-4">
+                    {Array.from({ length: 5 }).map((_, index) => <SkeletonItemCard key={`rel-skel-${index}`} />)}
+                </div>
+            </section>
+
        </div>
     </div>
   );
 }
-        
