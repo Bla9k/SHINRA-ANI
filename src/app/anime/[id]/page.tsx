@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
 import { getAnimeDetails, Anime } from '@/services/anime'; // Jikan-based service for metadata
-import { getAnimeEpisodes, ConsumetEpisode } from '@/services/consumet'; // Consumet service for episodes
+import { getAnimeEpisodes, ConsumetEpisode } from '@/services/consumet'; // Consumet service for episodes (via internal API)
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -60,32 +60,50 @@ export default function AnimeDetailPage() {
       setError(null);
       setEpisodeError(null); // Reset episode specific error
 
+      let fetchedEpisodes: ConsumetEpisode[] = [];
+      let episodesFailed = false;
+
       try {
-        // Fetch metadata (Jikan)
-        const detailsData = await getAnimeDetails(id);
-        if (detailsData) {
-          setAnime(detailsData);
+        // Fetch metadata (Jikan) and episodes (via internal API) concurrently
+        const [detailsResult, episodesResult] = await Promise.allSettled([
+            getAnimeDetails(id),
+            getAnimeEpisodes(id) // Calls internal API now
+        ]);
+
+        // Process Details Result
+        if (detailsResult.status === 'fulfilled' && detailsResult.value) {
+            setAnime(detailsResult.value);
         } else {
-          console.error(`Error fetching anime details for ID ${id}: Anime not found or API error.`);
-          setError('Anime details not found.'); // Set main error
-          notFound(); // Trigger Next.js not found mechanism
-          return; // Stop execution if details fail critically
+            const reason = detailsResult.status === 'rejected' ? detailsResult.reason : 'Anime details not found';
+            console.error(`Error fetching anime details for ID ${id}:`, reason);
+            setError('Anime details not found.'); // Set main error
+            notFound(); // Trigger Next.js not found mechanism
+            setLoading(false); // Stop main loading
+            setLoadingEpisodes(false); // Stop episode loading too
+            return; // Stop execution if details fail critically
         }
 
-        // Fetch episodes (Consumet) - now returns [] on failure
-        const episodesData = await getAnimeEpisodes(id);
-        setEpisodes(episodesData);
-        if (episodesData.length === 0) {
-            console.warn(`No episodes found for Anime ID ${id} via Consumet, or episode fetching failed.`);
-            // Don't set episodeError here yet, let the UI handle the empty state initially
+        // Process Episodes Result
+        if (episodesResult.status === 'fulfilled') {
+            fetchedEpisodes = episodesResult.value || []; // Default to empty array if null/undefined
+             setEpisodes(fetchedEpisodes);
+             if (fetchedEpisodes.length === 0) {
+                console.warn(`No episodes found for Anime ID ${id} via internal API, or API returned empty list.`);
+                // Don't set episodeError yet, let the UI handle empty state
+             }
+        } else {
+            // Handle failure to fetch episodes
+            episodesFailed = true;
+            const reason = episodesResult.reason instanceof Error ? episodesResult.reason.message : 'Unknown error';
+            console.error(`Error fetching episodes for Anime ID ${id} via internal API:`, reason);
+            setEpisodeError(`Could not load episode list: ${reason}.`); // Set specific error
+            setEpisodes([]); // Ensure episodes list is empty on error
         }
-
 
       } catch (err: any) {
         // Catch any unexpected errors during setup or non-API related issues
         console.error(`Unexpected error fetching data for Anime ID ${id}:`, err);
         setError(err.message || 'Failed to load anime data.');
-        // Potentially clear state or handle specific errors
         setAnime(null); // Clear anime details on major error
         setEpisodes([]); // Clear episodes
       } finally {
@@ -113,7 +131,7 @@ export default function AnimeDetailPage() {
     );
   }
 
-  // If anime details loaded but episodes might be empty (or failed silently)
+  // If anime details loaded but episodes might be empty or failed
   if (!anime) {
     // This path might be reached if loading is done but anime is still null (e.g., error caught in fetchAllData)
     // Return skeleton or a generic not found message, error state should already be set above if it was critical
