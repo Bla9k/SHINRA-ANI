@@ -27,7 +27,7 @@ export default function RootLayout({
   return (
     // Removed suppressHydrationWarning to let Next.js report potential hydration errors
     // Let ThemeProvider handle the theme class on the html tag
-    <html lang="en" className="h-full"> {/* Removed default 'dark' class */}
+    <html lang="en" className="h-full">{/* Removed default 'dark' class */}
       <head />{/* Ensure head is present */}
       <body
         className={cn(
@@ -42,11 +42,10 @@ export default function RootLayout({
                 enableSystem={false} // Disable system preference detection
                 disableTransitionOnChange // Prevent transition on initial load
             >
-                {/* AppLayout now handles the core layout structure */}
-                <AppLayout>
-                  {children}
-                </AppLayout>
-                <Toaster /> {/* Add Toaster component */}
+                 <AppLayout>
+                   {children}
+                 </AppLayout>
+                 <Toaster /> {/* Add Toaster component */}
             </ThemeProvider>
         </AuthProvider>
           {/* Add Anime.js script */}
