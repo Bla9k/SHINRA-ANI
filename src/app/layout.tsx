@@ -25,8 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Removed suppressHydrationWarning to let Next.js report potential hydration errors
-    // Let ThemeProvider handle the theme class on the html tag
+    // Let ThemeProvider handle the theme class/attribute on the html tag
     <html lang="en" className="h-full" suppressHydrationWarning> {/* Add suppressHydrationWarning */}
       <head />{/* Ensure head is present */}
       <body
