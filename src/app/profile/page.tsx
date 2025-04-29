@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback, ChangeEvent } from 'react';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, ShieldCheck, Zap, Award, Edit2, BookOpen, ListVideo, Heart, Settings, Star, Loader2, Save, Image as ImageIcon, Camera } from 'lucide-react'; // Added Save, ImageIcon, Camera
+import { User, ShieldCheck, Zap, Award, Edit2, BookOpen, ListVideo, Heart, Settings, Star, Loader2, Save, Image as ImageIcon, Camera, X } from 'lucide-react'; // Added Save, ImageIcon, Camera, X
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -619,10 +618,12 @@ export default function ProfilePage() {
                     </>
                 )}
                 <Link href="/settings" passHref legacyBehavior>
-                     <Button size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50">
-                        <Settings className="h-4 w-4 text-white"/>
-                        <span className="sr-only">Settings</span>
-                    </Button>
+                  <Button asChild size="icon" variant="outline" className="glass w-8 h-8 backdrop-blur-md bg-black/30 border-white/30 hover:bg-black/50">
+                      <a>
+                         <Settings className="h-4 w-4 text-white"/>
+                         <span className="sr-only">Settings</span>
+                      </a>
+                  </Button>
                 </Link>
            </div>
         </div>
@@ -763,8 +764,12 @@ const styles = `
 `;
 // Inject styles
 if (typeof window !== 'undefined') {
-  const styleSheet = document.createElement("style");
-  styleSheet.type = "text/css";
-  styleSheet.innerText = styles;
-  document.head.appendChild(styleSheet);
+  const styleId = 'profile-page-styles'; // Use a unique ID
+  if(!document.getElementById(styleId)) {
+     const styleSheet = document.createElement("style");
+     styleSheet.id = styleId;
+     styleSheet.type = "text/css";
+     styleSheet.innerText = styles;
+     document.head.appendChild(styleSheet);
+  }
 }
