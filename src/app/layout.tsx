@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import Script from 'next/script'; // Import Script
+import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -26,7 +27,7 @@ export default function RootLayout({
   return (
     // Removed suppressHydrationWarning to let Next.js report potential hydration errors
     // Let ThemeProvider handle the theme class on the html tag
-    <html lang="en" suppressHydrationWarning className="h-full">
+    <html lang="en" className="h-full"> {/* Removed default 'dark' class */}
       <head />{/* Ensure head is present */}
       <body
         className={cn(
@@ -34,18 +35,20 @@ export default function RootLayout({
           poppins.variable // Use Poppins variable
         )}
       >
-        <ThemeProvider
-            attribute="class" // Use class-based theming
-            defaultTheme="dark"
-            enableSystem={false} // Disable system preference detection
-            disableTransitionOnChange // Prevent transition on initial load
-        >
-            {/* AppLayout now handles the core layout structure */}
-            <AppLayout>
-              {children}
-            </AppLayout>
-            <Toaster /> {/* Add Toaster component */}
-        </ThemeProvider>
+        <AuthProvider> {/* Wrap with AuthProvider */}
+            <ThemeProvider
+                attribute="data-theme" // Use data-theme attribute
+                defaultTheme="dark" // Keep dark as default
+                enableSystem={false} // Disable system preference detection
+                disableTransitionOnChange // Prevent transition on initial load
+            >
+                {/* AppLayout now handles the core layout structure */}
+                <AppLayout>
+                  {children}
+                </AppLayout>
+                <Toaster /> {/* Add Toaster component */}
+            </ThemeProvider>
+        </AuthProvider>
           {/* Add Anime.js script */}
           <Script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" strategy="afterInteractive" />
       </body>

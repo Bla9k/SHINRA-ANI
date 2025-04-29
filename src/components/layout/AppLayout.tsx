@@ -102,6 +102,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         scale: [1, 0.9],
         duration: 600, // Duration for ash out
         easing: 'easeInQuad',
+        delay: anime.stagger(50) // Stagger element animations
       } :
       { // Hypercharged Dissolve Effect
         targets: currentElementsSelector,
@@ -110,6 +111,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         filter: ['blur(0px)', 'blur(8px)'],
         duration: 600, // Duration for dissolve out
         easing: 'easeInCubic',
+        delay: anime.stagger(50) // Stagger element animations
       };
 
     anime({
@@ -138,7 +140,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                      scale: [1.2, 1],
                      filter: ['blur(10px)', 'blur(0px)'],
                      duration: 700, // Duration for reveal
-                     delay: 100, // Delay after slash effect (if added separately)
+                     delay: anime.stagger(100, { start: 100 }), // Stagger elements slightly
                      easing: 'easeOutExpo',
                  } :
                  { // Vanilla Rebuild Effect
@@ -147,6 +149,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                      translateY: [20, 0], // Slide up
                      scale: [0.95, 1],
                      duration: 700, // Duration for rebuild
+                     delay: anime.stagger(100, { start: 100 }), // Stagger elements slightly
                      easing: 'easeOutCubic',
                  };
 
@@ -195,19 +198,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
         "flex flex-col min-h-screen h-screen overflow-hidden relative",
         // Add classes to manage visibility during transitions
         // These help prevent both UIs showing simultaneously briefly
-        {'opacity-100': !isTransitioning, 'opacity-0': isTransitioning} // Basic fade (can be refined)
+        // isTransitioning ? 'transition-opacity duration-500 opacity-0' : 'opacity-100' // Basic fade (might cause flicker)
         )}>
         {/* Render the currently active UI */}
-        {activeUIMode === 'vanilla' && (
+         <div className={cn("absolute inset-0 transition-opacity duration-700", activeUIMode === 'vanilla' ? 'opacity-100 z-10' : 'opacity-0 z-0')}>
             <VanillaLayout {...commonLayoutProps}>
                 {children}
             </VanillaLayout>
-        )}
-        {activeUIMode === 'hypercharged' && (
+         </div>
+          <div className={cn("absolute inset-0 transition-opacity duration-700", activeUIMode === 'hypercharged' ? 'opacity-100 z-10' : 'opacity-0 z-0')}>
             <HyperchargedLayout {...commonLayoutProps}>
                 {children}
             </HyperchargedLayout>
-        )}
+         </div>
+
 
        {/* Search Popup remains outside the themed layouts, always available */}
       <SearchPopup
@@ -226,22 +230,34 @@ export default function AppLayout({ children }: AppLayoutProps) {
           className={cn(
               "fixed bottom-20 right-4 z-[60] p-2 rounded-full transition-all duration-300 ease-in-out group",
               "w-12 h-12 flex items-center justify-center", // Consistent size
-              // Theme-aware styling
+              // Theme-aware styling - applied dynamically based on `activeUIMode`
               activeUIMode === 'vanilla'
                   ? "bg-primary text-primary-foreground shadow-lg hover:bg-primary/80 hover:scale-105" // Vanilla Style
                   : "bg-gradient-to-br from-accent to-green-400 text-black shadow-[0_0_15px_theme(colors.accent)] hover:shadow-[0_0_25px_theme(colors.accent)] hover:scale-105", // Hypercharge Style
-              isTransitioning ? 'opacity-50 cursor-not-allowed' : ''
+              isTransitioning ? 'opacity-50 cursor-not-allowed animate-pulse-subtle' : '' // Indicate transition state
           )}
           aria-label="Toggle Hypercharge Mode"
       >
-          {/* Simple icon for now, replace with Katana hilt SVG later */}
-           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("transition-transform duration-300 group-hover:rotate-12", activeUIMode === 'hypercharged' ? 'text-black' : 'text-primary-foreground')}>
-             <path d="M12 3v18"/> {/* Simple representation */}
-              <path d="M7 10l-4 4 4 4"/>
-             <path d="M17 10l4 4-4 4"/>
-             <path d="M5 6h14"/>
-             <path d="M5 18h14"/>
-           </svg>
+           {/* Katana Hilt SVG */}
+           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+             className={cn(
+                "transition-transform duration-300 ease-in-out group-hover:rotate-12",
+                // Change color based on active theme
+                activeUIMode === 'vanilla' ? 'text-primary-foreground' : 'text-black',
+                // Glitch effect on hover when hypercharge is *off*
+                activeUIMode === 'vanilla' ? 'group-hover:animate-glitch-subtle' : '',
+                {'animate-neon-pulse': activeUIMode === 'hypercharged'} // Neon pulse when hypercharge is active
+             )}
+             data-text="⚡" // For glitch effect if using CSS ::before/::after
+           >
+             <path d="M20 4v5l-9 7-7-7Z" /> {/* Tsuka (handle) top */}
+             <path d="M4 20v-5l9-7 7 7Z" /> {/* Tsuka (handle) bottom */}
+             <path d="M11 7h2"/> {/* Tsuba (guard) - simplified */}
+             {/* Subtle glow for hypercharge button */}
+             {activeUIMode === 'hypercharged' && <filter id="neon-glow"><feGaussianBlur stdDeviation="0.5" result="coloredBlur"/><feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge></filter>}
+             {activeUIMode === 'hypercharged' && <path d="M20 4v5l-9 7-7-7Z" style={{ filter: 'url(#neon-glow)' }} strokeWidth="2.5" stroke="hsl(var(--accent))"/>}
+             {activeUIMode === 'hypercharged' && <path d="M4 20v-5l9-7 7 7Z" style={{ filter: 'url(#neon-glow)' }} strokeWidth="2.5" stroke="hsl(var(--accent))"/>}
+            </svg>
       </button>
 
       {/* Global Toaster */}

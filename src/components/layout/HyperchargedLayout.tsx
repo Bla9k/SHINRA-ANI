@@ -2,7 +2,7 @@
 'use client';
 
 import React, { type ReactNode, useEffect, useRef } from 'react';
-import { Zap, Sparkles, Search, User } from 'lucide-react'; // Import necessary icons
+import { Zap, Sparkles, Search, User, Tv, BookText, Users } from 'lucide-react'; // Import necessary icons
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import anime from 'animejs'; // Import Anime.js
@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import BottomNavigationBar from './BottomNavigationBar'; // Import common bottom nav
+import { usePathname } from 'next/navigation'; // Import usePathname
 
 // Define placeholder components for Hypercharged theme specific elements
 // Replace these with actual implementations later
@@ -54,13 +55,13 @@ const HyperchargedTopBar = ({ onSearchToggle, onAiToggle, isAiSearchActive }: an
            size="icon"
            className={cn(
                "rounded-full text-primary hover:text-accent hover:bg-primary/10 transition-all duration-300 group hypercharge-glow",
-               isAiSearchActive && "bg-primary/20 ring-2 ring-primary neon-pulse" // Enhanced active state
+               isAiSearchActive && "bg-primary/20 ring-2 ring-primary animate-neon-pulse" // Enhanced active state
             )}
            onClick={onAiToggle}
            aria-pressed={isAiSearchActive}
            aria-label={isAiSearchActive ? 'Deactivate AI Search Mode' : 'Activate AI Search Mode'}
         >
-         <Sparkles className="h-5 w-5 transition-transform duration-300 group-hover:rotate-[360deg]" />
+         <Sparkles className="h-5 w-5 transition-transform duration-300 group-hover:rotate-[360deg] group-hover:scale-110" />
        </Button>
        {/* Profile Dropdown */}
        <DropdownMenu>
@@ -118,9 +119,10 @@ export default function HyperchargedLayout({
 }: HyperchargedLayoutProps) {
     const mainContentRef = useRef<HTMLDivElement>(null);
     const backgroundRef = useRef<HTMLDivElement>(null);
+    const pathname = usePathname();
 
 
-   // Example Anime.js animation on mount - Apply to a specific element
+   // Anime.js entrance animation for hypercharged elements
    useEffect(() => {
         // Initial entrance animation for the layout itself
         anime({
@@ -139,17 +141,65 @@ export default function HyperchargedLayout({
            anime({
              targets: backgroundRef.current,
              keyframes: [
-               { backgroundPosition: '0% 0%' },
-               { backgroundPosition: '100% 100%' },
-               { backgroundPosition: '0% 0%' }, // Loop
+                // More complex movement for nebula/cityscape effect
+               { backgroundPosition: '0% 50%', opacity: 0.8 },
+               { backgroundPosition: '100% 50%', opacity: 1.0 },
+               { backgroundPosition: '0% 50%', opacity: 0.8 },
              ],
-             duration: 60000, // Very slow animation (60 seconds)
+             duration: 90000, // Very slow animation (90 seconds)
              easing: 'linear',
              loop: true,
            });
          }
 
     }, []); // Run only once on mount
+
+      // --- Hypercharged Bottom Nav ---
+      // Note: Consider abstracting this further if it grows complex
+      const HyperchargedBottomNav = () => {
+           const navItems = [
+             { href: '/', icon: Zap, label: 'Home' }, // Use Zap for Home
+             { href: '/anime', icon: Tv, label: 'Anime' },
+             { href: '/manga', icon: BookText, label: 'Manga' },
+             { href: '/community', icon: Users, label: 'Community' },
+             { href: '/profile', icon: User, label: 'Profile' },
+           ];
+
+          return (
+             <nav className={cn(
+                 "fixed bottom-0 left-0 right-0 z-50 h-16 border-t hypercharge-nav", // Use dedicated class
+                 "hypercharged-ui-element" // Target for animations
+             )}>
+                <div className="flex justify-around items-center h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative">
+                    {navItems.map((item) => {
+                        const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+                        return (
+                            <Link href={item.href} key={item.href} passHref legacyBehavior>
+                                <Button
+                                    variant="ghost"
+                                    className={cn(
+                                    'nav-item-base flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-all duration-300 ease-in-out relative z-10 group',
+                                    'hover:bg-transparent', // No background hover
+                                    isActive
+                                        ? 'text-accent animate-neon-pulse-icon' // Active uses accent color + pulse
+                                        : 'text-muted-foreground hover:text-secondary', // Inactive uses muted, hover cyan
+                                    )}
+                                    aria-current={isActive ? 'page' : undefined}
+                                >
+                                     <item.icon className={cn(
+                                         "w-5 h-5 mb-0.5 transition-transform duration-300 group-hover:scale-110",
+                                         isActive ? 'text-accent' : '' // Icon color matches text
+                                     )} />
+                                    <span className="truncate max-w-full">{item.label}</span>
+                                </Button>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
+          );
+      };
+
 
   return (
      <>
@@ -158,35 +208,32 @@ export default function HyperchargedLayout({
             ref={backgroundRef}
             className={cn(
                 "absolute inset-0 -z-10 transition-opacity duration-1000",
-                "bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/30 via-cyan-900/20 to-background",
-                "bg-[length:200%_200%]" // Make background larger for animation
+                 // Complex gradient for space/cyberpunk feel
+                "bg-[radial-gradient(ellipse_at_bottom,_var(--tw-gradient-stops))] from-indigo-900/40 via-purple-900/30 to-hc-deep-space-blue",
+                "bg-[length:300%_300%]" // Make background larger for animation
             )}
-            // Style below can be used for nebula effect if an image is preferred
-            // style={{ backgroundImage: 'url(/path/to/nebula.jpg)', backgroundSize: 'cover' }}
           />
 
        <HyperchargedTopBar
           onSearchToggle={onSearchToggle}
           onAiToggle={onAiToggle}
           isAiSearchActive={isAiSearchActive}
-          // Pass search handlers if TopBar needs them directly
-          // onOpenAiSearch={onOpenAiSearch}
-          // onOpenAdvancedSearch={onOpenAdvancedSearch}
           />
 
         {/* Main content area with specific class for animation targeting */}
        <div ref={mainContentRef} className="flex-1 overflow-y-auto pb-16 hypercharged-ui-element scrollbar-thin">
-         <main className="transition-smooth p-4 md:p-6"> {/* Add padding to main content */}
+         <main className="p-4 md:p-6"> {/* Consistent padding */}
            {children}
          </main>
+           {/* Hypercharge Specific Footer - Example */}
+           <footer className="text-center py-4 px-4 border-t border-secondary/30 text-xs text-muted-foreground hypercharged-ui-element">
+              <p>&copy; {new Date().getFullYear()} Shinra-Ani Inc. - Hypercharge Protocol v1.0</p>
+               <p>Built with Neon & Dreams</p>
+           </footer>
        </div>
 
-       {/* Use the common BottomNavigationBar but pass the hypercharged theme prop */}
-       <BottomNavigationBar
-         className="hypercharged-ui-element" // Specific class for targeting
-         currentTheme="hypercharged"
-         // Pass other necessary props if BottomNav needs them (it doesn't currently handle hypercharge toggle)
-       />
+        {/* Use the dedicated Hypercharged Bottom Nav */}
+        <HyperchargedBottomNav />
      </>
    );
 }

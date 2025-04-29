@@ -46,6 +46,10 @@ export default function VanillaLayout({
         <main className="transition-smooth">
           {children}
         </main>
+        {/* Vanilla Specific Footer - Example */}
+        <footer className="text-center py-4 px-4 border-t border-border/50 text-xs text-muted-foreground vanilla-ui-element">
+             © 2025 Shinra-Ani Inc. | All Rights Reserved
+        </footer>
       </div>
 
       <BottomNavigationBar

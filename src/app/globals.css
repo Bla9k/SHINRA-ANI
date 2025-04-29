@@ -122,26 +122,30 @@ body {
   /* Hypercharge specific glassmorphism with neon edges */
   html[data-theme="hypercharged"] .glass {
     /* Intense glass effect for hypercharged */
-    @apply bg-card/80 backdrop-blur-xl border border-primary/60 shadow-[0_0_15px_theme(colors.primary),_0_0_30px_theme(colors.secondary)];
-    /* Use CSS variables directly for better theme control */
-    --tw-shadow-color-primary: hsl(var(--primary));
-    --tw-shadow-color-secondary: hsl(var(--secondary));
-    --tw-shadow: 0 0 15px var(--tw-shadow-color-primary), 0 0 30px var(--tw-shadow-color-secondary);
-    --tw-shadow-colored: 0 0 15px var(--tw-shadow-color), 0 0 30px var(--tw-shadow-color);
-    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+    @apply bg-card/80 backdrop-blur-xl border border-primary/60 shadow-[0_0_15px_theme(colors.primary/50),_0_0_30px_theme(colors.secondary/30)];
   }
 
    /* Hypercharge specific scrollbar */
     html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
         background-color: hsl(var(--secondary) / 0.7); /* Cyan thumb */
         box-shadow: 0 0 5px hsl(var(--secondary)); /* Cyan glow */
+        border-radius: 3px;
     }
     html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
         background-color: hsl(var(--secondary) / 0.9);
     }
     html[data-theme="hypercharged"] .scrollbar-thin {
         scrollbar-color: hsl(var(--secondary) / 0.7) transparent;
+         scrollbar-width: thin;
     }
+     html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar {
+      width: 6px; /* Width of vertical scrollbar */
+      height: 6px; /* Height of horizontal scrollbar */
+    }
+    html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-track {
+       background: transparent;
+    }
+
 
      /* Specific styles for Hypercharge theme components */
      html[data-theme="hypercharged"] .hypercharge-nav {
@@ -154,22 +158,32 @@ body {
         @apply bg-gradient-to-br from-accent to-green-400 text-black hover:shadow-[0_0_10px_theme(colors.accent)];
      }
 
+     /* Neon Text */
      html[data-theme="hypercharged"] .neon-text-primary {
+        color: hsl(var(--primary));
         text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.7);
      }
       html[data-theme="hypercharged"] .neon-text-secondary {
+        color: hsl(var(--secondary));
         text-shadow: 0 0 5px hsl(var(--secondary)), 0 0 10px hsl(var(--secondary) / 0.7);
      }
       html[data-theme="hypercharged"] .neon-text-accent {
+        color: hsl(var(--accent));
         text-shadow: 0 0 5px hsl(var(--accent)), 0 0 10px hsl(var(--accent) / 0.7);
      }
 
+      /* General Glow Effect */
       html[data-theme="hypercharged"] .hypercharge-glow {
-         filter: drop-shadow(0 0 8px hsl(var(--primary)/ 0.8));
+         filter: drop-shadow(0 0 8px hsl(var(--primary)/ 0.6)) drop-shadow(0 0 4px hsl(var(--secondary)/ 0.4));
+         transition: filter 0.3s ease-in-out;
+      }
+      html[data-theme="hypercharged"] .hypercharge-glow:hover {
+          filter: drop-shadow(0 0 12px hsl(var(--primary)/ 0.8)) drop-shadow(0 0 6px hsl(var(--secondary)/ 0.6));
        }
 
+      /* Input Styling */
       html[data-theme="hypercharged"] .hypercharge-input {
-         @apply border-secondary/50 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 hover:border-secondary;
+         @apply border-secondary/50 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 hover:border-secondary bg-input/50 backdrop-blur-sm transition-colors duration-300;
       }
 }
 
@@ -301,46 +315,82 @@ body {
           from { filter: drop-shadow(0 0 5px hsl(var(--primary)/0.6)); }
           to { filter: drop-shadow(0 0 15px hsl(var(--primary)/0.9)); }
        }
+        /* Neon pulse for active hypercharge nav icon */
+      .animate-neon-pulse-icon {
+         animation: neonPulseIcon 1.5s infinite alternate;
+      }
+       @keyframes neonPulseIcon {
+          from { filter: drop-shadow(0 0 3px hsl(var(--accent)/0.7)); }
+          to { filter: drop-shadow(0 0 8px hsl(var(--accent)/1)); }
+       }
 
-        /* Glitch effect (more complex) */
+       /* Subtle Glitch effect for Hypercharge Button Hover (Vanilla Mode) */
+        .animate-glitch-subtle {
+           position: relative;
+           animation: glitch-subtle 0.3s linear infinite alternate;
+        }
+         /* Simplified glitch effect using transforms */
+        @keyframes glitch-subtle {
+           0% { transform: translate(0); }
+           25% { transform: translate(-1px, 1px) skewX(-2deg); }
+           50% { transform: translate(1px, -1px) skewX(2deg); }
+           75% { transform: translate(1px, 1px) skewX(-2deg); }
+           100% { transform: translate(0); }
+        }
+
+       /* Complex Glitch effect (can be used for specific hypercharge elements) */
        .animate-glitch {
          position: relative;
+         /* Requires data-text attribute on the element */
+         /* Style ::before and ::after in CSS if using data-text */
          animation: glitch 1s linear infinite;
        }
-        .animate-glitch::before,
-        .animate-glitch::after {
-          content: attr(data-text); /* Requires data-text attribute on the element */
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: var(--background); /* Match background */
-          overflow: hidden;
-        }
-       .animate-glitch::before {
+
+       @keyframes glitch {
+         2%, 64% { transform: translate(2px, 0) skew(0deg); }
+         4%, 60% { transform: translate(-2px, 0) skew(0deg); }
+         62% { transform: translate(0, 0) skew(5deg); }
+       }
+
+      /* Specific keyframes for glitch effect using ::before/::after pseudo-elements */
+      /* Apply these to the element having .animate-glitch and a data-text attribute */
+       .animate-glitch::before,
+       .animate-glitch::after {
+         content: attr(data-text);
+         position: absolute;
+         top: 0;
+         left: 0;
+         width: 100%;
+         height: 100%;
+         background: var(--background); /* Match background */
+         overflow: hidden;
+         clip-path: rect(0, 0, 0, 0); /* Initially hide */
+       }
+      .animate-glitch:hover::before {
          left: 2px;
          text-shadow: -1px 0 hsl(var(--secondary)); /* Cyan */
-         clip: rect(44px, 450px, 56px, 0);
-         animation: glitch-anim 2s infinite linear alternate-reverse;
+         animation: glitch-anim 1s infinite linear alternate-reverse;
        }
-       .animate-glitch::after {
+       .animate-glitch:hover::after {
          left: -2px;
          text-shadow: -1px 0 hsl(var(--accent)); /* Green */
-         clip: rect(85px, 450px, 140px, 0);
-         animation: glitch-anim-2 3s infinite linear alternate-reverse;
+         animation: glitch-anim-2 1.5s infinite linear alternate-reverse;
        }
 
        @keyframes glitch-anim {
-         0% { clip: rect(42px, 9999px, 44px, 0); }
-         5% { clip: rect(17px, 9999px, 94px, 0); }
-         /* ... Add more steps for complex glitch ... */
-         100% { clip: rect(92px, 9999px, 98px, 0); }
+         0% { clip-path: inset(40% 0 60% 0); }
+         20% { clip-path: inset(15% 0 80% 0); }
+         40% { clip-path: inset(70% 0 10% 0); }
+         60% { clip-path: inset(35% 0 55% 0); }
+         80% { clip-path: inset(85% 0 5% 0); }
+         100% { clip-path: inset(45% 0 40% 0); }
        }
        @keyframes glitch-anim-2 {
-         0% { clip: rect(65px, 9999px, 119px, 0); }
-          5% { clip: rect(79px, 9999px, 19px, 0); }
-          /* ... Add more steps ... */
-          100% { clip: rect(18px, 9999px, 130px, 0); }
+         0% { clip-path: inset(65% 0 20% 0); }
+         20% { clip-path: inset(90% 0 5% 0); }
+         40% { clip-path: inset(10% 0 75% 0); }
+         60% { clip-path: inset(50% 0 30% 0); }
+         80% { clip-path: inset(25% 0 68% 0); }
+         100% { clip-path: inset(70% 0 15% 0); }
        }
 }

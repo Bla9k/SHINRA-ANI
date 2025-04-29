@@ -6,9 +6,10 @@ import type { ThemeProviderProps } from "next-themes/dist/types"
 
 export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
   // Set default theme to 'dark' and disable system preference detection
+  // Use 'data-theme' attribute
   return (
     <NextThemesProvider
-      attribute="class" // Use class-based theming
+      attribute="data-theme" // Use data-theme attribute
       defaultTheme="dark"
       enableSystem={false} // Disable system preference detection
       {...props}
