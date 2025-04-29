@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import Script from 'next/script'; // Import Script
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -24,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     // Removed suppressHydrationWarning to let Next.js report potential hydration errors
-    <html lang="en" className="dark h-full"> {/* Ensure html takes full height and remove whitespace */}
+    <html lang="en" className="dark h-full">{/* Ensure html takes full height and remove whitespace */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
@@ -43,6 +44,8 @@ export default function RootLayout({
             </AppLayout>
             <Toaster /> {/* Add Toaster component */}
         </ThemeProvider>
+          {/* Add Anime.js script */}
+          <Script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" strategy="afterInteractive" />
       </body>
     </html>
   );
