@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, type ReactNode, useCallback, useEffect } from 'react';
@@ -8,9 +7,8 @@ import TopBar from './TopBar';
 import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { Zap } from 'lucide-react';
 import anime from 'animejs';
+import { flushSync } from 'react-dom'; // Import flushSync
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -19,7 +17,7 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false); // State to track client mount
+  const [mounted, setMounted] = useState(false);
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiSearchActive, setIsAiSearchActive] = useState(false);
@@ -27,13 +25,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [openWithFilters, setOpenWithFilters] = useState(false);
   const [isHypercharging, setIsHypercharging] = useState(false);
 
-  // Effect to set mounted state after initial render
+  // Track mounted state to avoid hydration mismatches
   useEffect(() => {
     setMounted(true);
   }, []);
 
-
-    // --- Search Handlers ---
+  // --- Search Handlers ---
   const handleSearchToggle = useCallback((term: string = '') => {
     setInitialSearchTerm(term);
     setIsSearchOpen(prev => !prev);
@@ -72,9 +69,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setIsSearchOpen(true);
   }, []);
 
-
   // --- Hypercharge Animation Logic ---
   const triggerAshOut = () => {
+    console.log("Triggering Ash Out");
     const elementsToDissolve = document.querySelectorAll('.vanilla-ui-element');
 
     anime({
@@ -87,104 +84,154 @@ export default function AppLayout({ children }: AppLayoutProps) {
       easing: 'easeOutExpo',
       delay: anime.stagger(50),
       complete: () => {
-        elementsToDissolve.forEach(el => (el as HTMLElement).style.visibility = 'hidden');
+        console.log("Ash Out complete, triggering Katana Slash");
+        elementsToDissolve.forEach(el => (el as HTMLElement).style.visibility = 'hidden'); // Hide after animation
         triggerKatanaSlash();
       }
     });
   };
 
   const triggerKatanaSlash = () => {
+    console.log("Triggering Katana Slash");
     const slashElement = document.createElement('div');
     slashElement.className = 'katana-slash-effect';
     document.body.appendChild(slashElement);
 
+    // Ensure theme change happens *after* slash animation starts
+    flushSync(() => {
+        setTheme('hypercharged'); // Apply the theme class
+    });
+
+    // Remove slash after animation and clean up
     setTimeout(() => {
-      setTheme('hypercharged');
-       document.body.removeChild(slashElement);
-      setIsHypercharging(false);
-      const elementsToDissolve = document.querySelectorAll('.vanilla-ui-element');
-      elementsToDissolve.forEach(el => (el as HTMLElement).style.visibility = ''); // Reset visibility
-    }, 500);
+        console.log("Katana Slash animation finished, setting theme and resetting elements");
+        if (document.body.contains(slashElement)) {
+            document.body.removeChild(slashElement);
+        }
+         setIsHypercharging(false);
+
+         // Make vanilla elements visible again for the next toggle off
+         // No need to reset visibility immediately, handled in triggerHyperchargeOff
+         console.log("Hypercharge activated");
+
+    }, 500); // Matches katana-slash animation duration
   };
 
-    const triggerHyperchargeOff = () => {
-        anime({
-            targets: 'body[data-theme="hypercharged"] > *',
-            opacity: [1, 0],
-            duration: 600,
-            easing: 'easeInExpo',
-            delay: anime.stagger(30),
-            complete: () => {
-                setTheme('dark');
+  const triggerHyperchargeOff = () => {
+    console.log("Triggering Hypercharge Off");
 
-                const vanillaElements = document.querySelectorAll('.vanilla-ui-element');
-                vanillaElements.forEach(el => {
-                    (el as HTMLElement).style.opacity = '0';
-                     (el as HTMLElement).style.visibility = 'visible';
-                 });
+    // Animate hypercharge UI elements fading out
+    const hyperchargeElements = document.querySelectorAll('body[data-theme="hypercharged"] > *'); // Target elements within hypercharge theme
 
-                anime({
-                    targets: '.vanilla-ui-element',
-                    opacity: [0, 1],
-                    translateY: [20, 0],
-                    duration: 700,
-                    easing: 'easeOutExpo',
-                    delay: anime.stagger(40, { start: 100 }),
-                     complete: () => {
-                         setIsHypercharging(false);
-                     }
-                });
-            }
-        });
-    };
+    anime({
+        targets: hyperchargeElements,
+        opacity: [1, 0],
+        scale: [1, 0.95], // Slight scale down
+        duration: 600,
+        easing: 'easeInExpo',
+        delay: anime.stagger(30),
+        complete: () => {
+            console.log("Hypercharge fade out complete, setting theme to dark");
+             // Use flushSync to ensure theme is set synchronously before next animation
+            flushSync(() => {
+                setTheme('dark'); // Switch back to dark theme class
+            });
+
+             console.log("Theme set to dark, animating vanilla elements back in");
+            // Animate vanilla elements fading back in AFTER theme has changed
+             const vanillaElements = document.querySelectorAll('.vanilla-ui-element');
+             vanillaElements.forEach(el => {
+                 const htmlEl = el as HTMLElement;
+                 // Reset styles potentially affected by ash-out
+                 htmlEl.style.visibility = 'visible'; // Make them visible first
+                 htmlEl.style.opacity = '0';
+                 htmlEl.style.transform = 'translateY(20px) scale(1)'; // Reset transform
+                 htmlEl.style.filter = 'blur(0)'; // Reset filter
+             });
+
+            anime({
+                targets: '.vanilla-ui-element',
+                opacity: [0, 1],
+                translateY: [20, 0], // Animate from slightly below
+                duration: 700,
+                easing: 'easeOutExpo',
+                delay: anime.stagger(40, { start: 100 }), // Staggered entry
+                 complete: () => {
+                     console.log("Hypercharge deactivated");
+                     setIsHypercharging(false); // Reset state after animation completes
+                 }
+            });
+        }
+    });
+  };
 
 
   const handleHyperchargeToggle = () => {
-    if (isHypercharging) return;
+    if (isHypercharging || !mounted) return; // Prevent double-clicks and run only client-side
+    console.log(`Toggling Hypercharge. Current theme: ${theme}`);
     setIsHypercharging(true);
 
      if (theme !== 'hypercharged') {
-         triggerAshOut();
+         triggerAshOut(); // Transition to Hypercharge
      } else {
-         triggerHyperchargeOff();
+         triggerHyperchargeOff(); // Transition back to Dark
      }
   };
 
+   // Handle potential theme hydration mismatch
+   // Theme will be undefined on first render, then set based on localStorage/default
+  const currentThemeClass = mounted ? theme : 'dark'; // Assume dark theme initially
+
 
   return (
-    <div className="flex flex-col min-h-screen h-screen overflow-hidden relative">
-      <TopBar
-        className="vanilla-ui-element"
-        onSearchIconClick={() => handleSearchToggle()}
-        onSearchSubmit={handleSearchToggle}
-        onAiToggle={handleAiToggle}
-        isAiSearchActive={isAiSearchActive}
-        onOpenAiSearch={handleOpenAiSearch}
-        onOpenAdvancedSearch={handleOpenAdvancedSearch}
-      />
+    // Use key to force re-render on theme change if necessary, though ThemeProvider handles it
+    <div className={cn("flex flex-col min-h-screen h-screen overflow-hidden relative", currentThemeClass)} key={currentThemeClass}>
 
-      <main className="flex-1 overflow-y-auto pb-20 vanilla-ui-element">
-        <div className={cn("transition-opacity duration-500", isHypercharging ? "opacity-0" : "opacity-100")}>
-             <div className="animate-fade-in duration-500 vanilla-ui-element">
+        {/* Render TopBar only if not in hypercharge or during transition out */}
+        {/* Added check for mounted to prevent rendering on server */}
+        {mounted && theme !== 'hypercharged' && (
+             <TopBar
+                 className={cn("vanilla-ui-element", isHypercharging && theme !== 'hypercharged' ? 'opacity-0' : 'opacity-100')} // Initially hidden during ash-out
+                 onSearchIconClick={() => handleSearchToggle()}
+                 onSearchSubmit={handleSearchToggle}
+                 onAiToggle={handleAiToggle}
+                 isAiSearchActive={isAiSearchActive}
+                 onOpenAiSearch={handleOpenAiSearch}
+                 onOpenAdvancedSearch={handleOpenAdvancedSearch}
+            />
+        )}
+
+         {/* Use a container div for the main content */}
+         <div className="flex-1 overflow-y-auto pb-16"> {/* Adjust padding-bottom */}
+            <main className={cn("transition-opacity duration-500",
+                isHypercharging && theme !== 'hypercharged' ? 'opacity-0' : 'opacity-100', // Fade out vanilla content
+                theme === 'hypercharged' ? 'hypercharged-content' : 'vanilla-ui-element' // Add class for hypercharge content styling if needed
+             )}>
                  {children}
-             </div>
-        </div>
-      </main>
+             </main>
+         </div>
 
-      <BottomNavigationBar
-        className="vanilla-ui-element"
-        onHyperchargeToggle={handleHyperchargeToggle} // Pass the toggle function
-        isHypercharging={isHypercharging} // Pass the state
-      />
 
-      <SearchPopup
-        isOpen={isSearchOpen}
-        onClose={handleCloseSearch}
-        isAiActive={isAiSearchActive}
-        initialSearchTerm={initialSearchTerm}
-        onAiToggle={handleAiToggle}
-        openWithFilters={openWithFilters}
-      />
+        {/* Bottom Nav: Render always but style based on theme */}
+        <BottomNavigationBar
+             className={cn(
+                theme !== 'hypercharged' ? 'vanilla-ui-element' : '',
+                isHypercharging && theme !== 'hypercharged' ? 'opacity-0' : 'opacity-100' // Fade out vanilla nav
+             )}
+             onHyperchargeToggle={handleHyperchargeToggle}
+             isHypercharging={isHypercharging}
+             currentTheme={theme ?? 'dark'} // Pass current theme
+        />
+
+        {/* Search Popup: Render always, styling handled internally */}
+        <SearchPopup
+            isOpen={isSearchOpen}
+            onClose={handleCloseSearch}
+            isAiActive={isAiSearchActive}
+            initialSearchTerm={initialSearchTerm}
+            onAiToggle={handleAiToggle}
+            openWithFilters={openWithFilters}
+        />
 
     </div>
   );

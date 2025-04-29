@@ -37,12 +37,16 @@ const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
             <Button
               variant="ghost"
               className={cn(
-                'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative z-10', // Smooth transition for color
-                // Removed hover:bg-accent and added hover:bg-transparent explicitly
-                'hover:bg-transparent',
-                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-primary', // Change text color on hover
-                '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out', // Ensure icon transitions smoothly too
-                '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out' // Ensure text transitions smoothly too
+                'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-300 ease-in-out relative z-10',
+                // Base styling for both themes
+                'hover:bg-transparent', // Remove background on hover
+                // Active state styling
+                isActive ? 'active-nav-item text-primary' : 'text-muted-foreground hover:text-primary',
+                // Icon and text smooth transition
+                '[&_svg]:transition-colors [&_svg]:duration-300 [&_svg]:ease-in-out',
+                '[&_span]:transition-colors [&_span]:duration-300 [&_span]:ease-in-out',
+                 // Vanilla specific class for potential targeting
+                 'nav-item-vanilla'
               )}
               aria-current={isActive ? 'page' : undefined}
             >
@@ -61,11 +65,17 @@ const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
 
 interface BottomNavigationBarProps {
     className?: string;
-    onHyperchargeToggle: () => void; // Added prop
-    isHypercharging: boolean; // Added prop
+    onHyperchargeToggle: () => void;
+    isHypercharging: boolean;
+    currentTheme: string; // Receive current theme
 }
 
-export default function BottomNavigationBar({ className, onHyperchargeToggle, isHypercharging }: BottomNavigationBarProps) {
+export default function BottomNavigationBar({
+    className,
+    onHyperchargeToggle,
+    isHypercharging,
+    currentTheme
+}: BottomNavigationBarProps) {
   const navItems: NavItemProps[] = [
     { href: '/', icon: Home, label: 'Home' },
     { href: '/anime', icon: Tv, label: 'Anime' },
@@ -82,7 +92,11 @@ export default function BottomNavigationBar({ className, onHyperchargeToggle, is
 
   return (
     <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass transition-smooth vanilla-ui-element",
+        "fixed bottom-0 left-0 right-0 z-50 h-16 border-t transition-smooth",
+         // Apply theme-specific background and glass effect
+         currentTheme === 'hypercharged'
+            ? 'bg-black/80 border-primary/50 shadow-[0_0_15px_theme(colors.secondary)] backdrop-blur-xl' // Hypercharge style
+            : 'bg-background/95 border-border glass', // Vanilla style
         className
     )}>
       <div className="flex justify-around items-center h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative">
@@ -98,16 +112,22 @@ export default function BottomNavigationBar({ className, onHyperchargeToggle, is
                 variant="ghost"
                 size="icon"
                 className={cn(
-                  'hypercharge-button flex flex-col items-center justify-center h-full w-16 mx-2 text-xs sm:text-sm transition-colors duration-200 z-10 group', // Add group class
-                  'text-muted-foreground hover:text-foreground hover:bg-transparent' // Standard hover effect with transparent background
+                  'hypercharge-button flex flex-col items-center justify-center h-full w-16 mx-2 text-xs sm:text-sm transition-colors duration-200 z-10 group',
+                  // Theme-specific hover and text color
+                  currentTheme === 'hypercharged'
+                    ? 'text-muted-foreground hover:text-secondary hover:bg-transparent' // Hypercharge text/hover
+                    : 'text-muted-foreground hover:text-primary hover:bg-transparent', // Vanilla text/hover
+                    isHypercharging ? 'opacity-50 cursor-not-allowed' : '' // Indicate loading/disabled state
                 )}
                 onClick={onHyperchargeToggle}
                 disabled={isHypercharging} // Disable while transition is active
                 aria-label="Toggle Hypercharge Mode"
               >
-                {/* Apply glitch effect to the icon via CSS when hypercharge-button is hovered in hypercharged mode */}
-                <Zap className="w-6 h-6 hypercharge-icon transition-colors duration-200 group-hover:text-primary" />
-                 {/* Reduced font size and line height for "Hypercharge" text */}
+                {/* Apply glitch effect conditionally */}
+                <Zap className={cn(
+                    "w-6 h-6 transition-colors duration-200",
+                    currentTheme === 'hypercharged' ? "group-hover:text-secondary hypercharge-icon" : "group-hover:text-primary" // Apply glitch class only in hypercharge
+                )} />
                  <span className="truncate max-w-full text-[10px] leading-tight mt-0.5">Hypercharge</span>
               </Button>
             </TooltipTrigger>

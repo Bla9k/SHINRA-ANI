@@ -39,7 +39,7 @@ body {
 
   .dark {
      /* Re-apply variables for consistency, although :root should suffice */
-    --background: 240 10% 3.9%;
+    --background: 240 10% 3.9%;;
     --foreground: 0 0% 98%;
     --card: 240 10% 10%;
     --card-foreground: 0 0% 98%;
@@ -69,26 +69,26 @@ body {
 /* Hypercharged Theme Variables */
 @layer base {
   body[data-theme="hypercharged"] {
-    --background: 230 20% 5%; /* Deep Space Blue #0B0C10 */
+    --background: 0 0% 0%; /* Pure Black */
     --foreground: 180 100% 85%; /* Light Cyan tint */
 
-    --card: 275 50% 15%; /* Dark Purple with transparency */
+    --card: 275 50% 15%; /* Dark Purple */
     --card-foreground: 180 100% 85%;
 
-    --popover: 230 20% 5%;
+    --popover: 0 0% 0%; /* Pure Black */
     --popover-foreground: 180 100% 85%;
 
     --primary: 275 70% 60%; /* Neon Purple #9B59B6 */
     --primary-foreground: 0 0% 98%;
 
     --secondary: 180 100% 50%; /* Neon Cyan #00FFFF */
-    --secondary-foreground: 230 20% 5%; /* Dark background for contrast */
+    --secondary-foreground: 0 0% 0%; /* Pure Black for contrast */
 
-    --muted: 230 15% 15%; /* Slightly lighter deep blue */
-    --muted-foreground: 230 10% 60%; /* Muted cyan/gray */
+    --muted: 0 0% 10%; /* Slightly lighter black */
+    --muted-foreground: 180 10% 60%; /* Muted cyan/gray */
 
     --accent: 95 100% 50%; /* Electric Green #7CFC00 */
-    --accent-foreground: 230 20% 5%;
+    --accent-foreground: 0 0% 0%; /* Pure Black */
 
     --destructive: 0 80% 60%; /* Bright Red */
     --destructive-foreground: 0 0% 98%;
@@ -97,30 +97,31 @@ body {
     --input: 275 50% 20%; /* Darker Purple for inputs */
     --ring: 180 100% 50%; /* Neon Cyan ring */
 
-    /* Apply dynamic background */
-    background-image: linear-gradient(rgba(11, 12, 16, 0.9), rgba(11, 12, 16, 0.9)),
-                      url('/images/nebula-bg.jpg'); /* Add your nebula/cityscape image */
-    background-size: cover;
-    background-attachment: fixed;
-    animation: shift-background 60s linear infinite alternate;
+    /* Remove filter: blur */
+    background-color: hsl(var(--background));
+    transition: background-color 0.5s ease-in-out;
+
+    /* Dynamic background - uncomment if you want it */
+    /* background-image: linear-gradient(rgba(0, 0, 0, 0.95), rgba(0, 0, 0, 0.95)), url('/images/nebula-bg.jpg'); */
+    /* background-size: cover; */
+    /* background-attachment: fixed; */
+    /* animation: shift-background 60s linear infinite alternate; */
   }
 
   body[data-theme="hypercharged"] .glass {
-    @apply bg-card/70 backdrop-blur-xl border border-primary shadow-[0_0_15px_theme(colors.secondary),_0_0_30px_theme(colors.secondary)];
+    /* Adjust glass effect for hypercharged theme - more transparency/blur */
+    @apply bg-card/80 backdrop-blur-xl border border-primary shadow-[0_0_15px_theme(colors.secondary),_0_0_30px_theme(colors.secondary)];
   }
 
-  body[data-theme="hypercharged"] .neon-glow-hover:hover,
-  body[data-theme="hypercharged"] .neon-glow:hover {
-     @apply shadow-[0_0_10px_theme(colors.accent),_0_0_20px_theme(colors.accent)];
-  }
-  body[data-theme="hypercharged"] .neon-glow {
-     @apply shadow-[0_0_5px_theme(colors.primary),_0_0_10px_theme(colors.primary)];
-  }
-   body[data-theme="hypercharged"] .neon-glow-focus:focus-visible {
-     @apply shadow-[0_0_10px_theme(colors.accent),_0_0_20px_theme(colors.accent)];
+  /* Remove or adjust vanilla theme hover/focus glows */
+  .neon-glow-hover:hover,
+  .neon-glow:hover,
+  .neon-glow-focus:focus-visible {
+     box-shadow: none; /* Remove default glow */
+     /* Add desired smooth transition here if needed */
   }
 
-    /* Hypercharge specific scrollbar */
+   /* Hypercharge specific scrollbar */
     body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
         background-color: hsl(var(--primary) / 0.6);
     }
@@ -131,20 +132,59 @@ body {
         scrollbar-color: hsl(var(--primary) / 0.6) transparent;
     }
 
-    /* Hypercharge Glitch Effect - Targeted */
-    body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon {
-      animation: glitch-effect 0.2s infinite linear alternate-reverse;
-      color: hsl(var(--secondary)); /* Glitch color */
-      text-shadow: 1px 1px hsl(var(--secondary)), -1px -1px hsl(var(--accent));
-    }
+    /* Glitch effect for icon using pseudo-elements */
+     body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon {
+        animation: glitch-effect 0.2s infinite linear alternate-reverse; /* Apply animation only to icon */
+        color: hsl(var(--secondary)); /* Glitch color */
+        text-shadow: 1px 1px hsl(var(--secondary)), -1px -1px hsl(var(--accent));
+        /* Ensure the icon itself remains visible during glitch */
+        position: relative;
+        z-index: 1;
+     }
 
-     /* Hypercharge Glitch Effect for Nav on Button Hover (Optional, less distracting) */
-    /*
-    body[data-theme="hypercharged"] .hypercharge-button:hover ~ nav,
-    body[data-theme="hypercharged"] nav:has(.hypercharge-button:hover) {
-      animation: glitch-effect-nav 0.1s 2 linear alternate;
+     body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon::before,
+     body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon::after {
+        content: ''; /* Content is not the label anymore */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: transparent; /* Background should be transparent */
+         /* Use currentColor or inherit for glitch color based on icon color */
+        color: inherit; /* Inherit color from the icon */
+        overflow: hidden;
+        clip: rect(0, 900px, 0, 0); /* Initially hide */
+        text-shadow: none; /* Remove text shadow from pseudo elements */
+        z-index: 0; /* Glitch layers behind the main icon */
+     }
+
+     body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon::before {
+         left: -1px;
+         animation: glitch-effect 2s infinite linear alternate-reverse;
+     }
+     body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon::after {
+         left: 1px;
+         animation: glitch-effect 1.5s infinite linear alternate;
+     }
+
+     /* Ensure the icon itself is positioned correctly without hover */
+     body[data-theme="hypercharged"] .hypercharge-button .hypercharge-icon {
+         position: relative;
+         z-index: 1;
+         transition: color 0.2s ease-in-out; /* Smooth color transition for icon */
+     }
+
+
+     /* Glitch effect for Nav Bar (Subtle) */
+    @keyframes glitch-effect-nav {
+        0%, 100% { transform: skew(0.1deg); opacity: 0.98; }
+        50% { transform: skew(-0.1deg); opacity: 1; }
     }
-    */
+     body[data-theme="hypercharged"] nav:has(.hypercharge-button:hover) {
+        /* Apply glitch effect to the whole nav bar */
+        /* animation: glitch-effect-nav 0.1s 2 linear alternate; */ /* Optional: uncomment if desired */
+     }
 }
 
 
@@ -165,19 +205,30 @@ body {
 
   /* Default glassmorphism */
   .glass {
-    @apply bg-neutral-800/30 backdrop-blur-lg border border-neutral-700/50 shadow-lg transition-all duration-300;
+    @apply bg-card/60 backdrop-blur-lg border border-border/50 shadow-lg transition-all duration-300;
   }
 
-  /* Default neon glows */
-  .neon-glow {
-     @apply shadow-[0_0_5px_theme(colors.primary),_0_0_10px_theme(colors.primary)] transition-shadow duration-300 ease-in-out;
-  }
-  .neon-glow-hover:hover {
-     @apply shadow-[0_0_10px_theme(colors.primary),_0_0_20px_theme(colors.primary)];
-  }
-   .neon-glow-focus:focus-visible {
-     @apply shadow-[0_0_10px_theme(colors.primary),_0_0_20px_theme(colors.primary)];
-  }
+
+   /* Smooth transition for vanilla nav item color */
+   .active-nav-item {
+      color: hsl(var(--primary)); /* Active color */
+      transition: color 0.3s ease-in-out; /* Smooth transition */
+   }
+    .active-nav-item:hover {
+        color: hsl(var(--primary)); /* Keep color on hover */
+        background-color: transparent !important; /* Ensure no background on hover */
+    }
+    /* Ensure other vanilla nav items have smooth color transition and no background */
+    .nav-item-vanilla {
+      @apply hover:bg-transparent; /* No background on hover */
+    }
+    .nav-item-vanilla .hover\:text-primary:hover {
+         transition: color 0.3s ease-in-out;
+         color: hsl(var(--primary));
+    }
+    .nav-item-vanilla .text-muted-foreground:hover {
+        color: hsl(var(--primary));
+    }
 }
 
 /* Smooth scroll behavior */
@@ -252,7 +303,7 @@ html {
 
     /* Katana Slash effect placeholder */
     .katana-slash-effect {
-        position: absolute;
+        position: fixed; /* Use fixed positioning */
         top: 0;
         left: 0;
         width: 100%;
@@ -260,13 +311,13 @@ html {
         background: white;
         clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); /* Initial state: hidden */
         animation: katana-slash 0.5s ease-in-out forwards;
-        z-index: 100; /* Ensure it's on top */
+        z-index: 9999; /* Ensure it's on top of everything */
     }
 
     @keyframes katana-slash {
-        0% { clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); }
-        50% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%); } /* Reveal */
-        100% { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); } /* Hide */
+        0% { clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%); } /* Start hidden */
+        50% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0% 100%); } /* Full reveal */
+        100% { clip-path: polygon(100% 0, 100% 0, 100% 100%, 100% 100%); } /* End hidden (slide off) */
     }
 
      /* Button hover pulse */
@@ -341,10 +392,4 @@ html {
     70% { clip: rect(9px, 9999px, 12px, 0); transform: skew(0.6deg); }
     80% { clip: rect(4px, 9999px, 1px, 0); transform: skew(-0.2deg); }
     90% { clip: rect(11px, 9999px, 7px, 0); transform: skew(0.2deg); }
-}
-
-/* Optional: Glitch for the Nav Bar itself */
-@keyframes glitch-effect-nav {
-    0%, 100% { transform: skew(0.1deg); }
-    50% { transform: skew(-0.1deg); }
 }
