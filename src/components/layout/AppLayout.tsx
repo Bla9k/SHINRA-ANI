@@ -150,15 +150,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
      }
   };
 
-  // Avoid rendering theme-dependent button styles on the server
-   const hyperchargeButtonClass = mounted ? cn(
-        "fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 shadow-lg neon-glow-hover",
-        theme === 'hypercharged'
-        ? "bg-accent text-accent-foreground hover:bg-accent/90 border-2 border-secondary"
-        : "bg-primary text-primary-foreground hover:bg-primary/90",
-        isHypercharging && "opacity-50 pointer-events-none"
-      ) : "fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 shadow-lg"; // Minimal base style for SSR
-
 
   return (
     <div className="flex flex-col min-h-screen h-screen overflow-hidden relative">
@@ -182,6 +173,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <BottomNavigationBar
         className="vanilla-ui-element"
+        onHyperchargeToggle={handleHyperchargeToggle} // Pass the toggle function
+        isHypercharging={isHypercharging} // Pass the state
       />
 
       <SearchPopup
@@ -193,17 +186,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         openWithFilters={openWithFilters}
       />
 
-      {/* Hypercharge Button - Use derived class */}
-       <Button
-          variant="default"
-          size="icon"
-          className={hyperchargeButtonClass} // Apply dynamic class
-          onClick={handleHyperchargeToggle}
-          aria-label="Toggle Hypercharge Mode"
-          disabled={!mounted} // Disable button until mounted to prevent clicks before styles are ready
-        >
-          <Zap className="h-6 w-6" />
-        </Button>
     </div>
   );
 }

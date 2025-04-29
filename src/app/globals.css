@@ -1,4 +1,3 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -120,6 +119,32 @@ body {
    body[data-theme="hypercharged"] .neon-glow-focus:focus-visible {
      @apply shadow-[0_0_10px_theme(colors.accent),_0_0_20px_theme(colors.accent)];
   }
+
+    /* Hypercharge specific scrollbar */
+    body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
+        background-color: hsl(var(--primary) / 0.6);
+    }
+    body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+        background-color: hsl(var(--primary) / 0.9);
+    }
+    body[data-theme="hypercharged"] .scrollbar-thin {
+        scrollbar-color: hsl(var(--primary) / 0.6) transparent;
+    }
+
+    /* Hypercharge Glitch Effect - Targeted */
+    body[data-theme="hypercharged"] .hypercharge-button:hover .hypercharge-icon {
+      animation: glitch-effect 0.2s infinite linear alternate-reverse;
+      color: hsl(var(--secondary)); /* Glitch color */
+      text-shadow: 1px 1px hsl(var(--secondary)), -1px -1px hsl(var(--accent));
+    }
+
+     /* Hypercharge Glitch Effect for Nav on Button Hover (Optional, less distracting) */
+    /*
+    body[data-theme="hypercharged"] .hypercharge-button:hover ~ nav,
+    body[data-theme="hypercharged"] nav:has(.hypercharge-button:hover) {
+      animation: glitch-effect-nav 0.1s 2 linear alternate;
+    }
+    */
 }
 
 
@@ -246,8 +271,10 @@ html {
 
      /* Button hover pulse */
     @keyframes pulse-glow {
-      0%, 100% { box-shadow: 0 0 5px var(--tw-shadow-color), 0 0 10px var(--tw-shadow-color); }
-      50% { box-shadow: 0 0 10px var(--tw-shadow-color), 0 0 20px var(--tw-shadow-color); }
+      0%, 100% {
+        box-shadow: 0 0 5px var(--tw-shadow-color), 0 0 10px var(--tw-shadow-color);}
+      50% {
+        box-shadow: 0 0 10px var(--tw-shadow-color), 0 0 20px var(--tw-shadow-color);}
     }
     body[data-theme="hypercharged"] .button-pulse-hover:hover {
         --tw-shadow-color: hsl(var(--accent));
@@ -302,13 +329,22 @@ html {
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
 }
 
-/* Hypercharge specific scrollbar */
-body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: hsl(var(--primary) / 0.6);
+/* Glitch effect animation for Hypercharge */
+@keyframes glitch-effect {
+    0%, 100% { clip: rect(1px, 9999px, 6px, 0); transform: skew(0.5deg); }
+    10% { clip: rect(15px, 9999px, 3px, 0); transform: skew(0.3deg); }
+    20% { clip: rect(9px, 9999px, 12px, 0); transform: skew(-0.5deg); }
+    30% { clip: rect(4px, 9999px, 1px, 0); transform: skew(0.1deg); }
+    40% { clip: rect(11px, 9999px, 7px, 0); transform: skew(-0.3deg); }
+    50% { clip: rect(1px, 9999px, 6px, 0); transform: skew(0.4deg); }
+    60% { clip: rect(15px, 9999px, 3px, 0); transform: skew(-0.1deg); }
+    70% { clip: rect(9px, 9999px, 12px, 0); transform: skew(0.6deg); }
+    80% { clip: rect(4px, 9999px, 1px, 0); transform: skew(-0.2deg); }
+    90% { clip: rect(11px, 9999px, 7px, 0); transform: skew(0.2deg); }
 }
-body[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(var(--primary) / 0.9);
-}
-body[data-theme="hypercharged"] .scrollbar-thin {
-    scrollbar-color: hsl(var(--primary) / 0.6) transparent;
+
+/* Optional: Glitch for the Nav Bar itself */
+@keyframes glitch-effect-nav {
+    0%, 100% { transform: skew(0.1deg); }
+    50% { transform: skew(-0.1deg); }
 }
