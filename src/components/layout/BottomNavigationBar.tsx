@@ -38,7 +38,8 @@ const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
               variant="ghost"
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative z-10', // Smooth transition for color
-                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-primary', // Change color on hover, no background
+                // Removed hover:bg-accent
+                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-primary', // Change color on hover
                 '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out', // Ensure icon transitions smoothly too
                 '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out' // Ensure text transitions smoothly too
               )}
@@ -80,7 +81,7 @@ export default function BottomNavigationBar({ className, onHyperchargeToggle, is
 
   return (
     <nav className={cn(
-        "fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass transition-smooth vanilla-ui-element", // Added vanilla-ui-element
+        "fixed bottom-0 left-0 right-0 z-50 h-16 border-t bg-background/95 backdrop-blur-lg glass transition-smooth vanilla-ui-element",
         className
     )}>
       <div className="flex justify-around items-center h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative">
