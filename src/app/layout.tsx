@@ -8,6 +8,8 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AuthProvider } from '@/context/AuthContext';
 import Head from 'next/head'; // Import Head for metadata and scripts
 import Script from 'next/script'; // Import Script for anime.js
+import { AnimationProvider } from '@/context/AnimationContext'; // Import AnimationProvider
+
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -36,10 +38,11 @@ export default function RootLayout({
         )}
       >
         <AuthProvider>
+          <AnimationProvider> {/* Wrap with AnimationProvider */}
             <ThemeProvider
-                attribute="data-theme"
+                attribute="data-theme" // Use data-theme attribute
                 defaultTheme="dark"
-                enableSystem={false}
+                enableSystem={false} // Disable system preference detection
                 disableTransitionOnChange // Prevent transition on initial load
             >
                  <AppLayout>
@@ -47,11 +50,12 @@ export default function RootLayout({
                  </AppLayout>
                  <Toaster />
             </ThemeProvider>
+          </AnimationProvider>
         </AuthProvider>
          {/* Load Anime.js after interactive elements */}
          <Script
             src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"
-            strategy="afterInteractive" // Load after page is interactive
+            strategy="lazyOnload" // Changed strategy to lazyOnload for potentially better performance
             integrity="sha512-z4OUqw38qNLpn1libAN9BsoDx6nbNFio5lA6CuTp9NlK83b89hgyCVq+N5FdBJptINztxn1Z3SaKSKUS5UP60Q=="
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"
