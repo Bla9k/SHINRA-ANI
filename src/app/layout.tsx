@@ -26,7 +26,8 @@ export default function RootLayout({
   return (
     // Removed suppressHydrationWarning to let Next.js report potential hydration errors
     // Let ThemeProvider handle the theme class on the html tag
-    <html lang="en" suppressHydrationWarning className="h-full"> {/* Ensure html takes full height and remove whitespace */}
+    <html lang="en" suppressHydrationWarning className="h-full">
+      <head /> {/* Ensure head is present */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
