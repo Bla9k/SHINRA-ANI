@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -32,7 +33,7 @@ import {
   Heart, // Example icon for Romance
   Rocket, // Example icon for Sci-Fi
   Flame, // Example icon for Trending
-  MessageCircle, // For comments
+  MessageCircle as MessageCircleIcon, // Renamed to avoid conflict
   Newspaper, // For announcements/features
   Info, // For how-to guides
   List, // For endpoints/features
@@ -89,53 +90,6 @@ interface IndieManga {
 }
 
 
-// --- Dummy Data (Revised for Jikan-like Structure) ---
-
-const dummyFeaturedCommunities: Community[] = [
-    { id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', icon: Swords, imageUrl: 'https://picsum.photos/seed/action/80/80', memberCount: 1234 },
-    { id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art for strugglers.', icon: Flame, imageUrl: 'https://picsum.photos/seed/berserk/80/80', memberCount: 876 },
-    { id: 'isekai-tavern', name: 'Isekai Tavern', description: 'Share your other-world adventures!', icon: Sparkles, imageUrl: 'https://picsum.photos/seed/isekai/80/80', memberCount: 555 },
-    { id: 'romance-corner', name: 'Romance Corner', description: 'All things love and relationships.', icon: Heart, imageUrl: 'https://picsum.photos/seed/romance/80/80', memberCount: 910 },
-];
-
-const dummyTopComments: Comment[] = [
-    { id: 'c1', user: 'GutsBestBoy', community: 'Berserk Fans', text: "Just reread the Golden Age arc... masterpiece.", timestamp: "2h ago", communityId: 'berserk-fans' },
-    { id: 'c2', user: 'ShinraFanatic', community: 'Action Hub', text: "That new mecha anime trailer looks insane!", timestamp: "5h ago", communityId: 'action-hub' },
-    { id: 'c3', user: 'IsekaiDreamer', community: 'Isekai Tavern', text: "Reincarnated as a vending machine, AMA.", timestamp: "1d ago", communityId: 'isekai-tavern' },
-];
-
-const dummyAllCommunities: Community[] = [
-    ...dummyFeaturedCommunities,
-    { id: 'sci-fi-nexus', name: 'Sci-Fi Nexus', description: 'Explore futuristic worlds and tech.', icon: Rocket, imageUrl: 'https://picsum.photos/seed/scifi/80/80', memberCount: 720 },
-    { id: 'manga-creators-hq', name: 'Manga Creators HQ', description: 'Share tips, feedback, and collaborate.', icon: BookText, imageUrl: 'https://picsum.photos/seed/creators/80/80', memberCount: 310 },
-    { id: 'slice-of-life-cafe', name: 'Slice of Life Cafe', description: 'Relax and discuss comfy series.', icon: UserIcon, imageUrl: 'https://picsum.photos/seed/sol/80/80', memberCount: 650 },
-    { id: 'horror-zone', name: 'Horror Zone', description: 'For fans of the dark and spooky.', icon: MessageCircle, imageUrl: 'https://picsum.photos/seed/horror/80/80', memberCount: 404 },
-];
-
-const dummyFeatures: Feature[] = [
-    { name: 'Indie Manga Uploads', description: 'Share your original manga creations.', icon: Upload, link: '/upload' },
-    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageSquare, link: '#' }, // Link to relevant chat area if applicable
-    { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '#' }, // Link to creation flow
-    { name: 'Nami AI Integration', description: 'AI-powered chat and recommendations.', icon: Bot, link: '#' }, // Link to Nami info/chat
-    { name: 'Profile Customization', description: 'Personalize your Shinra-Ani identity.', icon: Palette, link: '/profile' },
-    { name: 'Events & Competitions', description: 'Join community challenges.', icon: Swords, link: '#' }, // Link to events page
-];
-
-const dummyUpcomingFeatures: UpcomingFeature[] = [
-    { name: 'Creator Subscriptions', date: 'Soon™' },
-    { name: 'Advanced Moderation Tools', date: 'Q4 2024' },
-    { name: 'Live Watch Parties', date: 'TBD' },
-];
-
-const dummyIndieManga: IndieManga[] = [
-  { id: 1, title: 'Galactic Gourmet', author: 'CosmoChef', imageUrl: 'https://picsum.photos/200/300?random=10', genre: ['Sci-Fi', 'Cooking'] },
-  { id: 2, title: 'Urban Necromancer', author: 'GraveWalker', imageUrl: 'https://picsum.photos/200/300?random=11', genre: ['Fantasy', 'Urban'] },
-  { id: 3, title: 'Mecha Gardeners', author: 'PlantBot', imageUrl: 'https://picsum.photos/200/300?random=12', genre: ['Mecha', 'Slice of Life'] },
-  { id: 4, title: 'Samurai Squirrel', author: 'BushidoBlade', imageUrl: 'https://picsum.photos/200/300?random=13', genre: ['Action', 'Animals'] },
-  { id: 5, title: 'Pixel Paladins', author: 'RetroKnight', imageUrl: 'https://picsum.photos/200/300?random=14', genre: ['Fantasy', 'Gaming'] },
-  { id: 6, title: 'Neon Noir', author: 'CyberSleuth', imageUrl: 'https://picsum.photos/200/300?random=15', genre: ['Sci-Fi', 'Mystery'] },
-];
-
 // Define a unified type for favorite items
 type FavoriteItem = (Anime | Manga) & {
     id: number; // Use mal_id or anilist_id
@@ -167,6 +121,55 @@ const mapToFavoriteItem = (item: Anime | Manga): FavoriteItem | null => {
         volumes: 'volumes' in item ? item.volumes : null,
     };
 };
+
+
+// --- Placeholder Data ---
+
+const dummyFeaturedCommunities: Community[] = [
+    { id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', icon: Swords, imageUrl: 'https://picsum.photos/seed/action/80/80', memberCount: 1234 },
+    { id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art for strugglers.', icon: Flame, imageUrl: 'https://picsum.photos/seed/berserk/80/80', memberCount: 876 },
+    { id: 'isekai-tavern', name: 'Isekai Tavern', description: 'Share your other-world adventures!', icon: Sparkles, imageUrl: 'https://picsum.photos/seed/isekai/80/80', memberCount: 555 },
+    { id: 'romance-corner', name: 'Romance Corner', description: 'All things love and relationships.', icon: Heart, imageUrl: 'https://picsum.photos/seed/romance/80/80', memberCount: 910 },
+];
+
+const dummyTopComments: Comment[] = [
+    { id: 'c1', user: 'GutsBestBoy', community: 'Berserk Fans', text: "Just reread the Golden Age arc... masterpiece.", timestamp: "2h ago", communityId: 'berserk-fans' },
+    { id: 'c2', user: 'ShinraFanatic', community: 'Action Hub', text: "That new mecha anime trailer looks insane!", timestamp: "5h ago", communityId: 'action-hub' },
+    { id: 'c3', user: 'IsekaiDreamer', community: 'Isekai Tavern', text: "Reincarnated as a vending machine, AMA.", timestamp: "1d ago", communityId: 'isekai-tavern' },
+];
+
+const dummyAllCommunities: Community[] = [
+    ...dummyFeaturedCommunities,
+    { id: 'sci-fi-nexus', name: 'Sci-Fi Nexus', description: 'Explore futuristic worlds and tech.', icon: Rocket, imageUrl: 'https://picsum.photos/seed/scifi/80/80', memberCount: 720 },
+    { id: 'manga-creators-hq', name: 'Manga Creators HQ', description: 'Share tips, feedback, and collaborate.', icon: BookText, imageUrl: 'https://picsum.photos/seed/creators/80/80', memberCount: 310 },
+    { id: 'slice-of-life-cafe', name: 'Slice of Life Cafe', description: 'Relax and discuss comfy series.', icon: UserIcon, imageUrl: 'https://picsum.photos/seed/sol/80/80', memberCount: 650 },
+    { id: 'horror-zone', name: 'Horror Zone', description: 'For fans of the dark and spooky.', icon: MessageCircleIcon, imageUrl: 'https://picsum.photos/seed/horror/80/80', memberCount: 404 },
+];
+
+const dummyFeatures: Feature[] = [
+    { name: 'Indie Manga Uploads', description: 'Share your original manga creations.', icon: Upload, link: '/upload' },
+    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageSquare, link: '#' }, // Link to relevant chat area if applicable
+    { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '#' }, // Link to creation flow
+    { name: 'Nami AI Integration', description: 'AI-powered chat and recommendations.', icon: Bot, link: '#' }, // Link to Nami info/chat
+    { name: 'Profile Customization', description: 'Personalize your Shinra-Ani identity.', icon: Palette, link: '/profile' },
+    { name: 'Events & Competitions', description: 'Join community challenges.', icon: Swords, link: '#' }, // Link to events page
+];
+
+const dummyUpcomingFeatures: UpcomingFeature[] = [
+    { name: 'Creator Subscriptions', date: 'Soon™' },
+    { name: 'Advanced Moderation Tools', date: 'Q4 2024' },
+    { name: 'Live Watch Parties', date: 'TBD' },
+];
+
+const dummyIndieManga: IndieManga[] = [
+  { id: 1, title: 'Galactic Gourmet', author: 'CosmoChef', imageUrl: 'https://picsum.photos/200/300?random=10', genre: ['Sci-Fi', 'Cooking'] },
+  { id: 2, title: 'Urban Necromancer', author: 'GraveWalker', imageUrl: 'https://picsum.photos/200/300?random=11', genre: ['Fantasy', 'Urban'] },
+  { id: 3, title: 'Mecha Gardeners', author: 'PlantBot', imageUrl: 'https://picsum.photos/200/300?random=12', genre: ['Mecha', 'Slice of Life'] },
+  { id: 4, title: 'Samurai Squirrel', author: 'BushidoBlade', imageUrl: 'https://picsum.photos/200/300?random=13', genre: ['Action', 'Animals'] },
+  { id: 5, title: 'Pixel Paladins', author: 'RetroKnight', imageUrl: 'https://picsum.photos/200/300?random=14', genre: ['Fantasy', 'Gaming'] },
+  { id: 6, title: 'Neon Noir', author: 'CyberSleuth', imageUrl: 'https://picsum.photos/200/300?random=15', genre: ['Sci-Fi', 'Mystery'] },
+];
+
 
 // --- Reusable Components ---
 
@@ -440,8 +443,8 @@ export default function CommunityPage() {
         {/* Adjust main container padding for mobile */}
         <div className="container mx-auto px-0 sm:px-4 py-6 sm:py-8 space-y-8 md:space-y-12">
 
-          {/* Section 1: Hero Area - Adjust padding and layout */}
-          <section className="text-center relative overflow-hidden rounded-lg p-4 sm:p-8 md:p-12 glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mx-2 sm:mx-0">
+          {/* Section 1: Hero Area */}
+          <section className="text-center relative overflow-hidden rounded-lg p-8 md:p-12 glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mx-2 sm:mx-0">
                {/* Subtle background effect */}
                 <div className="absolute inset-0 -z-10 opacity-10">
                     <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-transparent to-blue-900/30"></div>
@@ -459,7 +462,7 @@ export default function CommunityPage() {
                         <Card className="glass p-2 sm:p-3 text-center transition-all duration-300 hover:scale-105 hover:bg-primary/10 border border-transparent hover:border-primary/30">
                              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-1 border-2 border-primary/50 group-hover:border-primary transition-colors">
                                 <AvatarImage src={community.imageUrl} alt={community.name} />
-                                <AvatarFallback><community.icon size={14} sm:size={16} /></AvatarFallback> {/* Responsive icon */}
+                                <AvatarFallback><community.icon size={14} /></AvatarFallback> {/* Responsive icon */}
                             </Avatar>
                             <p className="text-[10px] sm:text-xs font-semibold truncate group-hover:text-primary transition-colors">{community.name}</p>
                         </Card>
@@ -468,12 +471,12 @@ export default function CommunityPage() {
               </div>
               {/* Responsive buttons */}
               <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-center gap-2 sm:gap-3">
-                  <Button size="sm" sm:size="lg" className="neon-glow-hover" asChild>
+                  <Button size="lg" className="neon-glow-hover" asChild>
                       <Link href="#community-directory">Explore Communities</Link>
                   </Button>
-                   <Button size="sm" sm:size="lg" variant="outline" className="glass neon-glow-hover" asChild>
+                   <Button size="lg" variant="outline" className="glass neon-glow-hover" asChild>
                        <Link href="/upload">
-                          <Upload size={16} sm:size={18} className="mr-1 sm:mr-2"/> Upload Manga
+                          <Upload size={18} className="mr-1 sm:mr-2"/> Upload Manga
                        </Link>
                    </Button>
               </div>
@@ -493,7 +496,7 @@ export default function CommunityPage() {
            {/* Section 3: Top Interactions - Adjust padding/grid */}
            <section id="top-interactions" className="px-4 sm:px-6">
               <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2">
-                 <MessageCircle className="text-primary w-4 h-4 sm:w-5 sm:h-5"/> Top Discussions
+                 <MessageCircleIcon className="text-primary w-4 h-4 sm:w-5 sm:h-5"/> Top Discussions
               </h2>
               {/* Adjust grid for mobile */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -519,8 +522,8 @@ export default function CommunityPage() {
                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold flex items-center gap-1.5 sm:gap-2">
                     <Compass className="text-primary w-4 h-4 sm:w-5 sm:h-5"/> Community Directory
                  </h2>
-                  <Button variant="outline" size="xs" sm:size="sm" className="glass neon-glow-hover" onClick={() => toast({ title: "Coming Soon!", description: "Community creation feature is under development."})}>
-                      <PlusCircle size={14} sm:size={16} className="mr-1 sm:mr-1.5"/> Create
+                  <Button variant="outline" size="sm" className="glass neon-glow-hover" onClick={() => toast({ title: "Coming Soon!", description: "Community creation feature is under development."})}>
+                      <PlusCircle size={16} className="mr-1 sm:mr-1.5"/> Create
                   </Button>
               </div>
                {/* Adjust grid columns */}
@@ -560,7 +563,7 @@ export default function CommunityPage() {
                     <div className="space-y-3">
                          {/* Profile Creation Guide */}
                          <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10">
-                             <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><UserIcon size={14} sm:size={16} className="text-primary"/> Setting Up Your Profile</CardTitle>
+                             <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><UserIcon size={16} className="text-primary"/> Setting Up Your Profile</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Learn how to customize your profile, add an avatar, banner, and set your status.</CardDescription>
                             <Link href="/profile" passHref legacyBehavior>
                                 <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Profile <ArrowRight size={12} className="ml-1"/></Button>
@@ -568,13 +571,13 @@ export default function CommunityPage() {
                         </Card>
                          {/* Community Guide */}
                          <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10">
-                             <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Users size={14} sm:size={16} className="text-primary"/> Creating & Joining</CardTitle>
+                             <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Users size={16} className="text-primary"/> Creating & Joining</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Learn how to create your own community or find and join existing ones based on your interests.</CardDescription>
                             <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary opacity-50 cursor-not-allowed">Read Guide (Soon) <ArrowRight size={12} className="ml-1"/></Button>
                         </Card>
                          {/* Upload Guide */}
                          <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10">
-                             <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Upload size={14} sm:size={16} className="text-primary"/> Uploading Manga</CardTitle>
+                             <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Upload size={16} className="text-primary"/> Uploading Manga</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Step-by-step guide on uploading your manga chapters, cover art, and details.</CardDescription>
                             <Link href="/upload" passHref legacyBehavior>
                                 <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Upload Page <ArrowRight size={12} className="ml-1"/></Button>
@@ -614,7 +617,8 @@ export default function CommunityPage() {
                </div>
                {/* Optional: Link to a dedicated Indie Manga browse page */}
                <div className="mt-4 text-center">
-                   <Button variant="outline" size="sm" sm:size="default" className="glass neon-glow-hover" onClick={() => toast({ title: "Coming Soon!", description: "A dedicated page for browsing all Indie Manga is planned."})}>
+                   {/* Removed sm:size="default" as it's not a valid Button prop */}
+                   <Button variant="outline" size="sm" className="glass neon-glow-hover" onClick={() => toast({ title: "Coming Soon!", description: "A dedicated page for browsing all Indie Manga is planned."})}>
                        Browse All Indie Manga
                    </Button>
                </div>
@@ -631,5 +635,3 @@ export default function CommunityPage() {
     </ScrollArea>
   );
 }
-
-    
