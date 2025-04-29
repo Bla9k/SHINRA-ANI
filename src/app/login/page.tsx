@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth'; // Use the custom hook
+import { useAuth } from '@/context/AuthContext'; // Use the custom hook from context
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react'; // For loading state
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
             variant="outline"
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-pulse" /> // Use Loader2 with pulse
+              <Loader2 className="h-5 w-5 animate-spin" /> // Use Loader2 with spin
             ) : (
               <>
                 <GoogleIcon /> Sign in with Google

@@ -5,8 +5,8 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
-import Script from 'next/script'; // Import Script
-import { AuthProvider } from '@/context/AuthContext'; // Import AuthProvider
+// Removed Script import as anime.js is not directly used in layout now
+import { AuthProvider } from '@/context/AuthContext';
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     // Let ThemeProvider handle the theme class on the html tag
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en" className="h-full" suppressHydrationWarning> {/* Add suppressHydrationWarning */}
       <head />{/* Ensure head is present */}
       <body
         className={cn(
@@ -34,21 +34,20 @@ export default function RootLayout({
           poppins.variable // Use Poppins variable
         )}
       >
-        <AuthProvider> {/* Wrap with AuthProvider */}
+        <AuthProvider>
             <ThemeProvider
-                attribute="data-theme" // Use data-theme attribute
-                defaultTheme="dark" // Keep dark as default
-                enableSystem={false} // Disable system preference detection
+                attribute="data-theme"
+                defaultTheme="dark"
+                enableSystem={false}
                 disableTransitionOnChange // Prevent transition on initial load
             >
                  <AppLayout>
                    {children}
                  </AppLayout>
-                 <Toaster /> {/* Add Toaster component */}
+                 <Toaster />
             </ThemeProvider>
         </AuthProvider>
-          {/* Add Anime.js script */}
-          <Script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" strategy="afterInteractive" />
+          {/* Removed Anime.js script import */}
       </body>
     </html>
   );

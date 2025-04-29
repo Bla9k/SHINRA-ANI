@@ -170,9 +170,12 @@ body {
       50% { opacity: .5; }
     }
 
-    /* Subtle Glitch effect for Hypercharge Button Hover (Vanilla Mode) */
+    /* Glitch effect for Hypercharge Button Hover */
     .animate-glitch-subtle {
        position: relative;
+       /* animation: glitch-subtle 0.3s linear infinite alternate; */ /* Remove animation by default */
+    }
+    .hover\\:animate-glitch-subtle:hover {
        animation: glitch-subtle 0.3s linear infinite alternate;
     }
     /* Simplified glitch effect using transforms */
@@ -182,5 +185,22 @@ body {
        50% { transform: translate(1px, -1px) skewX(2deg); }
        75% { transform: translate(1px, 1px) skewX(-2deg); }
        100% { transform: translate(0); }
+    }
+
+    /* Keyframes for Framer Motion page transitions (optional if handled in component) */
+    /* These can be used with AnimatePresence */
+    @keyframes slideFadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes slideFadeOut {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-5px); }
+    }
+    .animate-slideFadeIn {
+      animation: slideFadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+    }
+    .animate-slideFadeOut {
+      animation: slideFadeOut 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
     }
 }
