@@ -1,16 +1,16 @@
 
 'use client';
 
-import { useState, type ReactNode, useCallback, useEffect } from 'react';
+import React, { useState, type ReactNode, useCallback, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { useTheme } from "next-themes"; // Import useTheme
+import { useTheme } from "next-themes";
 import TopBar from './TopBar';
 import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button'; // Import Button
-import { Zap } from 'lucide-react'; // Or a custom Katana icon
-import anime from 'animejs'; // Import animejs
+import { Button } from '@/components/ui/button';
+import { Zap } from 'lucide-react';
+import anime from 'animejs';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -18,15 +18,22 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme(); // Use the theme hook
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false); // State to track client mount
 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiSearchActive, setIsAiSearchActive] = useState(false);
   const [initialSearchTerm, setInitialSearchTerm] = useState('');
   const [openWithFilters, setOpenWithFilters] = useState(false);
-  const [isHypercharging, setIsHypercharging] = useState(false); // State for animation
+  const [isHypercharging, setIsHypercharging] = useState(false);
 
-  // --- Search Handlers ---
+  // Effect to set mounted state after initial render
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+
+    // --- Search Handlers ---
   const handleSearchToggle = useCallback((term: string = '') => {
     setInitialSearchTerm(term);
     setIsSearchOpen(prev => !prev);
@@ -65,10 +72,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setIsSearchOpen(true);
   }, []);
 
+
   // --- Hypercharge Animation Logic ---
   const triggerAshOut = () => {
-    // Target elements to dissolve
-    const elementsToDissolve = document.querySelectorAll('.vanilla-ui-element'); // Add this class to elements you want to dissolve
+    const elementsToDissolve = document.querySelectorAll('.vanilla-ui-element');
 
     anime({
       targets: elementsToDissolve,
@@ -78,9 +85,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
       filter: ['blur(0)', 'blur(10px)'],
       duration: 800,
       easing: 'easeOutExpo',
-      delay: anime.stagger(50), // Stagger the animation
+      delay: anime.stagger(50),
       complete: () => {
-        // Hide elements after animation
         elementsToDissolve.forEach(el => (el as HTMLElement).style.visibility = 'hidden');
         triggerKatanaSlash();
       }
@@ -92,50 +98,40 @@ export default function AppLayout({ children }: AppLayoutProps) {
     slashElement.className = 'katana-slash-effect';
     document.body.appendChild(slashElement);
 
-    // Optional: Play sound
-    // const audio = new Audio('/sounds/katana-slash.mp3');
-    // audio.play();
-
-    // Animation is handled by CSS, wait for it to complete
     setTimeout(() => {
-      setTheme('hypercharged'); // Switch theme after slash
-       document.body.removeChild(slashElement); // Clean up slash element
-      setIsHypercharging(false); // End animation state
-      // Reset visibility of vanilla elements if needed when switching back
+      setTheme('hypercharged');
+       document.body.removeChild(slashElement);
+      setIsHypercharging(false);
       const elementsToDissolve = document.querySelectorAll('.vanilla-ui-element');
-      elementsToDissolve.forEach(el => (el as HTMLElement).style.visibility = '');
-    }, 500); // Matches CSS animation duration
+      elementsToDissolve.forEach(el => (el as HTMLElement).style.visibility = ''); // Reset visibility
+    }, 500);
   };
 
     const triggerHyperchargeOff = () => {
-        // 1. Reverse Katana Slash (or similar effect) - Example: Bright fade out
         anime({
-            targets: 'body[data-theme="hypercharged"] > *', // Target top-level elements in hypercharge
+            targets: 'body[data-theme="hypercharged"] > *',
             opacity: [1, 0],
             duration: 600,
             easing: 'easeInExpo',
             delay: anime.stagger(30),
             complete: () => {
-                // 2. Switch theme
-                setTheme('dark'); // Switch back to vanilla dark
+                setTheme('dark');
 
-                // 3. Rebuild Vanilla UI (Fade in)
-                 // Reset visibility for elements that were hidden
                 const vanillaElements = document.querySelectorAll('.vanilla-ui-element');
                 vanillaElements.forEach(el => {
                     (el as HTMLElement).style.opacity = '0';
-                     (el as HTMLElement).style.visibility = 'visible'; // Make sure they are visible again
+                     (el as HTMLElement).style.visibility = 'visible';
                  });
 
                 anime({
                     targets: '.vanilla-ui-element',
                     opacity: [0, 1],
-                    translateY: [20, 0], // Optional: slide in effect
+                    translateY: [20, 0],
                     duration: 700,
                     easing: 'easeOutExpo',
-                    delay: anime.stagger(40, { start: 100 }), // Start after theme switch settles
+                    delay: anime.stagger(40, { start: 100 }),
                      complete: () => {
-                         setIsHypercharging(false); // Animation complete
+                         setIsHypercharging(false);
                      }
                 });
             }
@@ -144,21 +140,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
 
   const handleHyperchargeToggle = () => {
-    if (isHypercharging) return; // Prevent triggering during animation
+    if (isHypercharging) return;
     setIsHypercharging(true);
 
      if (theme !== 'hypercharged') {
-         // Trigger "ON" animation
-         triggerAshOut(); // Starts the sequence: Ash -> Slash -> Theme Change
+         triggerAshOut();
      } else {
-         // Trigger "OFF" animation
-         triggerHyperchargeOff(); // Starts the reverse sequence
+         triggerHyperchargeOff();
      }
   };
 
+  // Avoid rendering theme-dependent button styles on the server
+   const hyperchargeButtonClass = mounted ? cn(
+        "fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 shadow-lg neon-glow-hover",
+        theme === 'hypercharged'
+        ? "bg-accent text-accent-foreground hover:bg-accent/90 border-2 border-secondary"
+        : "bg-primary text-primary-foreground hover:bg-primary/90",
+        isHypercharging && "opacity-50 pointer-events-none"
+      ) : "fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 shadow-lg"; // Minimal base style for SSR
+
+
   return (
-    <div className="flex flex-col min-h-screen h-screen overflow-hidden relative"> {/* Added relative for absolute positioning */}
-      {/* Add vanilla-ui-element class to major layout components */}
+    <div className="flex flex-col min-h-screen h-screen overflow-hidden relative">
       <TopBar
         className="vanilla-ui-element"
         onSearchIconClick={() => handleSearchToggle()}
@@ -171,8 +174,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <main className="flex-1 overflow-y-auto pb-20 vanilla-ui-element">
         <div className={cn("transition-opacity duration-500", isHypercharging ? "opacity-0" : "opacity-100")}>
-             {/* Apply animation class conditionally if needed */}
-             {/* Add vanilla-ui-element to children container if they should dissolve */}
              <div className="animate-fade-in duration-500 vanilla-ui-element">
                  {children}
              </div>
@@ -181,7 +182,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       <BottomNavigationBar
         className="vanilla-ui-element"
-        /* removed search/ai handlers as they are handled globally now */
       />
 
       <SearchPopup
@@ -193,23 +193,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         openWithFilters={openWithFilters}
       />
 
-      {/* Hypercharge Button */}
-      <Button
-        variant="default" // Style as needed
-        size="icon"
-        className={cn(
-            "fixed bottom-20 right-4 z-50 rounded-full h-12 w-12 shadow-lg neon-glow-hover",
-             // Apply theme-specific styles
-            theme === 'hypercharged'
-            ? "bg-accent text-accent-foreground hover:bg-accent/90 border-2 border-secondary" // Green button in hypercharge
-            : "bg-primary text-primary-foreground hover:bg-primary/90", // Default blue button
-            isHypercharging && "opacity-50 pointer-events-none" // Disable during animation
-        )}
-        onClick={handleHyperchargeToggle}
-        aria-label="Toggle Hypercharge Mode"
-      >
-        <Zap className="h-6 w-6" />
-      </Button>
+      {/* Hypercharge Button - Use derived class */}
+       <Button
+          variant="default"
+          size="icon"
+          className={hyperchargeButtonClass} // Apply dynamic class
+          onClick={handleHyperchargeToggle}
+          aria-label="Toggle Hypercharge Mode"
+          disabled={!mounted} // Disable button until mounted to prevent clicks before styles are ready
+        >
+          <Zap className="h-6 w-6" />
+        </Button>
     </div>
   );
 }
