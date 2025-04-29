@@ -1,0 +1,58 @@
+// src/components/layout/VanillaLayout.tsx
+'use client';
+
+import React, { type ReactNode } from 'react';
+import TopBar from './TopBar';
+import BottomNavigationBar from './BottomNavigationBar';
+import { cn } from '@/lib/utils';
+
+interface VanillaLayoutProps {
+  children: ReactNode;
+  onSearchToggle: (term?: string) => void;
+  onAiToggle: () => void;
+  isAiSearchActive: boolean;
+  onOpenAiSearch: (term: string) => void;
+  onOpenAdvancedSearch: (term: string) => void;
+  onHyperchargeToggle: () => void;
+  isHypercharging: boolean; // Keep prop for potential future use
+  currentTheme: string;
+}
+
+export default function VanillaLayout({
+  children,
+  onSearchToggle,
+  onAiToggle,
+  isAiSearchActive,
+  onOpenAiSearch,
+  onOpenAdvancedSearch,
+  onHyperchargeToggle,
+  isHypercharging,
+  currentTheme,
+}: VanillaLayoutProps) {
+  return (
+    <>
+      <TopBar
+        className="vanilla-ui-element" // Add class for potential future animations
+        onSearchIconClick={() => onSearchToggle()}
+        onSearchSubmit={onSearchToggle} // Simplified: always opens search popup
+        onAiToggle={onAiToggle}
+        isAiSearchActive={isAiSearchActive}
+        onOpenAiSearch={onOpenAiSearch}
+        onOpenAdvancedSearch={onOpenAdvancedSearch}
+      />
+
+      <div className="flex-1 overflow-y-auto pb-16 vanilla-ui-element"> {/* Main content area */}
+        <main className="transition-smooth">
+          {children}
+        </main>
+      </div>
+
+      <BottomNavigationBar
+        className="vanilla-ui-element" // Add class for potential future animations
+        onHyperchargeToggle={onHyperchargeToggle}
+        isHypercharging={isHypercharging} // Pass down loading state
+        currentTheme={currentTheme}
+      />
+    </>
+  );
+}
