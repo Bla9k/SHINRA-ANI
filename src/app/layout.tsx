@@ -4,7 +4,7 @@ import './globals.css';
 import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
-import { ThemeProvider } from '@/components/theme/ThemeProvider'; // Updated import
+import { ThemeProvider } from '@/components/theme/ThemeProvider';
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -23,7 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark h-full"> {/* Ensure html takes full height and remove whitespace */}
+    <html lang="en" suppressHydrationWarning className="dark h-full">
+      {/* Ensure html takes full height and remove whitespace */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
@@ -31,7 +32,7 @@ export default function RootLayout({
         )}
       >
         <ThemeProvider
-            attribute="class" // Use attribute="class" instead of "body"
+            attribute="data-theme" // Change attribute to data-theme for hypercharge
             defaultTheme="dark"
             enableSystem={false} // Explicitly disable system theme preference
             disableTransitionOnChange
