@@ -180,7 +180,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
    // Handle potential theme hydration mismatch
    // Theme will be undefined on first render, then set based on localStorage/default
-  const currentThemeClass = mounted ? theme : 'dark'; // Assume dark theme initially
+   // Only access theme after mount
+  const currentTheme = mounted ? theme : 'dark'; // Assume dark theme initially for SSR, use actual theme after mount
+  const currentThemeClass = mounted ? theme : 'dark';
 
 
   return (
@@ -189,9 +191,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         {/* Render TopBar only if not in hypercharge or during transition out */}
         {/* Added check for mounted to prevent rendering on server */}
-        {mounted && theme !== 'hypercharged' && (
+        {mounted && currentTheme !== 'hypercharged' && (
              <TopBar
-                 className={cn("vanilla-ui-element", isHypercharging && theme !== 'hypercharged' ? 'opacity-0' : 'opacity-100')} // Initially hidden during ash-out
+                 className={cn("vanilla-ui-element", isHypercharging && currentTheme !== 'hypercharged' ? 'opacity-0' : 'opacity-100')} // Initially hidden during ash-out
                  onSearchIconClick={() => handleSearchToggle()}
                  onSearchSubmit={handleSearchToggle}
                  onAiToggle={handleAiToggle}
@@ -204,8 +206,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
          {/* Use a container div for the main content */}
          <div className="flex-1 overflow-y-auto pb-16"> {/* Adjust padding-bottom */}
             <main className={cn("transition-opacity duration-500",
-                isHypercharging && theme !== 'hypercharged' ? 'opacity-0' : 'opacity-100', // Fade out vanilla content
-                theme === 'hypercharged' ? 'hypercharged-content' : 'vanilla-ui-element' // Add class for hypercharge content styling if needed
+                isHypercharging && currentTheme !== 'hypercharged' ? 'opacity-0' : 'opacity-100', // Fade out vanilla content
+                currentTheme === 'hypercharged' ? 'hypercharged-content' : 'vanilla-ui-element' // Add class for hypercharge content styling if needed
              )}>
                  {children}
              </main>
@@ -215,12 +217,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
         {/* Bottom Nav: Render always but style based on theme */}
         <BottomNavigationBar
              className={cn(
-                theme !== 'hypercharged' ? 'vanilla-ui-element' : '',
-                isHypercharging && theme !== 'hypercharged' ? 'opacity-0' : 'opacity-100' // Fade out vanilla nav
+                currentTheme !== 'hypercharged' ? 'vanilla-ui-element' : '',
+                isHypercharging && currentTheme !== 'hypercharged' ? 'opacity-0' : 'opacity-100' // Fade out vanilla nav
              )}
              onHyperchargeToggle={handleHyperchargeToggle}
              isHypercharging={isHypercharging}
-             currentTheme={theme ?? 'dark'} // Pass current theme
+             currentTheme={currentTheme ?? 'dark'} // Pass current theme (default to dark if still undefined)
         />
 
         {/* Search Popup: Render always, styling handled internally */}
@@ -233,6 +235,32 @@ export default function AppLayout({ children }: AppLayoutProps) {
             openWithFilters={openWithFilters}
         />
 
+         {/* Floating Hypercharge Button (Rendered only on client after mount) */}
+        {mounted && (
+           <Button
+             variant="default" // Or custom variant
+             size="icon"
+             className={cn(
+               'fixed bottom-20 right-5 z-50 rounded-full h-14 w-14 shadow-lg transition-all duration-300 ease-out',
+               // Theme-specific styling
+               currentTheme === 'hypercharged'
+                 ? 'bg-gradient-to-br from-secondary to-accent text-black button-pulse-hover' // Hypercharge style
+                 : 'bg-primary text-primary-foreground hover:bg-primary/90', // Vanilla style
+               // Animation states
+               isHypercharging ? 'opacity-50 scale-95 cursor-not-allowed' : 'hover:scale-110',
+               // Hide button briefly during transition away from hypercharge
+               isHypercharging && currentTheme === 'hypercharged' ? 'opacity-0' : 'opacity-100'
+             )}
+             onClick={handleHyperchargeToggle}
+             disabled={isHypercharging}
+             aria-label="Toggle Hypercharge Mode"
+           >
+             {/* Replace Zap with a custom Katana hilt icon/SVG if desired */}
+              <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary transition-smooth">
+                  <path d="M50 0L61.226 30.9017H95.1056L69.9398 50L81.1658 80.9017H50L18.8342 80.9017L30.0602 50L4.89435 30.9017H38.774L50 0Z" fill="currentColor"/>
+              </svg>
+           </Button>
+         )}
     </div>
   );
 }

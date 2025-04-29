@@ -23,8 +23,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className="dark h-full">
-      {/* Ensure html takes full height and remove whitespace */}
+    // Removed suppressHydrationWarning to let Next.js report potential hydration errors
+    <html lang="en" className="dark h-full"> {/* Ensure html takes full height and remove whitespace */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
@@ -32,9 +32,9 @@ export default function RootLayout({
         )}
       >
         <ThemeProvider
-            attribute="data-theme" // Change attribute to data-theme for hypercharge
+            attribute="class" // Use class-based theming
             defaultTheme="dark"
-            enableSystem={false} // Explicitly disable system theme preference
+            enableSystem={false} // Disable system preference detection
             disableTransitionOnChange
         >
             {/* AppLayout now handles the core layout structure */}
