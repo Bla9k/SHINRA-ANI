@@ -25,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    // Let ThemeProvider handle the theme class/attribute on the html tag
+    // Let ThemeProvider handle the theme class on the html tag
     <html lang="en" className="h-full" suppressHydrationWarning> {/* Add suppressHydrationWarning */}
       <head />{/* Ensure head is present */}
       <body
@@ -36,7 +36,7 @@ export default function RootLayout({
       >
         <AuthProvider> {/* Wrap with AuthProvider */}
             <ThemeProvider
-                attribute="data-theme" // Use data-theme attribute
+                attribute="class" // Use class attribute for theme
                 defaultTheme="dark" // Keep dark as default
                 enableSystem={false} // Disable system preference detection
                 disableTransitionOnChange // Prevent transition on initial load

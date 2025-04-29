@@ -23,10 +23,9 @@ interface NavItemProps {
   href: string;
   icon: React.ElementType;
   label: string;
-  currentTheme: string; // Pass theme to NavItem
 }
 
-const NavItem = ({ href, icon: Icon, label, currentTheme }: NavItemProps) => {
+const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
   const pathname = usePathname();
   const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
 
@@ -42,11 +41,7 @@ const NavItem = ({ href, icon: Icon, label, currentTheme }: NavItemProps) => {
                  'hover:bg-transparent', // Remove background hover
                 isActive
                   ? 'active-nav-item text-primary' // Active state text color
-                  : 'text-muted-foreground',
-                 // Theme-specific hover color for text
-                 currentTheme === 'hypercharged'
-                    ? 'hover:text-secondary' // Cyan hover for hypercharge
-                    : 'hover:text-primary', // Blue hover for vanilla
+                  : 'text-muted-foreground hover:text-primary', // Vanilla hover color
                 '[&_svg]:transition-colors [&_svg]:duration-300 [&_svg]:ease-in-out',
                 '[&_span]:transition-colors [&_span]:duration-300 [&_span]:ease-in-out'
               )}
@@ -67,15 +62,10 @@ const NavItem = ({ href, icon: Icon, label, currentTheme }: NavItemProps) => {
 
 interface BottomNavigationBarProps {
   className?: string;
-  // Remove Hypercharge related props as the button is moved
-  // onHyperchargeToggle: () => void;
-  // isHypercharging: boolean;
-  currentTheme: 'vanilla' | 'hypercharged'; // Specify theme types
 }
 
 export default function BottomNavigationBar({
   className,
-  currentTheme,
 }: BottomNavigationBarProps) {
   const navItems: Omit<NavItemProps, 'currentTheme'>[] = [
     { href: '/', icon: Home, label: 'Home' },
@@ -89,17 +79,15 @@ export default function BottomNavigationBar({
     <nav
       className={cn(
         'fixed bottom-0 left-0 right-0 z-50 h-16 border-t transition-smooth',
-        // Apply theme-specific background and glass effect
-        currentTheme === 'hypercharged'
-          ? 'hypercharge-nav' // Use class from globals.css for hypercharge nav style
-          : 'bg-background/95 border-border glass', // Vanilla style
+        // Apply vanilla theme style
+        'bg-background/95 border-border glass',
         className
       )}
     >
        {/* Spread items evenly */}
       <div className="flex justify-around items-center h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative">
         {navItems.map((item) => (
-          <NavItem key={item.href} {...item} currentTheme={currentTheme} />
+          <NavItem key={item.href} {...item} />
         ))}
       </div>
     </nav>

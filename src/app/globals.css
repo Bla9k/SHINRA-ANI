@@ -38,7 +38,7 @@ body {
   }
 
   .dark {
-     /* Re-apply variables for consistency, although :root should suffice */
+     /* Re-apply variables for consistency */
     --background: 240 10% 3.9%;;
     --foreground: 0 0% 98%;
     --card: 240 10% 10%;
@@ -66,127 +66,6 @@ body {
   }
 }
 
-/* Hypercharged Theme Variables */
-@layer base {
-  /* Apply hypercharged variables using the data attribute set by next-themes */
-  html[data-theme="hypercharged"] {
-    /* Defined Colors */
-    --hc-deep-space-blue: 225 15% 6%; /* Background */
-    --hc-neon-purple: 275 70% 60%;    /* Primary */
-    --hc-neon-cyan: 180 100% 50%;   /* Secondary */
-    --hc-electric-green: 95 100% 50%;  /* Accent / Buttons */
-    --hc-light-cyan-tint: 180 100% 85%; /* Foreground */
-    --hc-dark-purple-base: 275 50% 15%; /* Card Background */
-    --hc-dimmer-purple-border: 275 70% 40%; /* Borders */
-    --hc-darker-purple-input: 275 50% 20%; /* Inputs */
-    --hc-muted-cyan-gray: 180 10% 60%; /* Muted Foreground */
-    --hc-bright-red: 0 80% 60%;       /* Destructive */
-
-    /* Mapped Variables */
-    --background: var(--hc-deep-space-blue);
-    --foreground: var(--hc-light-cyan-tint);
-
-    --card: var(--hc-dark-purple-base);
-    --card-foreground: var(--hc-light-cyan-tint);
-
-    --popover: 0 0% 5%; /* Very dark */
-    --popover-foreground: var(--hc-light-cyan-tint);
-
-    --primary: var(--hc-neon-purple);
-    --primary-foreground: 0 0% 98%; /* White */
-
-    --secondary: var(--hc-neon-cyan);
-    --secondary-foreground: var(--hc-deep-space-blue); /* Dark BG for contrast */
-
-    --muted: 0 0% 10%; /* Slightly lighter black */
-    --muted-foreground: var(--hc-muted-cyan-gray);
-
-    --accent: var(--hc-electric-green);
-    --accent-foreground: var(--hc-deep-space-blue); /* Dark BG for contrast */
-
-    --destructive: var(--hc-bright-red);
-    --destructive-foreground: 0 0% 98%; /* White */
-
-    --border: var(--hc-dimmer-purple-border);
-    --input: var(--hc-darker-purple-input);
-    --ring: var(--hc-neon-cyan); /* Ring color matches secondary */
-
-    /* Chart colors */
-    --chart-1: var(--hc-neon-purple);
-    --chart-2: var(--hc-neon-cyan);
-    --chart-3: var(--hc-electric-green);
-    --chart-4: 320 80% 70%; /* Neon Pinkish */
-    --chart-5: 50 100% 60%; /* Neon Yellow */
-  }
-
-  /* Hypercharge specific glassmorphism with neon edges */
-  html[data-theme="hypercharged"] .glass {
-    /* Intense glass effect for hypercharged */
-    @apply bg-card/80 backdrop-blur-xl border border-primary/60 shadow-[0_0_15px_theme(colors.primary/50),_0_0_30px_theme(colors.secondary/30)];
-  }
-
-   /* Hypercharge specific scrollbar */
-    html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
-        background-color: hsl(var(--secondary) / 0.7); /* Cyan thumb */
-        box-shadow: 0 0 5px hsl(var(--secondary)); /* Cyan glow */
-        border-radius: 3px;
-    }
-    html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-        background-color: hsl(var(--secondary) / 0.9);
-    }
-    html[data-theme="hypercharged"] .scrollbar-thin {
-        scrollbar-color: hsl(var(--secondary) / 0.7) transparent;
-         scrollbar-width: thin;
-    }
-     html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar {
-      width: 6px; /* Width of vertical scrollbar */
-      height: 6px; /* Height of horizontal scrollbar */
-    }
-    html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-track {
-       background: transparent;
-    }
-
-
-     /* Specific styles for Hypercharge theme components */
-     html[data-theme="hypercharged"] .hypercharge-nav {
-        /* Intense gradient, stronger border, more pronounced shadow */
-        @apply bg-gradient-to-r from-primary/30 via-black/80 to-secondary/30 border-t border-secondary/60 backdrop-blur-2xl shadow-[0_-5px_25px_theme(colors.secondary/40)];
-     }
-
-     html[data-theme="hypercharged"] .hypercharge-button {
-        /* Gradient, maybe slight glow on hover */
-        @apply bg-gradient-to-br from-accent to-green-400 text-black hover:shadow-[0_0_10px_theme(colors.accent)];
-     }
-
-     /* Neon Text */
-     html[data-theme="hypercharged"] .neon-text-primary {
-        color: hsl(var(--primary));
-        text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.7);
-     }
-      html[data-theme="hypercharged"] .neon-text-secondary {
-        color: hsl(var(--secondary));
-        text-shadow: 0 0 5px hsl(var(--secondary)), 0 0 10px hsl(var(--secondary) / 0.7);
-     }
-      html[data-theme="hypercharged"] .neon-text-accent {
-        color: hsl(var(--accent));
-        text-shadow: 0 0 5px hsl(var(--accent)), 0 0 10px hsl(var(--accent) / 0.7);
-     }
-
-      /* General Glow Effect */
-      html[data-theme="hypercharged"] .hypercharge-glow {
-         filter: drop-shadow(0 0 8px hsl(var(--primary)/ 0.6)) drop-shadow(0 0 4px hsl(var(--secondary)/ 0.4));
-         transition: filter 0.3s ease-in-out;
-      }
-      html[data-theme="hypercharged"] .hypercharge-glow:hover {
-          filter: drop-shadow(0 0 12px hsl(var(--primary)/ 0.8)) drop-shadow(0 0 6px hsl(var(--secondary)/ 0.6));
-       }
-
-      /* Input Styling */
-      html[data-theme="hypercharged"] .hypercharge-input {
-         @apply border-secondary/50 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 hover:border-secondary bg-input/50 backdrop-blur-sm transition-colors duration-300;
-      }
-}
-
 /* Base Styles */
 @layer base {
   * {
@@ -201,8 +80,8 @@ body {
     @apply transition-colors duration-500 ease-in-out;
   }
 
-  /* Default glassmorphism for vanilla theme */
-  .glass:not(html[data-theme="hypercharged"] *) { /* Apply only if not hypercharged */
+  /* Default glassmorphism */
+  .glass {
     @apply bg-card/60 backdrop-blur-lg border border-border/50 shadow-lg transition-all duration-300;
   }
 
@@ -228,7 +107,7 @@ body {
 
 }
 
-/* Custom Scrollbar Styling (Apply to both themes) */
+/* Custom Scrollbar Styling */
 /* Basic thin scrollbar */
 .scrollbar-thin {
   scrollbar-width: thin; /* Firefox */
@@ -291,106 +170,17 @@ body {
       50% { opacity: .5; }
     }
 
-     /* Hypercharge Theme Animations */
-     .animate-hyper-fade-in {
-       animation: hyperFadeIn 0.8s ease-out forwards;
-     }
-     @keyframes hyperFadeIn {
-       from { opacity: 0; transform: scale(0.95) translateY(10px); filter: blur(5px); }
-       to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
-     }
-
-     .animate-hyper-slide-in {
-       animation: hyperSlideIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
-     }
-     @keyframes hyperSlideIn {
-       from { opacity: 0; transform: translateX(-30px); }
-       to { opacity: 1; transform: translateX(0); }
-     }
-
-      .animate-neon-pulse {
-         animation: neonPulse 1.5s infinite alternate;
-      }
-      @keyframes neonPulse {
-          from { filter: drop-shadow(0 0 5px hsl(var(--primary)/0.6)); }
-          to { filter: drop-shadow(0 0 15px hsl(var(--primary)/0.9)); }
-       }
-        /* Neon pulse for active hypercharge nav icon */
-      .animate-neon-pulse-icon {
-         animation: neonPulseIcon 1.5s infinite alternate;
-      }
-       @keyframes neonPulseIcon {
-          from { filter: drop-shadow(0 0 3px hsl(var(--accent)/0.7)); }
-          to { filter: drop-shadow(0 0 8px hsl(var(--accent)/1)); }
-       }
-
-       /* Subtle Glitch effect for Hypercharge Button Hover (Vanilla Mode) */
-        .animate-glitch-subtle {
-           position: relative;
-           animation: glitch-subtle 0.3s linear infinite alternate;
-        }
-         /* Simplified glitch effect using transforms */
-        @keyframes glitch-subtle {
-           0% { transform: translate(0); }
-           25% { transform: translate(-1px, 1px) skewX(-2deg); }
-           50% { transform: translate(1px, -1px) skewX(2deg); }
-           75% { transform: translate(1px, 1px) skewX(-2deg); }
-           100% { transform: translate(0); }
-        }
-
-       /* Complex Glitch effect (can be used for specific hypercharge elements) */
-       .animate-glitch {
-         position: relative;
-         /* Requires data-text attribute on the element */
-         /* Style ::before and ::after in CSS if using data-text */
-         animation: glitch 1s linear infinite;
-       }
-
-       @keyframes glitch {
-         2%, 64% { transform: translate(2px, 0) skew(0deg); }
-         4%, 60% { transform: translate(-2px, 0) skew(0deg); }
-         62% { transform: translate(0, 0) skew(5deg); }
-       }
-
-      /* Specific keyframes for glitch effect using ::before/::after pseudo-elements */
-      /* Apply these to the element having .animate-glitch and a data-text attribute */
-       .animate-glitch::before,
-       .animate-glitch::after {
-         content: attr(data-text);
-         position: absolute;
-         top: 0;
-         left: 0;
-         width: 100%;
-         height: 100%;
-         background: var(--background); /* Match background */
-         overflow: hidden;
-         clip-path: rect(0, 0, 0, 0); /* Initially hide */
-       }
-      .animate-glitch:hover::before {
-         left: 2px;
-         text-shadow: -1px 0 hsl(var(--secondary)); /* Cyan */
-         animation: glitch-anim 1s infinite linear alternate-reverse;
-       }
-       .animate-glitch:hover::after {
-         left: -2px;
-         text-shadow: -1px 0 hsl(var(--accent)); /* Green */
-         animation: glitch-anim-2 1.5s infinite linear alternate-reverse;
-       }
-
-       @keyframes glitch-anim {
-         0% { clip-path: inset(40% 0 60% 0); }
-         20% { clip-path: inset(15% 0 80% 0); }
-         40% { clip-path: inset(70% 0 10% 0); }
-         60% { clip-path: inset(35% 0 55% 0); }
-         80% { clip-path: inset(85% 0 5% 0); }
-         100% { clip-path: inset(45% 0 40% 0); }
-       }
-       @keyframes glitch-anim-2 {
-         0% { clip-path: inset(65% 0 20% 0); }
-         20% { clip-path: inset(90% 0 5% 0); }
-         40% { clip-path: inset(10% 0 75% 0); }
-         60% { clip-path: inset(50% 0 30% 0); }
-         80% { clip-path: inset(25% 0 68% 0); }
-         100% { clip-path: inset(70% 0 15% 0); }
-       }
+    /* Subtle Glitch effect for Hypercharge Button Hover (Vanilla Mode) */
+    .animate-glitch-subtle {
+       position: relative;
+       animation: glitch-subtle 0.3s linear infinite alternate;
+    }
+    /* Simplified glitch effect using transforms */
+    @keyframes glitch-subtle {
+       0% { transform: translate(0); }
+       25% { transform: translate(-1px, 1px) skewX(-2deg); }
+       50% { transform: translate(1px, -1px) skewX(2deg); }
+       75% { transform: translate(1px, 1px) skewX(-2deg); }
+       100% { transform: translate(0); }
+    }
 }
