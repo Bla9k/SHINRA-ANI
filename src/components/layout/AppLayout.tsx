@@ -3,13 +3,12 @@
 
 import React, { useState, type ReactNode, useCallback, useEffect } from 'react';
 import { useTheme } from 'next-themes';
-import TopBar from './TopBar';
-import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster if needed globally here
 import VanillaLayout from './VanillaLayout'; // New component for the default layout
 import HyperchargedLayout from './HyperchargedLayout'; // New component for the hypercharged layout
+import anime from 'animejs'; // Import Anime.js for animations
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -24,11 +23,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [openWithFilters, setOpenWithFilters] = useState(false);
   // State to control which UI mode is actively displayed
   const [activeUIMode, setActiveUIMode] = useState<'vanilla' | 'hypercharged'>('vanilla');
+  // State to manage the transition animation
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     // Set initial UI mode based on the theme loaded from next-themes
-    setActiveUIMode(theme === 'hypercharged' ? 'hypercharged' : 'vanilla');
+    const initialMode = theme === 'hypercharged' ? 'hypercharged' : 'vanilla';
+    setActiveUIMode(initialMode);
+    // Ensure body has correct theme class on initial mount
+    document.documentElement.setAttribute('data-theme', initialMode);
+    document.documentElement.classList.toggle('dark', initialMode === 'vanilla'); // Assume vanilla is dark
+    document.documentElement.classList.toggle('hypercharged-active', initialMode === 'hypercharged');
+
   }, [theme]); // Re-run if theme changes externally
 
 
@@ -72,23 +79,98 @@ export default function AppLayout({ children }: AppLayoutProps) {
      setIsSearchOpen(true);
    }, []);
 
-  // --- Hypercharge Toggle Handler ---
+  // --- Hypercharge Toggle Handler with Animation ---
   const handleHyperchargeToggle = useCallback(() => {
-    if (!mounted) return;
+    if (!mounted || isTransitioning) return; // Prevent toggling during transition
 
     const nextTheme = activeUIMode === 'vanilla' ? 'hypercharged' : 'dark';
     const nextUIMode = nextTheme === 'hypercharged' ? 'hypercharged' : 'vanilla';
 
     console.log(`Toggling theme. Current UI: ${activeUIMode}, Next UI: ${nextUIMode}, Next Theme: ${nextTheme}`);
 
-    // Apply theme using next-themes
-    setTheme(nextTheme);
+    setIsTransitioning(true); // Start transition animation
 
-    // Update the active UI mode state
-    // We might add animations here later using Anime.js triggered by this state change
-    setActiveUIMode(nextUIMode);
+    // Placeholder: Trigger "Ash Out" or "Dissolve" animation based on current mode
+    // This would target the '.vanilla-ui-element' or '.hypercharged-ui-element' classes
+    const currentElementsSelector = activeUIMode === 'vanilla' ? '.vanilla-ui-element' : '.hypercharged-ui-element';
+    const animationOutConfig = activeUIMode === 'vanilla' ?
+      { // Ash Out Effect (Simplified)
+        targets: currentElementsSelector,
+        opacity: [1, 0],
+        translateY: [0, -20], // Move slightly up
+        filter: ['blur(0px)', 'blur(10px)'],
+        scale: [1, 0.9],
+        duration: 600, // Duration for ash out
+        easing: 'easeInQuad',
+      } :
+      { // Hypercharged Dissolve Effect
+        targets: currentElementsSelector,
+        opacity: [1, 0],
+        scale: [1, 1.1],
+        filter: ['blur(0px)', 'blur(8px)'],
+        duration: 600, // Duration for dissolve out
+        easing: 'easeInCubic',
+      };
 
-  }, [mounted, activeUIMode, setTheme]);
+    anime({
+      ...animationOutConfig,
+      complete: () => {
+        // --- Update Theme and UI State ---
+        // Apply theme using next-themes
+        setTheme(nextTheme);
+        // Update the active UI mode state
+        setActiveUIMode(nextUIMode);
+        // Update body/html attributes AFTER the state update allows new layout to mount
+        requestAnimationFrame(() => {
+             document.documentElement.setAttribute('data-theme', nextUIMode);
+             document.documentElement.classList.toggle('dark', nextUIMode === 'vanilla');
+             document.documentElement.classList.toggle('hypercharged-active', nextUIMode === 'hypercharged');
+
+            // --- Trigger "Reveal" Animation ---
+            // Placeholder: Trigger "Katana Slash" or "Rebuild" animation
+            // This targets the new elements that just mounted
+            const nextElementsSelector = nextUIMode === 'vanilla' ? '.vanilla-ui-element' : '.hypercharged-ui-element';
+             const animationInConfig = nextUIMode === 'hypercharged' ?
+                 { // Katana Slash Reveal (Simplified)
+                     targets: nextElementsSelector,
+                     opacity: [0, 1],
+                     translateX: [-50, 0], // Slide in from left after slash
+                     scale: [1.2, 1],
+                     filter: ['blur(10px)', 'blur(0px)'],
+                     duration: 700, // Duration for reveal
+                     delay: 100, // Delay after slash effect (if added separately)
+                     easing: 'easeOutExpo',
+                 } :
+                 { // Vanilla Rebuild Effect
+                     targets: nextElementsSelector,
+                     opacity: [0, 1],
+                     translateY: [20, 0], // Slide up
+                     scale: [0.95, 1],
+                     duration: 700, // Duration for rebuild
+                     easing: 'easeOutCubic',
+                 };
+
+             anime({
+                 ...animationInConfig,
+                 begin: () => {
+                     // Ensure elements are initially hidden for animation
+                     const elements = document.querySelectorAll(nextElementsSelector);
+                      elements.forEach(el => (el as HTMLElement).style.opacity = '0');
+                 },
+                 update: (anim) => {
+                      // Ensure elements become visible during animation
+                       const elements = document.querySelectorAll(nextElementsSelector);
+                       elements.forEach(el => (el as HTMLElement).style.opacity = ''); // Let anime.js control opacity
+                 },
+                 complete: () => {
+                   setIsTransitioning(false); // End transition
+                 }
+             });
+        });
+      }
+    });
+
+  }, [mounted, activeUIMode, setTheme, isTransitioning]);
 
 
   // Render placeholders or nothing until mounted to avoid hydration errors
@@ -104,24 +186,30 @@ export default function AppLayout({ children }: AppLayoutProps) {
       onOpenAiSearch: handleOpenAiSearch,
       onOpenAdvancedSearch: handleOpenAdvancedSearch,
       onHyperchargeToggle: handleHyperchargeToggle,
-      isHypercharging: false, // Simplified - manage visual state via activeUIMode
+      isHypercharging: isTransitioning, // Indicate if transition is happening
       currentTheme: activeUIMode, // Pass the active UI mode as the 'theme' indicator
   };
 
   return (
-    <div className="flex flex-col min-h-screen h-screen overflow-hidden relative">
-      {/* Conditionally render the layout based on the active UI mode */}
-      {activeUIMode === 'vanilla' ? (
-        <VanillaLayout {...commonLayoutProps}>
-          {children}
-        </VanillaLayout>
-      ) : (
-        <HyperchargedLayout {...commonLayoutProps}>
-          {children}
-        </HyperchargedLayout>
-      )}
+    <div className={cn(
+        "flex flex-col min-h-screen h-screen overflow-hidden relative",
+        // Add classes to manage visibility during transitions
+        // These help prevent both UIs showing simultaneously briefly
+        {'opacity-100': !isTransitioning, 'opacity-0': isTransitioning} // Basic fade (can be refined)
+        )}>
+        {/* Render the currently active UI */}
+        {activeUIMode === 'vanilla' && (
+            <VanillaLayout {...commonLayoutProps}>
+                {children}
+            </VanillaLayout>
+        )}
+        {activeUIMode === 'hypercharged' && (
+            <HyperchargedLayout {...commonLayoutProps}>
+                {children}
+            </HyperchargedLayout>
+        )}
 
-       {/* Search Popup remains outside the themed layouts */}
+       {/* Search Popup remains outside the themed layouts, always available */}
       <SearchPopup
         isOpen={isSearchOpen}
         onClose={handleCloseSearch}
@@ -130,6 +218,31 @@ export default function AppLayout({ children }: AppLayoutProps) {
         onAiToggle={handleAiToggle}
         openWithFilters={openWithFilters}
       />
+
+       {/* Floating Hypercharge Button - Positioned outside main layouts */}
+      <button
+          onClick={handleHyperchargeToggle}
+          disabled={isTransitioning}
+          className={cn(
+              "fixed bottom-20 right-4 z-[60] p-2 rounded-full transition-all duration-300 ease-in-out group",
+              "w-12 h-12 flex items-center justify-center", // Consistent size
+              // Theme-aware styling
+              activeUIMode === 'vanilla'
+                  ? "bg-primary text-primary-foreground shadow-lg hover:bg-primary/80 hover:scale-105" // Vanilla Style
+                  : "bg-gradient-to-br from-accent to-green-400 text-black shadow-[0_0_15px_theme(colors.accent)] hover:shadow-[0_0_25px_theme(colors.accent)] hover:scale-105", // Hypercharge Style
+              isTransitioning ? 'opacity-50 cursor-not-allowed' : ''
+          )}
+          aria-label="Toggle Hypercharge Mode"
+      >
+          {/* Simple icon for now, replace with Katana hilt SVG later */}
+           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={cn("transition-transform duration-300 group-hover:rotate-12", activeUIMode === 'hypercharged' ? 'text-black' : 'text-primary-foreground')}>
+             <path d="M12 3v18"/> {/* Simple representation */}
+              <path d="M7 10l-4 4 4 4"/>
+             <path d="M17 10l4 4-4 4"/>
+             <path d="M5 6h14"/>
+             <path d="M5 18h14"/>
+           </svg>
+      </button>
 
       {/* Global Toaster */}
       <Toaster />

@@ -1,73 +1,94 @@
 // src/components/layout/HyperchargedLayout.tsx
 'use client';
 
-import React, { type ReactNode, useEffect } from 'react';
-import { Zap } from 'lucide-react';
+import React, { type ReactNode, useEffect, useRef } from 'react';
+import { Zap, Sparkles, Search, User } from 'lucide-react'; // Import necessary icons
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import anime from 'animejs'; // Import Anime.js
+import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import BottomNavigationBar from './BottomNavigationBar'; // Import common bottom nav
 
 // Define placeholder components for Hypercharged theme specific elements
 // Replace these with actual implementations later
 
 const HyperchargedTopBar = ({ onSearchToggle, onAiToggle, isAiSearchActive }: any) => (
-  <header className="sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b bg-black/80 px-4 backdrop-blur-xl border-primary/50 shadow-[0_0_15px_theme(colors.primary)]">
+    // Use hypercharge-specific colors and effects
+  <header className={cn(
+      "sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b px-4 backdrop-blur-xl",
+      "bg-black/80 border-secondary/50 shadow-[0_0_20px_theme(colors.secondary/30)]", // Use secondary for border/shadow
+       "hypercharged-ui-element" // Class for animation targeting
+      )}>
     {/* Hypercharged Logo/Title */}
-    <div className="flex items-center gap-2 mr-auto">
-      <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary animate-pulse-subtle">
+    <Link href="/" className="flex items-center gap-2 mr-auto group">
+       {/* Animated SVG logo */}
+      <svg width="24" height="24" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-secondary group-hover:text-accent transition-colors duration-300 hypercharge-glow">
         <path d="M50 0L61.226 30.9017H95.1056L69.9398 50L81.1658 80.9017H50L18.8342 80.9017L30.0602 50L4.89435 30.9017H38.774L50 0Z" fill="currentColor"/>
       </svg>
-      <span className="font-bold text-lg hidden sm:inline text-transparent bg-clip-text bg-gradient-to-r from-primary via-fuchsia-500 to-secondary">
+      <span className="font-bold text-lg hidden sm:inline text-transparent bg-clip-text bg-gradient-to-r from-secondary via-primary to-fuchsia-500 group-hover:from-accent group-hover:to-primary transition-all duration-300 neon-text-secondary group-hover:neon-text-primary">
         SHINRA-ANI
       </span>
-    </div>
+    </Link>
     {/* Hypercharged Search/AI/Profile controls */}
     <div className="flex items-center gap-2">
-      <Button variant="ghost" size="icon" className="rounded-full text-secondary hover:text-accent hover:bg-secondary/10" onClick={() => onSearchToggle()}>
-        {/* Replace with styled search icon */}
-         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full text-secondary hover:text-accent hover:bg-secondary/10 transition-colors duration-300 group hypercharge-glow"
+          onClick={() => onSearchToggle()}
+          aria-label="Open Search"
+        >
+         <Search className="h-5 w-5 transition-transform duration-300 group-hover:scale-110" />
       </Button>
-       <Button variant="ghost" size="icon" className={cn("rounded-full text-primary hover:text-accent hover:bg-primary/10", isAiSearchActive && "bg-primary/20 ring-2 ring-primary")} onClick={onAiToggle}>
-         {/* Replace with styled AI icon */}
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/></svg>
+       <Button
+           variant="ghost"
+           size="icon"
+           className={cn(
+               "rounded-full text-primary hover:text-accent hover:bg-primary/10 transition-all duration-300 group hypercharge-glow",
+               isAiSearchActive && "bg-primary/20 ring-2 ring-primary neon-pulse" // Enhanced active state
+            )}
+           onClick={onAiToggle}
+           aria-pressed={isAiSearchActive}
+           aria-label={isAiSearchActive ? 'Deactivate AI Search Mode' : 'Activate AI Search Mode'}
+        >
+         <Sparkles className="h-5 w-5 transition-transform duration-300 group-hover:rotate-[360deg]" />
        </Button>
-       {/* Profile Button Placeholder */}
-        <Button variant="ghost" size="icon" className="rounded-full text-muted-foreground hover:text-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-        </Button>
+       {/* Profile Dropdown */}
+       <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full hypercharge-glow group">
+              <Avatar className="h-8 w-8 border-2 border-transparent group-hover:border-secondary transition-colors duration-300">
+                 {/* Replace with actual user data */}
+                <AvatarImage src={'https://picsum.photos/40/40?random=1'} alt={'User'} />
+                <AvatarFallback className="bg-primary/30 text-primary-foreground text-xs">{'U'}</AvatarFallback>
+              </Avatar>
+              <span className="sr-only">Toggle user menu</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="glass animate-hyper-fade-in border-primary/50 w-48"> {/* Styled Dropdown */}
+            <DropdownMenuLabel className="neon-text-secondary">ShinraUser</DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-border/50" />
+            <DropdownMenuItem asChild className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer">
+              <Link href="/profile">Profile</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="hover:bg-primary/10 focus:bg-primary/10 cursor-pointer">
+              <Link href="/settings">Settings</Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-border/50"/>
+            <DropdownMenuItem className="hover:bg-destructive/20 focus:bg-destructive/20 text-destructive cursor-pointer" onClick={() => console.log('Logout clicked')}>Logout</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
     </div>
   </header>
-);
-
-const HyperchargedBottomNav = ({ onHyperchargeToggle, isHypercharging }: any) => (
-   <nav className={cn(
-       "fixed bottom-0 left-0 right-0 z-50 h-16 hypercharge-nav transition-smooth", // Use hypercharge specific class
-   )}>
-     <div className="flex justify-around items-center h-full max-w-full sm:max-w-md md:max-w-lg lg:max-w-xl mx-auto px-1 relative">
-       {/* Placeholder Nav Items - Replace with actual styled items later */}
-       <Button variant="ghost" className="flex-1 h-full text-muted-foreground hover:text-secondary">Home</Button>
-       <Button variant="ghost" className="flex-1 h-full text-muted-foreground hover:text-secondary">Anime</Button>
-        {/* Hypercharge Toggle Button */}
-        <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-                'hypercharge-button flex flex-col items-center justify-center h-full w-16 mx-2 text-xs sm:text-sm transition-colors duration-200 z-10 group',
-                 'text-primary hover:text-accent hover:bg-transparent', // Hypercharge style
-                 isHypercharging ? 'opacity-50 cursor-not-allowed' : ''
-             )}
-            onClick={onHyperchargeToggle}
-            disabled={isHypercharging}
-            aria-label="Toggle Hypercharge Mode"
-        >
-             <Zap className="w-6 h-6 hypercharge-icon" />
-            <span className="truncate max-w-full text-[10px] leading-tight mt-0.5">Vanilla</span>
-        </Button>
-       <Button variant="ghost" className="flex-1 h-full text-muted-foreground hover:text-secondary">Manga</Button>
-       <Button variant="ghost" className="flex-1 h-full text-muted-foreground hover:text-secondary">Community</Button>
-        <Button variant="ghost" className="flex-1 h-full text-muted-foreground hover:text-secondary">Profile</Button>
-     </div>
-   </nav>
 );
 
 
@@ -79,7 +100,6 @@ interface HyperchargedLayoutProps {
    onHyperchargeToggle: () => void;
    isHypercharging: boolean;
    currentTheme: string; // Keep theme prop
-   // Remove unused search handlers if TopBar handles them internally now
     onOpenAiSearch: (term: string) => void;
     onOpenAdvancedSearch: (term: string) => void;
 }
@@ -91,50 +111,81 @@ export default function HyperchargedLayout({
   isAiSearchActive,
   onHyperchargeToggle,
   isHypercharging,
+  currentTheme, // Receive current theme
+  // Search handlers might be needed by TopBar
+  onOpenAiSearch,
+  onOpenAdvancedSearch,
 }: HyperchargedLayoutProps) {
+    const mainContentRef = useRef<HTMLDivElement>(null);
+    const backgroundRef = useRef<HTMLDivElement>(null);
+
 
    // Example Anime.js animation on mount - Apply to a specific element
    useEffect(() => {
-       const targetElement = '.hypercharge-main-content'; // Target the main content area
-        if(document.querySelector(targetElement)) {
-             anime({
-                 targets: targetElement,
-                 opacity: [0, 1],
-                 translateY: [20, 0],
-                 duration: 800,
-                 easing: 'easeOutExpo',
-                 delay: 100 // Slight delay after theme switch
-             });
-         }
-    }, []); // Run only once on mount
+        // Initial entrance animation for the layout itself
+        anime({
+            targets: '.hypercharged-ui-element', // Target elements specific to this layout
+            opacity: [0, 1],
+            translateY: [15, 0], // Subtle slide up
+            scale: [0.98, 1], // Subtle zoom in
+            filter: ['blur(5px)', 'blur(0px)'],
+            duration: 800,
+            delay: anime.stagger(100, { start: 100 }), // Stagger elements slightly
+            easing: 'easeOutExpo',
+        });
 
+        // Dynamic background animation (subtle)
+         if (backgroundRef.current) {
+           anime({
+             targets: backgroundRef.current,
+             keyframes: [
+               { backgroundPosition: '0% 0%' },
+               { backgroundPosition: '100% 100%' },
+               { backgroundPosition: '0% 0%' }, // Loop
+             ],
+             duration: 60000, // Very slow animation (60 seconds)
+             easing: 'linear',
+             loop: true,
+           });
+         }
+
+    }, []); // Run only once on mount
 
   return (
      <>
-        {/* Apply dynamic background class to the body or a container */}
-        {/* Example: A background container */}
-         <div className="absolute inset-0 -z-10 bg-gradient-to-br from-[hsl(var(--background))] via-purple-950/50 to-cyan-950/50 animate-pulse-subtle">
-            {/* Optional: Add moving particle/nebula effect here */}
-         </div>
+        {/* Dynamic Background Container */}
+         <div
+            ref={backgroundRef}
+            className={cn(
+                "absolute inset-0 -z-10 transition-opacity duration-1000",
+                "bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-purple-900/30 via-cyan-900/20 to-background",
+                "bg-[length:200%_200%]" // Make background larger for animation
+            )}
+            // Style below can be used for nebula effect if an image is preferred
+            // style={{ backgroundImage: 'url(/path/to/nebula.jpg)', backgroundSize: 'cover' }}
+          />
 
        <HyperchargedTopBar
           onSearchToggle={onSearchToggle}
           onAiToggle={onAiToggle}
           isAiSearchActive={isAiSearchActive}
+          // Pass search handlers if TopBar needs them directly
+          // onOpenAiSearch={onOpenAiSearch}
+          // onOpenAdvancedSearch={onOpenAdvancedSearch}
           />
 
         {/* Main content area with specific class for animation targeting */}
-       <div className="flex-1 overflow-y-auto pb-16 hypercharge-main-content">
-         {/* Apply glass effect to children container if needed */}
-         {/* <main className="p-4 md:p-6 glass"> */}
-         <main className="transition-smooth">
+       <div ref={mainContentRef} className="flex-1 overflow-y-auto pb-16 hypercharged-ui-element scrollbar-thin">
+         <main className="transition-smooth p-4 md:p-6"> {/* Add padding to main content */}
            {children}
          </main>
        </div>
 
-       <HyperchargedBottomNav
-         onHyperchargeToggle={onHyperchargeToggle}
-         isHypercharging={isHypercharging}
+       {/* Use the common BottomNavigationBar but pass the hypercharged theme prop */}
+       <BottomNavigationBar
+         className="hypercharged-ui-element" // Specific class for targeting
+         currentTheme="hypercharged"
+         // Pass other necessary props if BottomNav needs them (it doesn't currently handle hypercharge toggle)
        />
      </>
    );

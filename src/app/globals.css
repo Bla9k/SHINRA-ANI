@@ -70,70 +70,107 @@ body {
 @layer base {
   /* Apply hypercharged variables using the data attribute set by next-themes */
   html[data-theme="hypercharged"] {
-    --background: 225 15% 6%; /* Deep Space Blue */
-    --foreground: 180 100% 85%; /* Light Cyan tint */
+    /* Defined Colors */
+    --hc-deep-space-blue: 225 15% 6%; /* Background */
+    --hc-neon-purple: 275 70% 60%;    /* Primary */
+    --hc-neon-cyan: 180 100% 50%;   /* Secondary */
+    --hc-electric-green: 95 100% 50%;  /* Accent / Buttons */
+    --hc-light-cyan-tint: 180 100% 85%; /* Foreground */
+    --hc-dark-purple-base: 275 50% 15%; /* Card Background */
+    --hc-dimmer-purple-border: 275 70% 40%; /* Borders */
+    --hc-darker-purple-input: 275 50% 20%; /* Inputs */
+    --hc-muted-cyan-gray: 180 10% 60%; /* Muted Foreground */
+    --hc-bright-red: 0 80% 60%;       /* Destructive */
 
-    --card: 275 50% 15%; /* Dark Purple base for cards */
-    --card-foreground: 180 100% 85%;
+    /* Mapped Variables */
+    --background: var(--hc-deep-space-blue);
+    --foreground: var(--hc-light-cyan-tint);
 
-    --popover: 0 0% 5%; /* Dark popover */
-    --popover-foreground: 180 100% 85%;
+    --card: var(--hc-dark-purple-base);
+    --card-foreground: var(--hc-light-cyan-tint);
 
-    --primary: 275 70% 60%; /* Neon Purple */
-    --primary-foreground: 0 0% 98%; /* White for contrast on purple */
+    --popover: 0 0% 5%; /* Very dark */
+    --popover-foreground: var(--hc-light-cyan-tint);
 
-    --secondary: 180 100% 50%; /* Neon Cyan */
-    --secondary-foreground: 225 15% 6%; /* Use background color for contrast */
+    --primary: var(--hc-neon-purple);
+    --primary-foreground: 0 0% 98%; /* White */
+
+    --secondary: var(--hc-neon-cyan);
+    --secondary-foreground: var(--hc-deep-space-blue); /* Dark BG for contrast */
 
     --muted: 0 0% 10%; /* Slightly lighter black */
-    --muted-foreground: 180 10% 60%; /* Muted cyan/gray */
+    --muted-foreground: var(--hc-muted-cyan-gray);
 
-    --accent: 95 100% 50%; /* Electric Green */
-    --accent-foreground: 225 15% 6%; /* Use background color for contrast */
+    --accent: var(--hc-electric-green);
+    --accent-foreground: var(--hc-deep-space-blue); /* Dark BG for contrast */
 
-    --destructive: 0 80% 60%; /* Bright Red */
-    --destructive-foreground: 0 0% 98%;
+    --destructive: var(--hc-bright-red);
+    --destructive-foreground: 0 0% 98%; /* White */
 
-    --border: 275 70% 40%; /* Dimmer Neon Purple border */
-    --input: 275 50% 20%; /* Darker Purple for inputs */
-    --ring: 180 100% 50%; /* Neon Cyan ring */
+    --border: var(--hc-dimmer-purple-border);
+    --input: var(--hc-darker-purple-input);
+    --ring: var(--hc-neon-cyan); /* Ring color matches secondary */
 
-    /* Chart colors for Hypercharge */
-    --chart-1: 275 70% 60%; /* Neon Purple */
-    --chart-2: 180 100% 50%; /* Neon Cyan */
-    --chart-3: 95 100% 50%;  /* Electric Green */
+    /* Chart colors */
+    --chart-1: var(--hc-neon-purple);
+    --chart-2: var(--hc-neon-cyan);
+    --chart-3: var(--hc-electric-green);
     --chart-4: 320 80% 70%; /* Neon Pinkish */
     --chart-5: 50 100% 60%; /* Neon Yellow */
   }
 
   /* Hypercharge specific glassmorphism with neon edges */
   html[data-theme="hypercharged"] .glass {
-    @apply bg-card/80 backdrop-blur-xl border border-primary/60 shadow-[0_0_10px_theme(colors.primary),_0_0_20px_theme(colors.secondary)];
+    /* Intense glass effect for hypercharged */
+    @apply bg-card/80 backdrop-blur-xl border border-primary/60 shadow-[0_0_15px_theme(colors.primary),_0_0_30px_theme(colors.secondary)];
+    /* Use CSS variables directly for better theme control */
+    --tw-shadow-color-primary: hsl(var(--primary));
+    --tw-shadow-color-secondary: hsl(var(--secondary));
+    --tw-shadow: 0 0 15px var(--tw-shadow-color-primary), 0 0 30px var(--tw-shadow-color-secondary);
+    --tw-shadow-colored: 0 0 15px var(--tw-shadow-color), 0 0 30px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
   }
 
    /* Hypercharge specific scrollbar */
     html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb {
-        background-color: hsl(var(--primary) / 0.6);
+        background-color: hsl(var(--secondary) / 0.7); /* Cyan thumb */
+        box-shadow: 0 0 5px hsl(var(--secondary)); /* Cyan glow */
     }
     html[data-theme="hypercharged"] .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-        background-color: hsl(var(--primary) / 0.9);
+        background-color: hsl(var(--secondary) / 0.9);
     }
     html[data-theme="hypercharged"] .scrollbar-thin {
-        scrollbar-color: hsl(var(--primary) / 0.6) transparent;
+        scrollbar-color: hsl(var(--secondary) / 0.7) transparent;
     }
 
      /* Specific styles for Hypercharge theme components */
      html[data-theme="hypercharged"] .hypercharge-nav {
-      @apply bg-gradient-to-r from-primary/10 via-black/80 to-secondary/10 border-t border-primary/50 backdrop-blur-2xl shadow-[0_-5px_20px_theme(colors.primary/30)];
+        /* Intense gradient, stronger border, more pronounced shadow */
+        @apply bg-gradient-to-r from-primary/30 via-black/80 to-secondary/30 border-t border-secondary/60 backdrop-blur-2xl shadow-[0_-5px_25px_theme(colors.secondary/40)];
      }
 
      html[data-theme="hypercharged"] .hypercharge-button {
-        /* Style for the main hypercharge toggle button */
-        @apply bg-gradient-to-br from-primary to-fuchsia-600 text-black;
+        /* Gradient, maybe slight glow on hover */
+        @apply bg-gradient-to-br from-accent to-green-400 text-black hover:shadow-[0_0_10px_theme(colors.accent)];
      }
 
-     /* Add more hypercharge specific styles as needed */
+     html[data-theme="hypercharged"] .neon-text-primary {
+        text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.7);
+     }
+      html[data-theme="hypercharged"] .neon-text-secondary {
+        text-shadow: 0 0 5px hsl(var(--secondary)), 0 0 10px hsl(var(--secondary) / 0.7);
+     }
+      html[data-theme="hypercharged"] .neon-text-accent {
+        text-shadow: 0 0 5px hsl(var(--accent)), 0 0 10px hsl(var(--accent) / 0.7);
+     }
 
+      html[data-theme="hypercharged"] .hypercharge-glow {
+         filter: drop-shadow(0 0 8px hsl(var(--primary)/ 0.8));
+       }
+
+      html[data-theme="hypercharged"] .hypercharge-input {
+         @apply border-secondary/50 ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary focus-visible:ring-offset-2 hover:border-secondary;
+      }
 }
 
 /* Base Styles */
@@ -210,19 +247,19 @@ body {
   text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
 }
 
-/* Removed complex animations, rely on Anime.js */
+/* Animation Utilities */
 @layer utilities {
+    /* Standard Fade In */
     .animate-fade-in {
         opacity: 0;
         animation: fadeIn 0.5s ease-out forwards;
     }
-
     @keyframes fadeIn {
         from { opacity: 0; transform: translateY(5px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-     /* Simple pulse */
+    /* Subtle Pulse */
     .animate-pulse-subtle {
         animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
@@ -231,7 +268,7 @@ body {
         50% { opacity: 0.7; }
     }
 
-    /* Keep basic pulse animation */
+    /* Standard Pulse */
     .animate-pulse {
       animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
@@ -239,4 +276,71 @@ body {
       0%, 100% { opacity: 1; }
       50% { opacity: .5; }
     }
+
+     /* Hypercharge Theme Animations */
+     .animate-hyper-fade-in {
+       animation: hyperFadeIn 0.8s ease-out forwards;
+     }
+     @keyframes hyperFadeIn {
+       from { opacity: 0; transform: scale(0.95) translateY(10px); filter: blur(5px); }
+       to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0px); }
+     }
+
+     .animate-hyper-slide-in {
+       animation: hyperSlideIn 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+     }
+     @keyframes hyperSlideIn {
+       from { opacity: 0; transform: translateX(-30px); }
+       to { opacity: 1; transform: translateX(0); }
+     }
+
+      .animate-neon-pulse {
+         animation: neonPulse 1.5s infinite alternate;
+      }
+      @keyframes neonPulse {
+          from { filter: drop-shadow(0 0 5px hsl(var(--primary)/0.6)); }
+          to { filter: drop-shadow(0 0 15px hsl(var(--primary)/0.9)); }
+       }
+
+        /* Glitch effect (more complex) */
+       .animate-glitch {
+         position: relative;
+         animation: glitch 1s linear infinite;
+       }
+        .animate-glitch::before,
+        .animate-glitch::after {
+          content: attr(data-text); /* Requires data-text attribute on the element */
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          background: var(--background); /* Match background */
+          overflow: hidden;
+        }
+       .animate-glitch::before {
+         left: 2px;
+         text-shadow: -1px 0 hsl(var(--secondary)); /* Cyan */
+         clip: rect(44px, 450px, 56px, 0);
+         animation: glitch-anim 2s infinite linear alternate-reverse;
+       }
+       .animate-glitch::after {
+         left: -2px;
+         text-shadow: -1px 0 hsl(var(--accent)); /* Green */
+         clip: rect(85px, 450px, 140px, 0);
+         animation: glitch-anim-2 3s infinite linear alternate-reverse;
+       }
+
+       @keyframes glitch-anim {
+         0% { clip: rect(42px, 9999px, 44px, 0); }
+         5% { clip: rect(17px, 9999px, 94px, 0); }
+         /* ... Add more steps for complex glitch ... */
+         100% { clip: rect(92px, 9999px, 98px, 0); }
+       }
+       @keyframes glitch-anim-2 {
+         0% { clip: rect(65px, 9999px, 119px, 0); }
+          5% { clip: rect(79px, 9999px, 19px, 0); }
+          /* ... Add more steps ... */
+          100% { clip: rect(18px, 9999px, 130px, 0); }
+       }
 }
