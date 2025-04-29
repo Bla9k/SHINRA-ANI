@@ -31,7 +31,7 @@ export default function RootLayout({
         )}
       >
         <ThemeProvider
-            attribute="class"
+            attribute="class" // Use attribute="class" instead of "body"
             defaultTheme="dark"
             enableSystem={false} // Explicitly disable system theme preference
             disableTransitionOnChange
