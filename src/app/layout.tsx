@@ -5,8 +5,9 @@ import { cn } from '@/lib/utils';
 import { Toaster } from "@/components/ui/toaster";
 import AppLayout from '@/components/layout/AppLayout';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
-// Removed Script import as anime.js is not directly used in layout now
 import { AuthProvider } from '@/context/AuthContext';
+import Head from 'next/head'; // Import Head for metadata and scripts
+import Script from 'next/script'; // Import Script for anime.js
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -47,7 +48,14 @@ export default function RootLayout({
                  <Toaster />
             </ThemeProvider>
         </AuthProvider>
-          {/* Removed Anime.js script import */}
+         {/* Load Anime.js after interactive elements */}
+         <Script
+            src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"
+            strategy="afterInteractive" // Load after page is interactive
+            integrity="sha512-z4OUqw38qNLpn1libAN9BsoDx6nbNFio5lA6CuTp9NlK83b89hgyCVq+N5FdBJptINztxn1Z3SaKSKUS5UP60Q=="
+            crossOrigin="anonymous"
+            referrerPolicy="no-referrer"
+        />
       </body>
     </html>
   );
