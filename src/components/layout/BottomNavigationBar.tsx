@@ -38,8 +38,9 @@ const NavItem = ({ href, icon: Icon, label }: NavItemProps) => {
               variant="ghost"
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative z-10', // Smooth transition for color
-                // Removed hover:bg-accent
-                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-primary', // Change color on hover
+                // Removed hover:bg-accent and added hover:bg-transparent explicitly
+                'hover:bg-transparent',
+                isActive ? 'text-primary neon-glow' : 'text-muted-foreground hover:text-primary', // Change text color on hover
                 '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out', // Ensure icon transitions smoothly too
                 '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out' // Ensure text transitions smoothly too
               )}
@@ -98,7 +99,7 @@ export default function BottomNavigationBar({ className, onHyperchargeToggle, is
                 size="icon"
                 className={cn(
                   'hypercharge-button flex flex-col items-center justify-center h-full w-16 mx-2 text-xs sm:text-sm transition-colors duration-200 z-10 group', // Add group class
-                  'text-muted-foreground hover:text-foreground' // Standard hover effect
+                  'text-muted-foreground hover:text-foreground hover:bg-transparent' // Standard hover effect with transparent background
                 )}
                 onClick={onHyperchargeToggle}
                 disabled={isHypercharging} // Disable while transition is active
@@ -106,7 +107,8 @@ export default function BottomNavigationBar({ className, onHyperchargeToggle, is
               >
                 {/* Apply glitch effect to the icon via CSS when hypercharge-button is hovered in hypercharged mode */}
                 <Zap className="w-6 h-6 hypercharge-icon transition-colors duration-200 group-hover:text-primary" />
-                <span className="truncate max-w-full">Hypercharge</span>
+                 {/* Reduced font size and line height for "Hypercharge" text */}
+                 <span className="truncate max-w-full text-[10px] leading-tight mt-0.5">Hypercharge</span>
               </Button>
             </TooltipTrigger>
              <TooltipContent side="top">
