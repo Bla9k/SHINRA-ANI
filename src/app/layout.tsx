@@ -25,7 +25,8 @@ export default function RootLayout({
 }>) {
   return (
     // Removed suppressHydrationWarning to let Next.js report potential hydration errors
-    <html lang="en" className="dark h-full">{/* Ensure html takes full height and remove whitespace */}
+    // Let ThemeProvider handle the theme class on the html tag
+    <html lang="en" suppressHydrationWarning className="h-full"> {/* Ensure html takes full height and remove whitespace */}
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
@@ -36,7 +37,7 @@ export default function RootLayout({
             attribute="class" // Use class-based theming
             defaultTheme="dark"
             enableSystem={false} // Disable system preference detection
-            disableTransitionOnChange
+            disableTransitionOnChange // Prevent transition on initial load
         >
             {/* AppLayout now handles the core layout structure */}
             <AppLayout>
