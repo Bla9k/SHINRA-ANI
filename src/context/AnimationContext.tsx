@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, type ReactNode } from 'react';
@@ -28,10 +29,9 @@ export const AnimationProvider = ({ children }: { children: ReactNode }) => {
     // Add other animation-related values here
   };
 
+  // Ensure no whitespace is introduced here
   return (
-    <AnimationContext.Provider value={value}>
-      {children}
-    </AnimationContext.Provider>
+    <AnimationContext.Provider value={value}>{children}</AnimationContext.Provider>
   );
 };
 

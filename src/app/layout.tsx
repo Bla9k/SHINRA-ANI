@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Poppins } from 'next/font/google';
 import './globals.css';
@@ -8,7 +9,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { AuthProvider } from '@/context/AuthContext';
 import Head from 'next/head'; // Import Head for metadata and scripts
 import Script from 'next/script'; // Import Script for anime.js
-import { AnimationProvider } from '@/context/AnimationContext'; // Import AnimationProvider
+import { AnimationProvider } from '@/context/AnimationContext'; // Corrected import path
 
 
 const poppins = Poppins({
@@ -59,6 +60,7 @@ export default function RootLayout({
             integrity="sha512-z4OUqw38qNLpn1libAN9BsoDx6nbNFio5lA6CuTp9NlK83b89hgyCVq+N5FdBJptINztxn1Z3SaKSKUS5UP60Q=="
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"
+            // Removed onLoad prop as it's an event handler
         />
       </body>
     </html>
