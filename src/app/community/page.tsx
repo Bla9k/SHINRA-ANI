@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -148,8 +147,8 @@ const dummyAllCommunities: Community[] = [
 
 const dummyFeatures: Feature[] = [
     { name: 'Indie Manga Uploads', description: 'Share your original manga creations.', icon: Upload, link: '/upload' },
-    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageSquare, link: '#' }, // Link to relevant chat area if applicable
-    { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '#' }, // Link to creation flow
+    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageSquare, link: '/community' }, // Link to community home
+    { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '/community?action=create' }, // Example link
     { name: 'Nami AI Integration', description: 'AI-powered chat and recommendations.', icon: Bot, link: '#' }, // Link to Nami info/chat
     { name: 'Profile Customization', description: 'Personalize your Shinra-Ani identity.', icon: Palette, link: '/profile' },
     { name: 'Events & Competitions', description: 'Join community challenges.', icon: Swords, link: '#' }, // Link to events page
@@ -256,10 +255,13 @@ const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
         </div>
         <div className="mt-auto flex justify-end">
             {/* Update link to actual indie manga reader page */}
-            <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior> {/* Changed link structure */}
-                <Button variant="link" size="sm" className="text-xs p-0 h-auto group-hover:underline text-primary">
-                    Read Now <ArrowRight size={12} className="ml-1"/>
-                </Button>
+             {/* Fixed: Wrap Button in anchor tag for legacyBehavior */}
+            <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior>
+                <a className="inline-block"> {/* Anchor tag wrapper */}
+                  <Button variant="link" size="sm" className="text-xs p-0 h-auto group-hover:underline text-primary">
+                      Read Now <ArrowRight size={12} className="ml-1"/>
+                  </Button>
+                </a>
             </Link>
         </div>
       </CardContent>
@@ -566,7 +568,9 @@ export default function CommunityPage() {
                              <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><UserIcon size={16} className="text-primary"/> Setting Up Your Profile</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Learn how to customize your profile, add an avatar, banner, and set your status.</CardDescription>
                             <Link href="/profile" passHref legacyBehavior>
-                                <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Profile <ArrowRight size={12} className="ml-1"/></Button>
+                                <a> {/* Add anchor tag wrapper */}
+                                  <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Profile <ArrowRight size={12} className="ml-1"/></Button>
+                                </a>
                              </Link>
                         </Card>
                          {/* Community Guide */}
@@ -580,7 +584,9 @@ export default function CommunityPage() {
                              <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Upload size={16} className="text-primary"/> Uploading Manga</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Step-by-step guide on uploading your manga chapters, cover art, and details.</CardDescription>
                             <Link href="/upload" passHref legacyBehavior>
-                                <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Upload Page <ArrowRight size={12} className="ml-1"/></Button>
+                                <a> {/* Add anchor tag wrapper */}
+                                  <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Upload Page <ArrowRight size={12} className="ml-1"/></Button>
+                                </a>
                             </Link>
                         </Card>
                     </div>
@@ -635,3 +641,5 @@ export default function CommunityPage() {
     </ScrollArea>
   );
 }
+
+    
