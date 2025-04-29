@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, notFound } from 'next/navigation';
@@ -9,9 +8,11 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Users, MessageSquare, Hash, Settings, Mic, Loader2, AlertCircle } from 'lucide-react'; // Added Loader2, AlertCircle
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react'; // Ensure React is imported
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'; // Import Alert components
 import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Input } from '@/components/ui/input'; // Import Input
+import { useToast } from '@/hooks/use-toast'; // Import useToast hook
 
 // --- Interfaces for Community Data ---
 interface CommunityChannel {
@@ -48,11 +49,28 @@ interface CommunityDetails {
     // members: CommunityMember[]; // Could be fetched separately for performance
 }
 
+// --- Placeholder Data (REMOVE THIS in production) ---
+const dummyChannels: CommunityChannel[] = [
+    { id: 'general-action', name: 'general', type: 'text' },
+    { id: 'power-scaling', name: 'power-scaling', type: 'text' },
+    { id: 'fight-club-vc', name: 'Fight Club VC', type: 'voice' },
+    { id: 'general-berserk', name: 'general-berserk', type: 'text' },
+    { id: 'manga-discussion', name: 'manga-discussion', type: 'text' },
+];
+
+const dummyMembers: CommunityMember[] = [
+    { id: 'u1', username: 'ShinraFanatic', avatarUrl: 'https://picsum.photos/seed/user1/40/40', status: 'online' },
+    { id: 'u2', username: 'NamiAI', avatarUrl: 'https://picsum.photos/seed/nami/40/40', status: 'online' },
+    { id: 'u3', username: 'PowerScaler99', avatarUrl: 'https://picsum.photos/seed/user3/40/40', status: 'idle' },
+    { id: 'u4', username: 'GutsBestBoy', avatarUrl: 'https://picsum.photos/seed/user4/40/40', status: 'offline' },
+    { id: 'u5', username: 'GriffithDidNothingWrong', avatarUrl: 'https://picsum.photos/seed/user5/40/40', status: 'online' },
+];
 
 // --- Component ---
 export default function CommunityDetailPage() {
   const params = useParams();
   const communityId = params.communityId as string;
+  const { toast } = useToast(); // Moved useToast hook call inside the component body
 
   const [community, setCommunity] = useState<CommunityDetails | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +78,7 @@ export default function CommunityDetailPage() {
   const [selectedChannel, setSelectedChannel] = useState<CommunityChannel | null>(null);
   const [messages, setMessages] = useState<CommunityChatMessage[]>([]); // State for messages
   const [loadingMessages, setLoadingMessages] = useState(false); // State for loading messages
+  const [newMessage, setNewMessage] = useState(''); // State for new message input
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -69,27 +88,15 @@ export default function CommunityDetailPage() {
       try {
         console.log(`Fetching community data for ID: ${communityId}`);
         // TODO: Replace with actual API call to fetch community details
-        // Example: const data = await getCommunityDetailsFromAPI(communityId);
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
+        await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
 
         // --- Placeholder Data (REMOVE THIS in production) ---
         const dummyDataMap: { [key: string]: CommunityDetails } = {
             'action-hub': {
-                id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', imageUrl: 'https://picsum.photos/seed/action/100/100', memberCount: 1234, onlineCount: 156,
-                channels: [
-                    { id: 'general-action', name: 'general', type: 'text' },
-                    { id: 'power-scaling', name: 'power-scaling', type: 'text' },
-                    { id: 'fight-club-vc', name: 'Fight Club VC', type: 'voice' },
-                ],
+                id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', imageUrl: 'https://picsum.photos/seed/action/100/100', memberCount: 1234, onlineCount: 156, channels: dummyChannels.slice(0, 3),
             },
              'berserk-fans': {
-                 id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art for strugglers.', imageUrl: 'https://picsum.photos/seed/berserk/100/100', memberCount: 876, onlineCount: 92,
-                 channels: [
-                     { id: 'general-berserk', name: 'general', type: 'text' },
-                     { id: 'manga-discussion', name: 'manga-discussion', type: 'text' },
-                     { id: 'fan-art-berserk', name: 'fan-art', type: 'text' },
-                     { id: 'struggler-hangout-vc', name: 'Struggler Hangout', type: 'voice' },
-                 ],
+                 id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art for strugglers.', imageUrl: 'https://picsum.photos/seed/berserk/100/100', memberCount: 876, onlineCount: 92, channels: dummyChannels.slice(3, 5),
              },
              // Add other communities if needed for testing
         };
@@ -105,8 +112,7 @@ export default function CommunityDetailPage() {
           }
         } else {
           setError('Community not found.');
-          // Consider using Next.js notFound() for actual 404 handling
-          // notFound();
+          // notFound(); // Use this for actual 404 in production
         }
       } catch (err: any) {
         console.error("Error fetching community data:", err);
@@ -133,8 +139,7 @@ export default function CommunityDetailPage() {
       console.log(`Fetching messages for channel: ${selectedChannel.name} (${selectedChannel.id})`);
       try {
           // TODO: Replace with actual API call to fetch messages for the channel
-          // Example: const fetchedMessages = await getMessagesForChannel(selectedChannel.id);
-          await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
+          await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
 
          // --- Placeholder Messages (REMOVE THIS in production) ---
           const dummyMessagesMap: { [key: string]: CommunityChatMessage[] } = {
@@ -151,7 +156,9 @@ export default function CommunityDetailPage() {
                   { id: 'm1b', userId: 'u4', username: 'GutsBestBoy', avatarUrl: 'https://picsum.photos/seed/user4/40/40', text: 'Just finished the conviction arc again... masterpiece.', timestamp: new Date(Date.now() - 7200000) },
                   { id: 'm2b', userId: 'u5', username: 'GriffithDidNothingWrong', avatarUrl: 'https://picsum.photos/seed/user5/40/40', text: '<.<', timestamp: new Date(Date.now() - 7100000) },
               ],
-              // Add more channel messages as needed
+              'manga-discussion': [
+                  { id: 'm1md', userId: 'u4', username: 'GutsBestBoy', avatarUrl: 'https://picsum.photos/seed/user4/40/40', text: 'The latest chapter was insane!', timestamp: new Date(Date.now() - 600000) },
+              ]
           };
           const fetchedMessages = dummyMessagesMap[selectedChannel.id] || [];
          // --- End Placeholder Messages ---
@@ -171,7 +178,31 @@ export default function CommunityDetailPage() {
     };
 
     fetchMessages();
-  }, [selectedChannel]); // Re-fetch when channel changes
+  }, [selectedChannel, toast]); // Include toast in dependency array
+
+  const handleSendMessage = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!newMessage.trim() || !selectedChannel || selectedChannel.type !== 'text') return;
+
+      console.log(`Sending message to ${selectedChannel.name}: ${newMessage}`);
+      // TODO: Implement actual message sending logic (e.g., save to Firestore)
+      const sentMessage: CommunityChatMessage = {
+          id: `m-${Date.now()}`, // Temporary ID
+          userId: 'currentUser', // TODO: Replace with actual user ID
+          username: 'ShinraUser', // TODO: Replace with actual username
+          avatarUrl: 'https://picsum.photos/seed/currentuser/40/40', // TODO: Replace with actual avatar
+          text: newMessage.trim(),
+          timestamp: new Date(),
+      };
+
+      // Add message optimistically to the UI
+      setMessages(prev => [...prev, sentMessage]);
+      setNewMessage(''); // Clear input
+
+      // Simulate sending and potentially handle errors
+      // await sendMessageToFirebase(selectedChannel.id, sentMessage);
+      toast({ title: "Message Sent!", description: `Your message was sent to #${selectedChannel.name}.` });
+  };
 
   // --- Render Logic ---
 
@@ -187,7 +218,7 @@ export default function CommunityDetailPage() {
                 <AlertTitle>Error Loading Community</AlertTitle>
                 <AlertDescription>{error}</AlertDescription>
                 <Link href="/community" passHref legacyBehavior>
-                    <Button variant="link" className="mt-4 text-destructive-foreground">Back to Communities</Button>
+                  <a><Button variant="link" className="mt-4 text-destructive-foreground">Back to Communities</Button></a>
                 </Link>
             </Alert>
         </div>
@@ -200,7 +231,7 @@ export default function CommunityDetailPage() {
         <div className="container mx-auto px-4 py-8 text-center h-full flex items-center justify-center">
              <p className="text-muted-foreground">Community details could not be loaded.</p>
              <Link href="/community" passHref legacyBehavior>
-                <Button variant="link" className="mt-4">Back to Communities</Button>
+                 <a><Button variant="link" className="mt-4">Back to Communities</Button></a>
             </Link>
         </div>
     );
@@ -256,6 +287,7 @@ export default function CommunityDetailPage() {
                              key={channel.id}
                              variant="ghost"
                              // TODO: Add onClick handler for joining voice channels
+                              onClick={() => toast({ title: "Voice Chat", description: "Voice channel joining coming soon!", variant: "default" })}
                              className="w-full justify-start text-sm text-muted-foreground hover:text-foreground hover:bg-accent/50 h-8"
                          >
                             <Mic size={16} className="mr-2"/> {channel.name}
@@ -268,7 +300,14 @@ export default function CommunityDetailPage() {
              )}
         </ScrollArea>
          {/* Optional: User Controls at bottom (Mute, Deafen, Settings) */}
-         {/* <div className="p-2 border-t border-border/50"> ... </div> */}
+          <div className="p-2 border-t border-border/50 flex items-center gap-2">
+              <Avatar className="h-8 w-8">
+                  <AvatarImage src="https://picsum.photos/seed/currentuser/40/40" alt="User Avatar"/>
+                  <AvatarFallback>SU</AvatarFallback>
+              </Avatar>
+              <span className="text-sm font-medium truncate">ShinraUser</span>
+              {/* Add mute/deafen/settings buttons here if needed */}
+          </div>
       </div>
 
       {/* Main Chat Area */}
@@ -286,25 +325,17 @@ export default function CommunityDetailPage() {
                  <h2 className="text-lg font-semibold text-muted-foreground">Select a channel</h2>
              )}
             {/* TODO: Add member list toggle icon, search icon etc. */}
+             <Button variant="ghost" size="icon" className="ml-auto text-muted-foreground hover:text-foreground">
+                 <Users size={20} />
+                 <span className="sr-only">Toggle Member List</span>
+             </Button>
         </div>
 
         {/* Chat Messages Area */}
         <ScrollArea className="flex-grow p-4 bg-background"> {/* Ensure background color */}
             {loadingMessages ? (
-                 <div className="space-y-4">
-                    {/* Message Skeletons */}
-                    {Array.from({ length: 5 }).map((_, i) => (
-                         <div key={i} className="flex items-start gap-3 animate-pulse">
-                             <Skeleton className="h-9 w-9 rounded-full mt-1" />
-                             <div className="flex-1 space-y-1.5">
-                                 <div className="flex items-baseline gap-2">
-                                     <Skeleton className="h-4 w-20" />
-                                     <Skeleton className="h-3 w-12" />
-                                 </div>
-                                 <Skeleton className="h-4 w-3/4" />
-                             </div>
-                         </div>
-                    ))}
+                 <div className="flex items-center justify-center h-full">
+                     <Loader2 className="h-8 w-8 animate-spin text-primary"/>
                  </div>
              ) : messages.length > 0 ? (
                 <div className="space-y-4">
@@ -330,28 +361,33 @@ export default function CommunityDetailPage() {
                 </div>
              ) : (
                  <div className="h-full flex items-center justify-center text-muted-foreground">
-                     <p>No messages in this channel yet.</p>
+                     <p>No messages in this channel yet. {selectedChannel?.type === 'text' ? "Start the conversation!" : ""}</p>
                  </div>
              )}
         </ScrollArea>
 
         {/* Message Input */}
         <div className="p-4 border-t border-border/50 flex-shrink-0 bg-card/50 glass">
-            {/* TODO: Implement actual message input component with send functionality */}
-             <div className="flex items-center gap-2 bg-input/50 border border-input rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-ring">
-                 {/* Optional: Add attachment button */}
-                 {/* <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"> <PlusCircle size={18}/> </Button> */}
+            <form onSubmit={handleSendMessage} className="flex items-center gap-2 bg-input/50 border border-input rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-ring">
+                {/* Optional: Add attachment button */}
+                 {/* <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"> <PlusCircle size={18}/> </Button> */}
                 <MessageSquare size={18} className="text-muted-foreground flex-shrink-0"/>
-                <input
+                <Input
                     type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
                     placeholder={`Message #${selectedChannel?.name || 'channel'}...`} // Make dynamic
-                    className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground"
+                    className="flex-1 bg-transparent outline-none text-sm placeholder:text-muted-foreground border-none focus-visible:ring-0 focus-visible:ring-offset-0 h-auto py-0 px-1" // Simplified input style
                     disabled={!selectedChannel || selectedChannel.type !== 'text'} // Disable if no text channel selected
                     // Add state and onChange handler for message input
                 />
                  {/* Optional: Add emoji picker, GIF button */}
-                 {/* <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"> <Smile size={18}/> </Button> */}
-             </div>
+                 {/* <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground"> <Smile size={18}/> </Button> */}
+                  <Button type="submit" variant="ghost" size="icon" className="h-7 w-7 text-primary disabled:text-muted-foreground" disabled={!newMessage.trim() || !selectedChannel || selectedChannel.type !== 'text'}>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5"><path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.94 60.519 60.519 0 0 0 18.445-8.986.75.75 0 0 0 0-1.218A60.517 60.517 0 0 0 3.478 2.404Z" /></svg>
+                      <span className="sr-only">Send Message</span>
+                  </Button>
+             </form>
         </div>
       </div>
 
@@ -387,6 +423,10 @@ function CommunityDetailSkeleton() {
                      <Skeleton className="h-8 w-full rounded" />
                      <Skeleton className="h-8 w-full rounded" />
                  </ScrollArea>
+                  <div className="p-2 border-t border-border/50 flex items-center gap-2">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-20" />
+                  </div>
              </div>
 
              {/* Main Chat Area Skeleton */}
@@ -395,23 +435,13 @@ function CommunityDetailSkeleton() {
                 <div className="h-16 flex items-center px-4 border-b border-border/50 flex-shrink-0 bg-card/50 glass">
                     <Skeleton className="h-5 w-5 mr-2 rounded-full" />
                     <Skeleton className="h-6 w-32" />
+                     <Skeleton className="h-8 w-8 rounded-full ml-auto" />
                  </div>
                  {/* Messages Skeleton */}
                  <ScrollArea className="flex-grow p-4">
-                     <div className="space-y-4">
-                         {Array.from({ length: 5 }).map((_, i) => (
-                             <div key={i} className="flex items-start gap-3">
-                                 <Skeleton className="h-9 w-9 rounded-full mt-1" />
-                                 <div className="flex-1 space-y-1.5">
-                                     <div className="flex items-baseline gap-2">
-                                         <Skeleton className="h-4 w-20" />
-                                         <Skeleton className="h-3 w-12" />
-                                     </div>
-                                     <Skeleton className="h-4 w-3/4" />
-                                 </div>
-                             </div>
-                         ))}
-                     </div>
+                     <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary"/>
+                    </div>
                  </ScrollArea>
                  {/* Input Skeleton */}
                  <div className="p-4 border-t border-border/50 flex-shrink-0 bg-card/50 glass">
@@ -421,8 +451,3 @@ function CommunityDetailSkeleton() {
         </div>
     );
 }
-
-// --- Toast Import (Assuming it's available) ---
-// Ensure useToast is imported correctly if used
-import { useToast } from '@/hooks/use-toast';
-const { toast } = useToast();
