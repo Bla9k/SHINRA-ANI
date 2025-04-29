@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     // Let ThemeProvider handle the theme class on the html tag
-    <html lang="en" className="h-full" suppressHydrationWarning> {/* Add suppressHydrationWarning */}
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <head />{/* Ensure head is present */}
       <body
         className={cn(
@@ -36,7 +36,7 @@ export default function RootLayout({
       >
         <AuthProvider> {/* Wrap with AuthProvider */}
             <ThemeProvider
-                attribute="class" // Use class attribute for theme
+                attribute="data-theme" // Use data-theme attribute
                 defaultTheme="dark" // Keep dark as default
                 enableSystem={false} // Disable system preference detection
                 disableTransitionOnChange // Prevent transition on initial load
