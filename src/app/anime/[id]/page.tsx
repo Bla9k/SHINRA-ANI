@@ -5,20 +5,27 @@ import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { getAnimeDetails, Anime, getAnimeRecommendations } from '@/services/anime'; // Import getAnimeRecommendations
+import { getAnimeDetails, Anime, getAnimeRecommendations } from '@/services/anime'; // Use Jikan-based service
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, VideoOff, Sparkles, ArrowRight, MessageSquare, User } from 'lucide-react'; // Import Sparkles, ArrowRight, MessageSquare, User
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, VideoOff, Sparkles, ArrowRight, MessageSquare, User, BookOpen } from 'lucide-react'; // Added BookOpen
 import { Separator } from '@/components/ui/separator';
-import { AspectRatio } from '@/components/ui/aspect-ratio'; // For trailer
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { cn } from '@/lib/utils';
-import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Import ItemCard components
-import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations'; // Import Nami AI flow
+import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Use shared ItemCard
+import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
+import { ListEnd } from 'lucide-react'; // Import ListEnd icon
+
+interface Episode {
+  number: number;
+  title: string;
+  link: string; // The link needed by the /api/stream route (or just the identifier)
+}
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -37,14 +44,14 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
     );
 };
 
-// Helper to render a horizontal scrollable section
+// Helper to render a horizontal scrollable section - Adjusted to use unified DisplayItem
 const renderHorizontalSection = (
     title: string,
     icon: React.ElementType,
-    items: Anime[] | null | undefined,
+    items: Anime[] | null | undefined, // Expecting Anime[] for recommendations
     isLoading: boolean,
     emptyMessage: string = "Nothing to show here right now.",
-    itemComponent: React.FC<{ item: Anime }> = ItemCard,
+    itemComponent: React.FC<{ item: Anime }> = ItemCard, // ItemCard expects Anime/Manga directly
     skeletonComponent: React.FC = SkeletonItemCard
 ) => {
     const validItems = Array.isArray(items) ? items : [];
@@ -55,7 +62,6 @@ const renderHorizontalSection = (
                 <h3 className="text-xl md:text-2xl font-semibold flex items-center gap-2">
                     {React.createElement(icon, { className: "text-primary w-5 h-5 md:w-6 md:h-6" })} {title}
                 </h3>
-                {/* Optional: Add View All Link */}
             </div>
             <div className="relative">
                 <div className={cn(
@@ -66,12 +72,14 @@ const renderHorizontalSection = (
                         ? Array.from({ length: 5 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` }))
                         : validItems.length > 0
                             ? validItems.map((item, index) => item && item.id ? React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item }) : null)
-                            : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5">{emptyMessage}</p>}
+                            : !isLoading && <p className="text-center text-muted-foreground italic px-4 py-5 w-full">{emptyMessage}</p> // Add w-full here
+                          }
                 </div>
             </div>
         </section>
     );
 };
+
 
 export default function AnimeDetailPage() {
   const params = useParams();
@@ -80,11 +88,16 @@ export default function AnimeDetailPage() {
   const [anime, setAnime] = useState<Anime | null>(null);
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [namiRecommendations, setNamiRecommendations] = useState<Anime[]>([]);
+  const [episodes, setEpisodes] = useState<Episode[]>([]); // State for episodes
+
   const [loading, setLoading] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [loadingNamiRecs, setLoadingNamiRecs] = useState(true);
+  const [loadingEpisodes, setLoadingEpisodes] = useState(true); // Loading state for episodes
+
   const [error, setError] = useState<string | null>(null);
   const [namiError, setNamiError] = useState<string | null>(null);
+  const [episodeError, setEpisodeError] = useState<string | null>(null); // Error state for episodes
 
   // Fetch main details and recommendations
   useEffect(() => {
@@ -93,6 +106,7 @@ export default function AnimeDetailPage() {
       setLoading(false);
       setLoadingRecs(false);
       setLoadingNamiRecs(false);
+      setLoadingEpisodes(false); // Ensure episode loading is also false
       return;
     }
 
@@ -100,14 +114,18 @@ export default function AnimeDetailPage() {
       setLoading(true);
       setLoadingRecs(true);
       setLoadingNamiRecs(true);
+      setLoadingEpisodes(true); // Set episode loading true
       setError(null);
       setNamiError(null);
+      setEpisodeError(null); // Reset episode error
       setAnime(null);
       setRecommendations([]);
       setNamiRecommendations([]);
+      setEpisodes([]); // Reset episodes
 
       try {
         // Fetch main details
+        console.log(`Fetching main anime details for ID: ${malId}`);
         const fetchedAnime = await getAnimeDetails(malId);
         if (!fetchedAnime) {
           setError('Anime details not found.');
@@ -116,31 +134,66 @@ export default function AnimeDetailPage() {
         }
         setAnime(fetchedAnime);
         setLoading(false); // Main details loaded
+        console.log(`Successfully fetched details for: ${fetchedAnime.title}`);
 
         // Fetch Jikan recommendations concurrently
+        console.log(`Fetching Jikan recommendations for ID: ${malId}`);
         getAnimeRecommendations(malId).then(recs => {
+            console.log(`Fetched ${recs.length} Jikan recommendations.`);
             setRecommendations(recs);
         }).catch(err => {
             console.error("Failed to load Jikan recommendations:", err);
-            // Don't set main error, just log for recs
         }).finally(() => setLoadingRecs(false));
 
 
         // Fetch Nami AI recommendations concurrently
-        // Use current anime details for context
+        console.log(`Fetching Nami AI recommendations based on: ${fetchedAnime.title}`);
         const namiInput = {
-            mood: "Similar to this", // Simple mood based on current anime
+            mood: "Similar to this",
             watchHistory: [fetchedAnime.title], // Seed history with current title
-            profileActivity: `Interested in anime like ${fetchedAnime.title}, particularly genres: ${fetchedAnime.genres.map(g => g.name).join(', ')}.`, // Basic profile activity
+            profileActivity: `Interested in anime like ${fetchedAnime.title}, particularly genres: ${fetchedAnime.genres.map(g => g.name).join(', ')}.`,
         };
         getMoodBasedRecommendations(namiInput).then(namiRecs => {
-             // Filter AI results to only include Anime for this context
+             console.log(`Fetched ${namiRecs.animeRecommendations?.length || 0} Nami AI recommendations.`);
              setNamiRecommendations(namiRecs.animeRecommendations || []);
         }).catch(err => {
              console.error("Failed to load Nami recommendations:", err);
              setNamiError("Nami couldn't find recommendations right now.");
         }).finally(() => setLoadingNamiRecs(false));
 
+         // --- Fetch Episodes --- // New Episode Fetching Logic
+         console.log(`Fetching episodes for MAL ID: ${malId} from API route.`);
+         fetch(`/api/anime/${malId}/episodes`)
+         .then(async (res) => {
+            // If the response is NOT OK (e.g., 404, 500), set the error state instead of throwing
+            if (!res.ok) {
+               const errorData = await res.json().catch(() => ({ message: `HTTP error! status: ${res.status}` }));
+               console.error(`Episode API responded with status ${res.status}:`, errorData.message || 'Unknown API error');
+               setEpisodeError(errorData.message || `Could not load episodes (Status: ${res.status})`);
+               return null; // Indicate failure to the next .then()
+            }
+            return res.json(); // Proceed to parse JSON if response is OK
+         })
+         .then(data => {
+            if (data === null) return; // Skip if previous step failed
+
+            if (data && Array.isArray(data.episodes)) {
+               setEpisodes(data.episodes);
+               console.log(`Successfully loaded ${data.episodes.length} episodes via API.`);
+            } else {
+                 const errMsg = 'Invalid episode data received from API.';
+                 setEpisodeError(errMsg);
+                 console.warn(errMsg, 'Data:', data);
+            }
+         })
+         .catch(err => { // Catch network errors or JSON parsing errors
+            console.error("Network or parsing error fetching episodes:", err);
+            setEpisodeError(err.message || 'Could not load episodes due to a network issue.');
+         })
+         .finally(() => {
+            setLoadingEpisodes(false);
+         });
+        // --- End Fetch Episodes --- //
 
       } catch (err: any) {
         console.error(`[AnimeDetailPage] Unexpected error fetching data for MAL ID ${malId}:`, err);
@@ -148,11 +201,14 @@ export default function AnimeDetailPage() {
         setAnime(null);
         setRecommendations([]);
         setNamiRecommendations([]);
+        setEpisodes([]); // Reset episodes on main error
       } finally {
         // Ensure all loading states are false if not already set
         setLoading(false);
-        setLoadingRecs(false);
+        setLoadingRecs(false); // These might be redundant if their finally blocks run
         setLoadingNamiRecs(false);
+         // Ensure episode loading is false if not already handled above
+         setLoadingEpisodes(false);
       }
     }
 
@@ -178,7 +234,9 @@ export default function AnimeDetailPage() {
   }
 
   if (!anime) {
-    return <AnimeDetailSkeleton />; // Or a specific "not found" component
+    // This case should ideally be covered by the error or loading states,
+    // but acts as a fallback if data somehow becomes null after loading.
+    return <AnimeDetailSkeleton />;
   }
 
 
@@ -191,7 +249,7 @@ export default function AnimeDetailPage() {
                      src={anime.imageUrl}
                      alt={`${anime.title} backdrop`}
                      fill
-                     className="object-cover object-top opacity-15 blur-md scale-110" // Slightly less opacity
+                     className="object-cover object-top opacity-15 blur-md scale-110"
                      aria-hidden="true"
                      priority
                  />
@@ -199,7 +257,7 @@ export default function AnimeDetailPage() {
             <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/80 to-background" />
         </div>
 
-        <div className="relative mt-16 md:mt-32"> {/* Increased top margin */}
+        <div className="relative mt-16 md:mt-32">
             {/* Main Details Card */}
             <Card className="overflow-visible glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mb-12">
                 <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
@@ -223,13 +281,7 @@ export default function AnimeDetailPage() {
                         </Card>
                         {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                           <Button size="sm" className="w-full" disabled title="Streaming coming soon!">
-                              <VideoOff size={16} className="mr-2 opacity-50"/> Watch (Coming Soon)
-                           </Button>
-                           {/* Add to List / Watchlist Button (Example) */}
-                           {/* <Button size="sm" className="w-full neon-glow-hover">
-                              <PlusCircle size={16} className="mr-2"/> Add to Watchlist
-                           </Button> */}
+                           {/* Watch button is now handled in the Episodes section below */}
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={anime.url} target="_blank" rel="noopener noreferrer">
@@ -244,6 +296,8 @@ export default function AnimeDetailPage() {
                                  </Link>
                               </Button>
                            )}
+                           {/* Placeholder for Add to List/Watchlist */}
+                           {/* <Button size="sm" className="w-full">Add to Watchlist</Button> */}
                         </div>
                     </div>
 
@@ -297,7 +351,7 @@ export default function AnimeDetailPage() {
                                   <h3 className="text-xl font-semibold flex items-center gap-2"><Youtube size={22} className="text-red-600"/> Trailer</h3>
                                    <AspectRatio ratio={16 / 9} className="rounded-lg overflow-hidden border border-border/50 glass shadow-md">
                                         <iframe
-                                            src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")}
+                                            src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")} // Disable autoplay by default
                                             title={`${anime.title} Trailer`}
                                             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen
@@ -312,13 +366,52 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-             {/* Episodes Section - Disabled */}
+             {/* Episodes Section - Updated Error Handling */}
             <section className="mb-12">
-                 <h3 className="text-2xl font-semibold mb-4">Episodes</h3>
-                 <Card className="glass p-6 flex flex-col items-center justify-center text-center border-border/50">
-                     <VideoOff size={40} className="mb-3 text-muted-foreground opacity-50"/>
-                     <p className="font-medium text-muted-foreground">Anime Streaming Coming Soon!</p>
-                     <p className="text-sm text-muted-foreground">We're working hard to bring you direct streaming capabilities.</p>
+                 <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2"><Film size={24}/> Episodes</h3>
+                 <Card className="glass p-6 border-border/50">
+                     {loadingEpisodes ? (
+                         <div className="flex flex-col items-center justify-center text-center">
+                             <Skeleton className="h-10 w-10 rounded-full mb-3" />
+                             <Skeleton className="h-5 w-48 mb-2" />
+                             <Skeleton className="h-4 w-64" />
+                         </div>
+                     ) : episodeError ? ( // Display specific error message
+                         <Alert variant="destructive" className="glass">
+                             <AlertCircle className="h-4 w-4" />
+                             <AlertTitle>Error Loading Episodes</AlertTitle>
+                             <AlertDescription>{episodeError}</AlertDescription>
+                             {/* Optional: Add a retry button */}
+                             {/* <Button onClick={() => { setLoadingEpisodes(true); setEpisodeError(null); /* Trigger refetch logic here */ }} variant="outline" size="sm" className="mt-3">Retry</Button> */}
+                         </Alert>
+                     ) : episodes.length === 0 ? (
+                         <div className="flex flex-col items-center justify-center text-center text-muted-foreground">
+                              <VideoOff size={40} className="mb-3 opacity-50"/>
+                             <p className="font-medium">No Episodes Available</p>
+                             <p className="text-sm">Could not find streaming episodes for this anime from available sources.</p>
+                         </div>
+                     ) : (
+                          <ScrollArea className="h-64 pr-4"> {/* Add ScrollArea for episodes */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                  {episodes.map(episode => (
+                                      // Link to the new watch page - encode the episode link/identifier
+                                      <Link key={episode.number} href={`/anime/${malId}/${encodeURIComponent(episode.link)}/watch`} passHref legacyBehavior>
+                                           <a> {/* Added anchor tag for legacyBehavior */}
+                                              <Card className="cursor-pointer hover:border-primary transition-colors duration-200 glass border-border/50">
+                                                  <CardContent className="p-4">
+                                                      <p className="font-semibold text-primary">Episode {episode.number}</p>
+                                                      {/* Optional: Display episode title if available */}
+                                                      {episode.title && episode.title !== `Episode ${episode.number}` && (
+                                                          <p className="text-xs text-muted-foreground truncate mt-1">{episode.title}</p>
+                                                      )}
+                                                  </CardContent>
+                                              </Card>
+                                          </a>
+                                      </Link>
+                                  ))}
+                              </div>
+                          </ScrollArea>
+                     )}
                  </Card>
             </section>
 
@@ -335,8 +428,8 @@ export default function AnimeDetailPage() {
                      </Alert>
                  )}
                 {renderHorizontalSection(
-                    "", // Title already present
-                    () => null, // No icon needed here
+                    "",
+                    () => null,
                     namiRecommendations,
                     loadingNamiRecs,
                     "Nami couldn't find any recommendations based on this anime right now.",
@@ -348,7 +441,7 @@ export default function AnimeDetailPage() {
             {/* Related Anime Section (Jikan Recommendations) */}
              {renderHorizontalSection(
                 "Related Anime",
-                Tv, // Changed Icon
+                Tv,
                 recommendations,
                 loadingRecs,
                 "No related anime found.",
@@ -363,7 +456,7 @@ export default function AnimeDetailPage() {
   );
 }
 
-// --- Skeleton Component (No changes needed here) ---
+// --- Skeleton Component (Updated to include episode skeleton) ---
 function AnimeDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
@@ -385,7 +478,7 @@ function AnimeDetailSkeleton() {
                        <div className="flex flex-col gap-3 mt-4">
                            <Skeleton className="h-9 w-full rounded-md" />
                            <Skeleton className="h-9 w-full rounded-md" />
-                           <Skeleton className="h-9 w-full rounded-md" />
+                           {/* <Skeleton className="h-9 w-full rounded-md" /> */}
                        </div>
                   </div>
 
@@ -429,10 +522,10 @@ function AnimeDetailSkeleton() {
              <section className="mb-12">
                 <Skeleton className="h-8 w-36 mb-4" />
                 <Card className="glass p-6">
-                    <div className="flex flex-col items-center justify-center text-center">
-                         <Skeleton className="h-10 w-10 rounded-full mb-3" />
-                         <Skeleton className="h-5 w-48 mb-2" />
-                         <Skeleton className="h-4 w-64" />
+                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {Array.from({ length: 8 }).map((_, index) => (
+                             <Card key={`ep-skel-${index}`} className="glass border-border/50"><CardContent className="p-4"><Skeleton className="h-5 w-3/4" /></CardContent></Card>
+                        ))}
                      </div>
                 </Card>
              </section>

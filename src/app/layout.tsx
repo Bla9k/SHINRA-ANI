@@ -19,7 +19,7 @@ const poppins = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: 'Shinra-Ani', // Updated App Name
+  title: 'Shinra-Ani',
   description: 'Ultimate Anime & Manga Platform with Nami AI Integration',
 };
 
@@ -30,21 +30,20 @@ export default function RootLayout({
 }>) {
   return (
     // Let ThemeProvider handle the theme class on the html tag
-    <html lang="en" className="h-full" suppressHydrationWarning> {/* Add suppressHydrationWarning */}
-      <head />{/* Ensure head is present */}
+    <html lang="en" className="h-full" suppressHydrationWarning>{/* Add suppressHydrationWarning */}<head />{/* Ensure head is present */}
       <body
         className={cn(
-          'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full', // Use flex column and full height
-          poppins.variable // Use Poppins variable
+          'min-h-screen bg-background font-sans antialiased transition-smooth flex flex-col h-full',
+          poppins.variable
         )}
       >
         <AuthProvider>
-          <AnimationProvider> {/* Wrap with AnimationProvider */}
+          <AnimationProvider>
             <ThemeProvider
-                attribute="data-theme" // Use data-theme attribute
+                attribute="data-theme"
                 defaultTheme="dark"
-                enableSystem={false} // Disable system preference detection
-                disableTransitionOnChange // Prevent transition on initial load
+                enableSystem={false}
+                disableTransitionOnChange
             >
                  <AppLayout>
                    {children}
@@ -56,7 +55,7 @@ export default function RootLayout({
          {/* Load Anime.js after interactive elements */}
          <Script
             src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"
-            strategy="lazyOnload" // Changed strategy to lazyOnload for potentially better performance
+            strategy="lazyOnload"
             integrity="sha512-z4OUqw38qNLpn1libAN9BsoDx6nbNFio5lA6CuTp9NlK83b89hgyCVq+N5FdBJptINztxn1Z3SaKSKUS5UP60Q=="
             crossOrigin="anonymous"
             referrerPolicy="no-referrer"
