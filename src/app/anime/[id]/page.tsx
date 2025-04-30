@@ -20,11 +20,13 @@ import { cn } from '@/lib/utils';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Use shared ItemCard
 import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
 import { ListEnd } from 'lucide-react'; // Import ListEnd icon
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface Episode {
+  id: string; // Use episode session ID from AnimePahe
   number: number;
   title: string;
-  link: string; // The link needed by the /api/stream route (or just the identifier)
+  link: string; // Keep this for compatibility if needed, but prefer id
 }
 
 // Helper function to format status
@@ -84,8 +86,10 @@ const renderHorizontalSection = (
 export default function AnimeDetailPage() {
   const params = useParams();
   const malId = params.id ? parseInt(params.id as string, 10) : NaN;
+  const { toast } = useToast();
 
   const [anime, setAnime] = useState<Anime | null>(null);
+  const [animePaheId, setAnimePaheId] = useState<string | null>(null); // Store AnimePahe internal ID
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [namiRecommendations, setNamiRecommendations] = useState<Anime[]>([]);
   const [episodes, setEpisodes] = useState<Episode[]>([]); // State for episodes
@@ -98,6 +102,29 @@ export default function AnimeDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [namiError, setNamiError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null); // Error state for episodes
+
+  // Function to fetch AnimePahe ID using the title from Jikan details
+  const fetchAnimePaheId = useCallback(async (title: string) => {
+    try {
+      console.log(`[fetchAnimePaheId] Searching AnimePahe for title: "${title}"`);
+      const response = await fetch(`/api/animepahe/search/${encodeURIComponent(title)}`);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to search AnimePahe: ${response.statusText}`);
+      }
+      const data = await response.json();
+      if (data && data.animePaheId) {
+        console.log(`[fetchAnimePaheId] Found AnimePahe ID: ${data.animePaheId}`);
+        return data.animePaheId;
+      } else {
+        console.warn(`[fetchAnimePaheId] AnimePahe ID not found for title: "${title}"`);
+        return null;
+      }
+    } catch (err: any) {
+      console.error('[fetchAnimePaheId] Error:', err);
+      return null; // Return null on error, don't block episode loading entirely
+    }
+  }, []);
 
   // Fetch main details and recommendations
   useEffect(() => {
@@ -119,6 +146,7 @@ export default function AnimeDetailPage() {
       setNamiError(null);
       setEpisodeError(null); // Reset episode error
       setAnime(null);
+      setAnimePaheId(null); // Reset AnimePahe ID
       setRecommendations([]);
       setNamiRecommendations([]);
       setEpisodes([]); // Reset episodes
@@ -135,6 +163,17 @@ export default function AnimeDetailPage() {
         setAnime(fetchedAnime);
         setLoading(false); // Main details loaded
         console.log(`Successfully fetched details for: ${fetchedAnime.title}`);
+
+        // --- Fetch AnimePahe ID Concurrently ---
+        let currentAnimePaheId: string | null = null;
+        if (fetchedAnime.title) {
+            currentAnimePaheId = await fetchAnimePaheId(fetchedAnime.title);
+            setAnimePaheId(currentAnimePaheId); // Store the found AnimePahe ID
+        } else {
+            console.warn("Anime title missing, cannot search AnimePahe ID.");
+            setEpisodeError("Could not fetch episodes (missing title for search).");
+            setLoadingEpisodes(false);
+        }
 
         // Fetch Jikan recommendations concurrently
         console.log(`Fetching Jikan recommendations for ID: ${malId}`);
@@ -161,38 +200,54 @@ export default function AnimeDetailPage() {
              setNamiError("Nami couldn't find recommendations right now.");
         }).finally(() => setLoadingNamiRecs(false));
 
-         // --- Fetch Episodes --- // New Episode Fetching Logic
-         console.log(`Fetching episodes for MAL ID: ${malId} from API route.`);
-         fetch(`/api/anime/${malId}/episodes`)
-         .then(async (res) => {
-            // If the response is NOT OK (e.g., 404, 500), set the error state instead of throwing
-            if (!res.ok) {
-               const errorData = await res.json().catch(() => ({ message: `HTTP error! status: ${res.status}` }));
-               console.error(`Episode API responded with status ${res.status}:`, errorData.message || 'Unknown API error');
-               setEpisodeError(errorData.message || `Could not load episodes (Status: ${res.status})`);
-               return null; // Indicate failure to the next .then()
-            }
-            return res.json(); // Proceed to parse JSON if response is OK
-         })
-         .then(data => {
-            if (data === null) return; // Skip if previous step failed
+         // --- Fetch Episodes using AnimePahe ID if found --- //
+         if (currentAnimePaheId) {
+             console.log(`Fetching episodes using AnimePahe ID: ${currentAnimePaheId}`);
+             fetch(`/api/animepahe/episodes/${currentAnimePaheId}`) // Use AnimePahe ID in the route
+             .then(async (res) => {
+                if (!res.ok) {
+                   const errorData = await res.json().catch(() => ({ message: `HTTP error! status: ${res.status}` }));
+                   console.error(`Episode API (AnimePahe) responded with status ${res.status}:`, errorData.message || 'Unknown API error');
+                   // More specific error message based on status
+                   const errorMessage = res.status === 404
+                       ? `No episodes found on AnimePahe for this title (ID: ${currentAnimePaheId}).`
+                       : errorData.message || `Could not load episodes (Status: ${res.status})`;
+                    setEpisodeError(errorMessage);
+                   return null; // Indicate failure
+                }
+                return res.json();
+             })
+             .then((data: any) => { // Expecting AnimePaheEpisode[] directly
+                if (data === null) return;
 
-            if (data && Array.isArray(data.episodes)) {
-               setEpisodes(data.episodes);
-               console.log(`Successfully loaded ${data.episodes.length} episodes via API.`);
-            } else {
-                 const errMsg = 'Invalid episode data received from API.';
-                 setEpisodeError(errMsg);
-                 console.warn(errMsg, 'Data:', data);
-            }
-         })
-         .catch(err => { // Catch network errors or JSON parsing errors
-            console.error("Network or parsing error fetching episodes:", err);
-            setEpisodeError(err.message || 'Could not load episodes due to a network issue.');
-         })
-         .finally(() => {
-            setLoadingEpisodes(false);
-         });
+                if (Array.isArray(data)) { // Check if it's an array
+                   const mappedEpisodes = data.map((ep: any) => ({ // Map to our Episode interface
+                       id: ep.id, // This is the episode session ID
+                       number: ep.episode,
+                       title: ep.title || `Episode ${ep.episode}`,
+                       link: `/anime/${malId}/episode/${encodeURIComponent(ep.id)}/watch` // Use episode session ID for watch link
+                   }));
+                   setEpisodes(mappedEpisodes);
+                   console.log(`Successfully loaded ${mappedEpisodes.length} episodes via AnimePahe API.`);
+                   setEpisodeError(null); // Clear previous errors if successful
+                } else {
+                     const errMsg = 'Invalid episode data received from AnimePahe API.';
+                     setEpisodeError(errMsg);
+                     console.warn(errMsg, 'Data:', data);
+                }
+             })
+             .catch(err => {
+                console.error("Network or parsing error fetching AnimePahe episodes:", err);
+                setEpisodeError(err.message || 'Could not load episodes due to a network issue.');
+             })
+             .finally(() => {
+                setLoadingEpisodes(false);
+             });
+         } else if(fetchedAnime.title) {
+             // Only set error if title was present but ID wasn't found
+             setEpisodeError("Could not find this anime on AnimePahe to fetch episodes.");
+             setLoadingEpisodes(false);
+         }
         // --- End Fetch Episodes --- //
 
       } catch (err: any) {
@@ -214,7 +269,7 @@ export default function AnimeDetailPage() {
 
     fetchAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [malId]);
+  }, [malId, fetchAnimePaheId]);
 
 
   if (loading && !anime) {
@@ -240,7 +295,7 @@ export default function AnimeDetailPage() {
   }
 
 
-  return (
+  return ( // Fixed: Added closing parenthesis for return statement
     <div className="container mx-auto px-4 py-8">
         {/* Background Image Section */}
         <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
@@ -394,8 +449,12 @@ export default function AnimeDetailPage() {
                           <ScrollArea className="h-64 pr-4"> {/* Add ScrollArea for episodes */}
                               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                   {episodes.map(episode => (
-                                      // Link to the new watch page - encode the episode link/identifier
-                                      <Link key={episode.number} href={`/anime/${malId}/${encodeURIComponent(episode.link)}/watch`} passHref legacyBehavior>
+                                      // Link to the watch page using AnimePahe episode ID (session ID)
+                                      <Link
+                                           key={episode.id} // Use the episode session ID as the key
+                                           href={`/anime/${malId}/watch/${encodeURIComponent(episode.id)}`} // Pass MAL ID and Episode Session ID
+                                           passHref
+                                           legacyBehavior>
                                            <a> {/* Added anchor tag for legacyBehavior */}
                                               <Card className="cursor-pointer hover:border-primary transition-colors duration-200 glass border-border/50">
                                                   <CardContent className="p-4">

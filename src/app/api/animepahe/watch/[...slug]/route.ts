@@ -25,7 +25,8 @@ export async function GET(
         return NextResponse.json({ message: 'Invalid URL structure. Expected /watch/[animeId]/[episodeSessionId]' }, { status: 400 });
     }
 
-    const [animeId, episodeSessionId] = slug;
+    const [animeId, encodedEpisodeSessionId] = slug;
+    const episodeSessionId = decodeURIComponent(encodedEpisodeSessionId); // Decode the session ID
 
     // Basic validation
      if (!animeId || !/^\d+$/.test(animeId)) {
@@ -52,6 +53,10 @@ export async function GET(
 
     } catch (error: any) {
         console.error(`[API/animepahe/watch] Error fetching streaming data for Anime ${animeId}, Episode ${episodeSessionId} from AnimePahe:`, error);
+        // Check if the error message indicates "Episode not found"
+        if (error.message && error.message.toLowerCase().includes("episode not found")) {
+             return NextResponse.json({ message: 'Episode link invalid or expired on AnimePahe.' }, { status: 404 });
+        }
         return NextResponse.json({ message: 'Internal server error while fetching streaming data.', error: error.message }, { status: 500 });
     }
 }

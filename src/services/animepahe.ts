@@ -1,7 +1,7 @@
 
 import { cache } from 'react';
 import { config } from '@/config';
-// No direct import of JSDOM here
+// No direct import of JSDOM here - moved to API route
 
 // --- Interfaces ---
 export interface AnimePaheEpisode {
@@ -11,37 +11,19 @@ export interface AnimePaheEpisode {
   snapshot?: string | null; // Thumbnail URL
   duration?: string | null;
   created_at?: string | null;
-  anime_id?: number; // Internal AnimePahe anime ID
+  anime_id?: number; // Internal AnimePahe anime ID (from the URL/search)
 }
 
 export interface AnimePaheCDNLink {
-  file: string; //Stream URL
-  label: string; //Quality name
-  audio: string;
-  resolution: string;
-  size: string;
-  url: string;
+  file: string; // Stream URL (often .m3u8)
+  label: string; // Quality name (e.g., "1080p")
+  audio: string; // Audio language (e.g., "jpn")
+  // Add other potential fields if the API provides them
 }
-interface AnimePaheResult {
-  data: AnimePaheEpisode[],
+
+interface AnimePaheEpisodeApiResponse {
+  data: AnimePaheEpisode[], // Array of raw episode data from API
   last_page: number
-}
-
-export interface AnimePaheSearchResult {
-    id: number; // AnimePahe's internal anime ID
-    title: string;
-    poster: string; // URL to poster image
-    type: string; // e.g., TV
-    episodes: number;
-    status: string; // e.g., Finished Airing
-    season: string; // e.g., Spring
-    year: number;
-    score: number;
-    session: string; // This is likely the AnimePahe ID we need for episode fetching
-}
-
-interface AnimePaheSearchResponse {
-    data: AnimePaheSearchResult[]
 }
 
 // --- Service Functions (Intended for Server-Side / API Route Use) ---
@@ -81,12 +63,13 @@ export const getAnimeEpisodesPahe = cache(
          // Throw a general error for other non-OK responses
          throw new Error(`AnimePahe Episode API request failed: ${response.status} ${response.statusText}`);
       }
-      const data: AnimePaheResult = await response.json();
+      const data: AnimePaheEpisodeApiResponse = await response.json();
 
       // Check if data itself indicates no episodes even with 200 OK (unlikely but possible)
       if (!data || !data.data || data.data.length === 0) {
           console.warn(`[getAnimeEpisodesPahe] Response OK but no episode data found for AnimePahe ID ${animePaheId}`);
-          throw new Error(`No episodes found for this anime on AnimePahe (ID: ${animePaheId}). Response was empty.`);
+          // Adjust error message to be more informative
+          throw new Error(`No episode data returned by AnimePahe for ID ${animePaheId}, even though the request was successful.`);
       }
 
       // Map response data
@@ -131,6 +114,10 @@ export const getAnimeStreamingLinkPahe = cache(async (animePaheId: string, episo
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
             console.error(`[getAnimeStreamingLinkPahe] Internal API error ${response.status}:`, errorData.message || response.statusText);
+            // Check for specific 404 from the API route
+            if (response.status === 404 && errorData.message && errorData.message.includes('No streaming sources found')) {
+                throw new Error(errorData.message); // Propagate the specific "not found" message
+            }
             throw new Error(errorData.message || `Failed to get streaming links: ${response.statusText}`);
         }
 
@@ -140,8 +127,22 @@ export const getAnimeStreamingLinkPahe = cache(async (animePaheId: string, episo
             throw new Error("Invalid response format from streaming link API.");
         }
 
-        console.log(`[getAnimeStreamingLinkPahe] Successfully fetched ${data.sources.length} sources via internal API.`);
-        return data.sources as AnimePaheCDNLink[];
+        // Validate structure of sources
+        const validSources = data.sources.filter((s: any): s is AnimePaheCDNLink =>
+            s && typeof s.file === 'string' && typeof s.label === 'string' && typeof s.audio === 'string'
+        );
+
+        if (validSources.length === 0 && data.sources.length > 0) {
+             console.warn("[getAnimeStreamingLinkPahe] API returned sources but they have invalid format:", data.sources);
+             throw new Error("Received invalid source data from streaming link API.");
+        } else if (validSources.length === 0) {
+             console.warn("[getAnimeStreamingLinkPahe] API returned no valid sources.");
+             throw new Error("No valid streaming sources found for this episode.");
+        }
+
+
+        console.log(`[getAnimeStreamingLinkPahe] Successfully fetched ${validSources.length} sources via internal API.`);
+        return validSources;
 
     } catch (error: any) {
         console.error(`[getAnimeStreamingLinkPahe] Error fetching from internal API ${apiUrl}:`, error.message);
@@ -151,45 +152,46 @@ export const getAnimeStreamingLinkPahe = cache(async (animePaheId: string, episo
 
 
 /**
- * Fetches the AnimePahe session ID for a given anime title.
- * This function now relies on an API route to handle the searching/scraping with JSDOM.
- * @param animeTitle: string The title to search for.
- * @returns Promise<{ id: string | null } | null> An object containing the AnimePahe ID (session) if found, otherwise null. Returns null if the API call fails unexpectedly.
+ * Fetches the AnimePahe ID for a given MAL ID or title.
+ * This function now relies on an API route to handle the searching/scraping.
+ * @param identifier: string | number - The MAL ID or title to search for.
+ * @returns Promise<string | null> The AnimePahe ID (session or internal ID) if found, otherwise null. Returns null if the API call fails unexpectedly.
  */
- export const getAnimePaheSession = cache(async (animeTitle: string): Promise<{ id: string | null } | null> => {
-     const apiUrl = `/api/animepahe/search/${encodeURIComponent(animeTitle)}`;
-     console.log(`[getAnimePaheSession] Fetching from internal API: ${apiUrl}`);
+ export const getAnimePaheId = cache(async (identifier: string | number): Promise<string | null> => {
+     const apiUrl = `/api/animepahe/search/${encodeURIComponent(identifier.toString())}`; // Pass MAL ID or title
+     console.log(`[getAnimePaheId] Fetching from internal API: ${apiUrl}`);
      let response: Response | undefined;
      try {
          response = await fetch(apiUrl, { cache: 'no-store' }); // Fetch from our API route
 
          if (!response.ok) {
              const errorData = await response.json().catch(() => ({ message: 'Failed to parse error response' }));
-             console.error(`[getAnimePaheSession] Internal API error ${response.status}:`, errorData.message || response.statusText);
+             console.error(`[getAnimePaheId] Internal API error ${response.status}:`, errorData.message || response.statusText);
              if (response.status === 404) {
-                 console.warn(`[getAnimePaheSession] Anime title "${animeTitle}" not found via internal API.`);
-                 return { id: null }; // Return object with null ID if specifically not found
+                 console.warn(`[getAnimePaheId] Identifier "${identifier}" not found via internal API.`);
+                 return null; // Return null if specifically not found by the API route
              }
-             // For other errors (like 502 Bad Gateway from scraping), throw to indicate a real failure
+             // For other errors (like 502 Bad Gateway from scraping), re-throw
              throw new Error(errorData.message || `Failed to search AnimePahe ID: ${response.statusText}`);
          }
 
          const data = await response.json();
 
-         if (!data || typeof data.animePaheId === 'undefined') { // API should return { animePaheId: '...' or null }
-             console.error("[getAnimePaheSession] Invalid response format from search API:", data);
+         // API route should return { animePaheId: '...' or null }
+         if (!data || typeof data.animePaheId === 'undefined') {
+             console.error("[getAnimePaheId] Invalid response format from search API:", data);
              throw new Error("Invalid response format from search API.");
          }
 
          if (data.animePaheId) {
-             console.log(`[getAnimePaheSession] Successfully found AnimePahe ID ${data.animePaheId} for "${animeTitle}" via internal API.`);
+             console.log(`[getAnimePaheId] Successfully found AnimePahe ID ${data.animePaheId} for "${identifier}" via internal API.`);
          } else {
-             console.log(`[getAnimePaheSession] AnimePahe ID not found for "${animeTitle}" via internal API (API returned null).`);
+             console.log(`[getAnimePaheId] AnimePahe ID not found for "${identifier}" via internal API (API returned null).`);
          }
-         return { id: data.animePaheId }; // Return the ID (or null) wrapped in an object
+         return data.animePaheId; // Return the ID (string) or null
 
      } catch (error: any) {
-         console.error(`[getAnimePaheSession] Error fetching from internal API ${apiUrl}:`, error.message);
+         console.error(`[getAnimePaheId] Error fetching from internal API ${apiUrl}:`, error.message);
           // Return null to indicate the operation failed, distinguish from "not found"
          return null;
      }
