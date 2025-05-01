@@ -1,4 +1,4 @@
-
+// src/layers/aniwave.ts
 import * as cheerio from 'cheerio';
 import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
 import axios from 'axios'; // Keep axios for potential AJAX calls
@@ -6,7 +6,7 @@ import axios from 'axios'; // Keep axios for potential AJAX calls
 const ANIWAVE_DOMAIN = 'https://aniwave.to'; // Target new domain .to
 
 // Function to search for anime
-async function fetchFromAniWave(title) {
+async function fetchFromAniWave(title: string) {
   const timestamp = new Date().toISOString();
   // Use the filter endpoint which seems more reliable for searching
   const searchUrl = `${ANIWAVE_DOMAIN}/filter?keyword=${encodeURIComponent(title)}`;
@@ -18,12 +18,16 @@ async function fetchFromAniWave(title) {
     const $ = cheerio.load(html);
 
     // Optional: Check for CAPTCHA/Challenge before proceeding
-    // const challengeFreeHtml = await handleCaptchaOrChallenge(html, searchUrl);
-    // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
-    // const $ = cheerio.load(challengeFreeHtml);
+    const challengeFreeHtml = await handleCaptchaOrChallenge(html, searchUrl);
+    if (!challengeFreeHtml) {
+        console.warn(`[AniWave Layer] [${timestamp}] CAPTCHA/Challenge detected on ${searchUrl}, returning null.`);
+        return null;
+    }
+    const $challengeFree = cheerio.load(challengeFreeHtml);
+
 
     // Updated selector based on common AniWave structure
-    const firstResult = $('.film_list-wrap .flw-item').first();
+    const firstResult = $challengeFree('.film_list-wrap .flw-item').first();
     const animeTitle = firstResult.find('.film-name a').text()?.trim();
     const animeLink = firstResult.find('.film-name a').attr('href');
 
@@ -37,16 +41,18 @@ async function fetchFromAniWave(title) {
 
     console.log(`[AniWave Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
-  } catch (err) {
+  } catch (err: any) {
     const error = err as Error;
-    console.error(`[AniWave Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Error: ${error.message}`);
+    const statusCode = (error as any).response?.status;
+    const errorCode = (error as any).code;
+    console.error(`[AniWave Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
     // console.error(`[AniWave Layer] Error Stack: ${error.stack}`);
     return null; // Return null on failure
   }
 }
 
 // Function to fetch episodes from an AniWave anime page
-async function fetchEpisodesFromAniWave(animeData) {
+async function fetchEpisodesFromAniWave(animeData: { title: string, link: string }) {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.link || !animeData.title) {
       console.error(`[AniWave Layer] [${timestamp}] Invalid anime data provided to fetchEpisodesFromAniWave:`, animeData);
@@ -117,7 +123,7 @@ async function fetchEpisodesFromAniWave(animeData) {
             } else {
                 console.warn(`[AniWave Layer] [${timestamp}] AJAX response format invalid or status false for ${ajaxEpisodesUrl}. Response:`, ajaxResponse);
             }
-        } catch (ajaxError) {
+        } catch (ajaxError: any) {
              const error = ajaxError as Error;
              console.warn(`[AniWave Layer] [${timestamp}] AJAX episode fetch failed for "${animeData.title}". Error: ${error.message}. Proceeding to static scrape.`);
              // Fallthrough to static scraping
@@ -133,10 +139,19 @@ async function fetchEpisodesFromAniWave(animeData) {
         try {
             const html = await fetchWithRetry(animePageUrl, { headers: { 'Referer': ANIWAVE_DOMAIN }});
             const $ = cheerio.load(html);
+
+            // Optional: Check for CAPTCHA/Challenge
+             const challengeFreeHtml = await handleCaptchaOrChallenge(html, animePageUrl);
+             if (!challengeFreeHtml) {
+                 console.warn(`[AniWave Layer] [${timestamp}] CAPTCHA/Challenge detected on static scrape of ${animePageUrl}, returning empty.`);
+                 return []; // Return empty if blocked
+             }
+             const $challengeFree = cheerio.load(challengeFreeHtml);
+
             const seenEpisodeNumbers = new Set(); // Use separate set for static scrape
 
             // Add more potential selectors based on observation
-            $('.episodes-list a, #episodes-list a, div.server[data-server-id="1"] ul.episodes a').each((index, element) => {
+            $challengeFree('.episodes-list a, #episodes-list a, div.server[data-server-id="1"] ul.episodes a').each((index, element) => {
                  const episodeLinkElement = $(element);
                  const episodeLink = episodeLinkElement.attr('href');
                  const epNumFromData = episodeLinkElement.data('num');
@@ -172,15 +187,17 @@ async function fetchEpisodesFromAniWave(animeData) {
 
             if (episodes.length === 0) {
                  console.warn(`[AniWave Layer] [${timestamp}] Static scraping also failed to find episodes for "${animeData.title}" on ${animePageUrl}`);
-                 // console.log(`[AniWave Layer] HTML content for debugging: \n ${$.html().substring(0, 2000)}...`);
+                 // console.log(`[AniWave Layer] HTML content for debugging: \n ${$challengeFree.html().substring(0, 2000)}...`);
             } else {
                  console.log(`[AniWave Layer] [${timestamp}] Found ${episodes.length} episodes via static scraping for "${animeData.title}".`);
             }
-        } catch (scrapeError) {
+        } catch (scrapeError: any) {
             const error = scrapeError as Error;
-            console.error(`[AniWave Layer] [${timestamp}] Static scraping failed for "${animeData.title}" from ${animePageUrl}. Error: ${error.message}`);
-             // Return null if both AJAX and static scraping fail
-             return null;
+            const statusCode = (error as any).response?.status;
+            const errorCode = (error as any).code;
+            console.error(`[AniWave Layer] [${timestamp}] Static scraping failed for "${animeData.title}" from ${animePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
+             // Return empty array if static scraping fails after AJAX attempt
+             return [];
         }
     }
 
@@ -189,9 +206,9 @@ async function fetchEpisodesFromAniWave(animeData) {
 }
 
 // Function to fetch streaming links from an AniWave episode page
-async function fetchStreamingLinksFromAniWave(episodeData) {
+async function fetchStreamingLinksFromAniWave(episodeData: { number?: string | number, link: string}) {
     const timestamp = new Date().toISOString();
-    if (!episodeData || !episodeData.link || !episodeData.number) {
+    if (!episodeData || !episodeData.link) {
          console.error(`[AniWave Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
         throw new Error('Invalid episode data provided.');
     }
@@ -208,6 +225,15 @@ async function fetchStreamingLinksFromAniWave(episodeData) {
         });
         const $ = cheerio.load(html);
 
+         // Optional: Check for CAPTCHA/Challenge
+         const challengeFreeHtml = await handleCaptchaOrChallenge(html, episodePageUrl);
+         if (!challengeFreeHtml) {
+             console.warn(`[AniWave Layer] [${timestamp}] CAPTCHA/Challenge detected on streaming page ${episodePageUrl}, returning null.`);
+             return null;
+         }
+         const $challengeFree = cheerio.load(challengeFreeHtml);
+
+
         // --- Scraping Logic for Streaming Links ---
         // This is complex and might involve multiple steps:
         // 1. Find the active video server (e.g., Vidplay, MyCloud, Filemoon).
@@ -216,11 +242,12 @@ async function fetchStreamingLinksFromAniWave(episodeData) {
         // 4. Extract the actual stream data (e.g., M3U8 link) from the iframe content or associated scripts/API calls.
 
         // Example: Find iframe source (adapt selectors)
-        const iframeSrc = $('#player iframe').attr('src') || $('.watch-video iframe').attr('src') || $('#iframe-embed').attr('src');
+        const iframeSrc = $challengeFree('#player iframe').attr('src') || $challengeFree('.watch-video iframe').attr('src') || $challengeFree('#iframe-embed').attr('src');
 
         if (!iframeSrc) {
             console.warn(`[AniWave Layer] [${timestamp}] No iframe source found directly on ${episodePageUrl}. Player might load dynamically.`);
             // Add more sophisticated logic here if needed (e.g., checking script tags for player data)
+            // console.log(`[AniWave Layer] HTML content for debugging: \n ${$challengeFree.html().substring(0, 2000)}...`);
             return null;
         }
 
@@ -237,12 +264,15 @@ async function fetchStreamingLinksFromAniWave(episodeData) {
         // Return the iframe URL for the next step.
         return absoluteIframeSrc;
 
-    } catch (err) {
+    } catch (err: any) {
          const error = err as Error;
-        console.error(`[AniWave Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number} from ${episodePageUrl}. Error: ${error.message}`);
+         const statusCode = (error as any).response?.status;
+         const errorCode = (error as any).code;
+         console.error(`[AniWave Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number ?? 'N/A'} from ${episodePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
          // console.error(`[AniWave Layer] Error Stack: ${error.stack}`);
         return null; // Return null on failure
     }
 }
 
 export { fetchFromAniWave, fetchEpisodesFromAniWave, fetchStreamingLinksFromAniWave };
+

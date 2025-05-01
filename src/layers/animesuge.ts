@@ -1,11 +1,11 @@
-
+// src/layers/animesuge.ts
 import * as cheerio from 'cheerio';
 import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
 
 const ANIMESUGE_DOMAIN = 'https://animesugetv.to';
 
 // Function to search for anime
-async function fetchFromAnimeSuge(title) {
+async function fetchFromAnimeSuge(title: string) {
   const timestamp = new Date().toISOString();
   const searchUrl = `${ANIMESUGE_DOMAIN}/filter?keyword=${encodeURIComponent(title)}`;
   console.log(`[AnimeSuge Layer] [${timestamp}] Searching: ${searchUrl}`);
@@ -15,11 +15,15 @@ async function fetchFromAnimeSuge(title) {
     const $ = cheerio.load(html);
 
     // Optional: Check for CAPTCHA/Challenge before proceeding
-    // const challengeFreeHtml = await handleCaptchaOrChallenge(html, searchUrl);
-    // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
-    // const $ = cheerio.load(challengeFreeHtml); // Use challenge-free HTML if applicable
+    const challengeFreeHtml = await handleCaptchaOrChallenge(html, searchUrl);
+    if (!challengeFreeHtml) {
+         console.warn(`[AnimeSuge Layer] [${timestamp}] CAPTCHA/Challenge detected on ${searchUrl}, attempting fallback or returning null.`);
+         // Optionally attempt puppeteer fallback here or just return null
+         return null; // Indicate potential blocking
+    }
+    const $challengeFree = cheerio.load(challengeFreeHtml); // Use challenge-free HTML if applicable
 
-    const firstResult = $('.flw-item').first();
+    const firstResult = $challengeFree('.flw-item').first();
     const animeTitle = firstResult.find('.film-name a').text()?.trim();
     const animeLink = firstResult.find('.film-name a').attr('href');
 
@@ -32,16 +36,24 @@ async function fetchFromAnimeSuge(title) {
     console.log(`[AnimeSuge Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
 
-  } catch (err) {
+  } catch (err: any) {
     const error = err as Error;
-    console.error(`[AnimeSuge Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Error: ${error.message}`);
-    // console.error(`[AnimeSuge Layer] Error Stack: ${error.stack}`); // Optional: log stack trace
+    const statusCode = (error as any).response?.status; // Get status code if available
+    const errorCode = (error as any).code; // Get network error code if available
+
+    console.error(`[AnimeSuge Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
+
+    if (statusCode === 403 || statusCode === 429) {
+        console.warn(`[AnimeSuge Layer] Possible blocking or rate limiting (Status: ${statusCode}).`);
+        // Implement more robust handling like proxy rotation trigger or longer backoff
+    }
+
     return null; // Return null on failure
   }
 }
 
 // Function to fetch episodes from an AnimeSuge anime page
-async function fetchEpisodesFromAnimeSuge(animeData) {
+async function fetchEpisodesFromAnimeSuge(animeData: { title: string, link: string }) {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.link || !animeData.title) {
         console.error(`[AnimeSuge Layer] [${timestamp}] Invalid anime data provided to fetchEpisodesFromAnimeSuge:`, animeData);
@@ -56,24 +68,29 @@ async function fetchEpisodesFromAnimeSuge(animeData) {
         const $ = cheerio.load(html);
 
         // Optional: Check for CAPTCHA/Challenge
-        // const challengeFreeHtml = await handleCaptchaOrChallenge(html, animePageUrl);
-        // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
-        // const $ = cheerio.load(challengeFreeHtml);
+        const challengeFreeHtml = await handleCaptchaOrChallenge(html, animePageUrl);
+         if (!challengeFreeHtml) {
+             console.warn(`[AnimeSuge Layer] [${timestamp}] CAPTCHA/Challenge detected on episode page ${animePageUrl}, returning null.`);
+             return null; // Indicate potential blocking
+        }
+        const $challengeFree = cheerio.load(challengeFreeHtml); // Use challenge-free HTML if applicable
+
 
         const episodes = [];
         const seenEpisodeNumbers = new Set();
 
         // Try multiple selectors for robustness
-        $('.episodes-list .nav-link, .ss-list a').each((index, element) => {
+        $challengeFree('.episodes-list .nav-link, .ss-list a').each((index, element) => {
             const episodeLinkElement = $(element);
             const episodeLink = episodeLinkElement.attr('href');
 
             // Extract number robustly
             const epNumFromData = episodeLinkElement.data('number') || episodeLinkElement.data('episode-num');
-            const epNumFromTitleAttr = episodeLinkElement.attr('title')?.match(/Episode\s*(\d+)/i)?.[1];
-            const epNumFromTextContent = episodeLinkElement.text().trim().match(/^(\d+)/)?.[0]; // Match number at the start
+            const epTitleAttr = episodeLinkElement.attr('title');
+            const epNumFromTitle = epTitleAttr?.match(/Episode\s*(\d+)/i)?.[1];
+            const epTextNum = episodeLinkElement.find('.ep-num').text()?.trim().match(/^(\d+)/)?.[0]; // More specific selector
 
-            let episodeNumberStr = epNumFromData || epNumFromTitleAttr || epNumFromTextContent;
+            let episodeNumberStr = epNumFromData || epNumFromTitle || epTextNum;
             let episodeNumber = NaN;
             if (episodeNumberStr) {
                 episodeNumber = parseInt(String(episodeNumberStr), 10);
@@ -88,7 +105,7 @@ async function fetchEpisodesFromAnimeSuge(animeData) {
             }
 
             // Use title attribute, fallback to text or default
-            const episodeTitle = episodeLinkElement.attr('title')?.trim() || episodeLinkElement.find('.ep-title').text()?.trim() || `Episode ${episodeNumber}`;
+            const episodeTitle = epTitleAttr?.trim() || episodeLinkElement.find('.ep-title').text()?.trim() || `Episode ${episodeNumber}`;
 
             if (episodeLink && !isNaN(episodeNumber) && !seenEpisodeNumbers.has(episodeNumber)) {
                 const fullEpisodeLink = episodeLink.startsWith('/') ? `${ANIMESUGE_DOMAIN}${episodeLink}` : episodeLink;
@@ -109,25 +126,27 @@ async function fetchEpisodesFromAnimeSuge(animeData) {
         if (episodes.length === 0) {
             console.warn(`[AnimeSuge Layer] [${timestamp}] No episodes found using selectors for "${animeData.title}" on ${animePageUrl}`);
             // Optional: Log the HTML content for debugging selectors
-            // console.log(`[AnimeSuge Layer] HTML content for debugging: \n ${$.html().substring(0, 2000)}...`);
+            // console.log(`[AnimeSuge Layer] HTML content for debugging: \n ${$challengeFree.html().substring(0, 2000)}...`);
         }
 
         episodes.sort((a, b) => a.number - b.number);
         console.log(`[AnimeSuge Layer] [${timestamp}] Found ${episodes.length} episodes for "${animeData.title}"`);
         return episodes;
 
-    } catch (err) {
+    } catch (err: any) {
         const error = err as Error;
-        console.error(`[AnimeSuge Layer] [${timestamp}] Failed to fetch episodes for "${animeData?.title}" from ${animePageUrl}. Error: ${error.message}`);
+        const statusCode = (error as any).response?.status;
+        const errorCode = (error as any).code;
+        console.error(`[AnimeSuge Layer] [${timestamp}] Failed to fetch episodes for "${animeData?.title}" from ${animePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
         // console.error(`[AnimeSuge Layer] Error Stack: ${error.stack}`);
         return null; // Return null on failure
     }
 }
 
 // Function to fetch streaming links from an AnimeSuge episode page
-async function fetchStreamingLinksFromAnimeSuge(episodeData) {
+async function fetchStreamingLinksFromAnimeSuge(episodeData: { number?: string | number, link: string}) {
     const timestamp = new Date().toISOString();
-    if (!episodeData || !episodeData.link || !episodeData.number) {
+    if (!episodeData || !episodeData.link) {
         console.error(`[AnimeSuge Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
         throw new Error('Invalid episode data provided.');
     }
@@ -140,16 +159,20 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData) {
         const $ = cheerio.load(html);
 
         // Optional: Check for CAPTCHA/Challenge
-        // const challengeFreeHtml = await handleCaptchaOrChallenge(html, episodePageUrl);
-        // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
-        // const $ = cheerio.load(challengeFreeHtml);
+        const challengeFreeHtml = await handleCaptchaOrChallenge(html, episodePageUrl);
+        if (!challengeFreeHtml) {
+             console.warn(`[AnimeSuge Layer] [${timestamp}] CAPTCHA/Challenge detected on streaming page ${episodePageUrl}, returning null.`);
+             return null; // Indicate potential blocking
+        }
+        const $challengeFree = cheerio.load(challengeFreeHtml);
+
 
         // Prioritize iframe source, often points to the actual player/sources
-        let iframeSrc = $('.play-video iframe').attr('src') || $('#player iframe').attr('src') || $('#frame').attr('src');
+        let iframeSrc = $challengeFree('.play-video iframe').attr('src') || $challengeFree('#player iframe').attr('src') || $challengeFree('#frame').attr('src');
 
         if (!iframeSrc) {
              // Fallback: Look for video source directly within <video> tag or script data
-             const videoSrc = $('video#player source[src]').attr('src') || $('video source[src]').attr('src');
+             const videoSrc = $challengeFree('video#player source[src]').attr('src') || $challengeFree('video source[src]').attr('src');
              if(videoSrc) {
                  console.log(`[AnimeSuge Layer] [${timestamp}] Found direct video source: ${videoSrc}`);
                  return videoSrc; // Return direct source if found
@@ -157,7 +180,7 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData) {
 
             // Fallback: Look for potential stream data embedded in script tags
             let streamDataUrl: string | null = null;
-            $('script').each((i, el) => {
+            $challengeFree('script').each((i, el) => {
                 const scriptContent = $(el).html();
                 if (scriptContent && scriptContent.includes('sources:')) {
                     // Basic regex to extract a URL from a 'sources' array (VERY fragile)
@@ -172,6 +195,7 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData) {
             if (streamDataUrl) return streamDataUrl;
 
             console.warn(`[AnimeSuge Layer] [${timestamp}] No iframe, video source, or script stream data found on ${episodePageUrl}`);
+            // console.log(`[AnimeSuge Layer] HTML content for debugging: \n ${$challengeFree.html().substring(0, 2000)}...`);
             return null;
         }
 
@@ -187,12 +211,15 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData) {
         // The API route handler should attempt to resolve this further.
         return iframeSrc;
 
-    } catch (err) {
-        const error = err as Error;
-        console.error(`[AnimeSuge Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number} from ${episodePageUrl}. Error: ${error.message}`);
+    } catch (err: any) {
+        const error = err as Error; // Correctly type cast error
+        const statusCode = (error as any).response?.status;
+        const errorCode = (error as any).code;
+        console.error(`[AnimeSuge Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number ?? 'N/A'} from ${episodePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
         // console.error(`[AnimeSuge Layer] Error Stack: ${error.stack}`);
         return null; // Return null on failure
     }
 }
 
 export { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge, fetchStreamingLinksFromAnimeSuge };
+
