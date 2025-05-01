@@ -1,3 +1,4 @@
+'use server'; // Mark this module as server-only
 
 import { NextResponse } from 'next/server';
 import { getAnimeDetails } from '@/services/anime'; // Keep Jikan API for anime title
@@ -44,30 +45,33 @@ export async function GET(
     }
 
     // --- 2. Search using fetchAnime to get the correct provider link/data ---
-    const searchTerm = animeTitle || `malid:${malId}`;
+    const searchTerm = animeTitle || `malid:${malId}`; // Consider a fallback if Jikan fails
     console.log(`[API/anime/[id]/episodes] [${timestamp}] Searching providers for term: "${searchTerm}"`);
     try {
-        searchResult = await fetchAnime(searchTerm);
-        // Adjust check for varying data structures
-        if (!searchResult?.source || !searchResult?.data?.link) {
-            console.warn(`[API/anime/[id]/episodes] [${timestamp}] fetchAnime could not find a provider link for "${searchTerm}". Search Result:`, searchResult);
-            return NextResponse.json({ message: `Could not find the anime "${animeTitle || `MAL ID ${malId}`}" on supported providers.` }, { status: 404 });
+        const searchResponse = await fetchAnime(searchTerm); // Call the service
+        if (!searchResponse || !searchResponse.source || !searchResponse.data?.link) {
+             console.warn(`[API/anime/[id]/episodes] [${timestamp}] fetchAnime could not find a provider link for "${searchTerm}". Search Response:`, searchResponse);
+             const message = searchResponse?.error ?? `Could not find the anime "${animeTitle || `MAL ID ${malId}`}" on supported providers.`;
+             return NextResponse.json({ message: message }, { status: 404 });
         }
+        searchResult = searchResponse; // Store the whole result { source, data }
         console.log(`[API/anime/[id]/episodes] [${timestamp}] fetchAnime successful. Source: ${searchResult.source}, Link found: ${!!searchResult.data.link}`);
-    } catch (error) {
-        console.error(`[API/anime/[id]/episodes] [${timestamp}] Error during fetchAnime search for "${searchTerm}":`, (error as Error).message);
-        return NextResponse.json({ message: 'Error finding anime on providers.', error: (error as Error).message }, { status: 500 });
+    } catch (error: unknown) { // Catch unknown type
+         const err = error as Error; // Type assertion
+        console.error(`[API/anime/[id]/episodes] [${timestamp}] Error during fetchAnime search for "${searchTerm}":`, err.message);
+        return NextResponse.json({ message: 'Error finding anime on providers.', error: err.message }, { status: 500 });
     }
 
     // --- 3. Fetch Episodes using the found provider data ---
-    let episodes: any[] | null = null; // Keep 'any' for now
+    let episodes: any[] | null = null; // Keep 'any' for now, or define a common Episode type
     try {
-        // Pass the entire searchResult (which includes source and data{title, link})
+        // Pass the entire searchResult (which includes source and data{title, link, id?})
         episodes = await fetchEpisodes(searchResult);
-    } catch (error) {
-         console.error(`[API/anime/[id]/episodes] [${timestamp}] Error calling fetchEpisodes for source ${searchResult.source}:`, (error as Error).message);
+    } catch (error: unknown) { // Catch unknown type
+         const err = error as Error; // Type assertion
+         console.error(`[API/anime/[id]/episodes] [${timestamp}] Error calling fetchEpisodes for source ${searchResult.source}:`, err.message);
          // Error already logged in fetchEpisodes, return 500
-         return NextResponse.json({ message: 'Failed to fetch episodes from provider.', error: (error as Error).message }, { status: 500 });
+         return NextResponse.json({ message: 'Failed to fetch episodes from provider.', error: err.message }, { status: 500 });
     }
 
     // --- 4. Return Response ---
@@ -79,6 +83,7 @@ export async function GET(
          return NextResponse.json({ message: `Failed to retrieve episode list from source: ${searchResult.source}.` }, { status: 500 }); // Return 500 if fetching failed
     } else { // episodes is an empty array
          console.warn(`[API/anime/[id]/episodes] [${timestamp}] No episodes found from source ${searchResult.source} for MAL ID: ${malId}`);
+        // Return 404 if no episodes were found, even if search was successful
         return NextResponse.json({ message: `No episodes found for this anime on source: ${searchResult.source}.` }, { status: 404 });
     }
 }

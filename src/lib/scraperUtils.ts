@@ -1,6 +1,8 @@
+'use server'; // Mark this module as server-only
 
 import axios, { type AxiosRequestConfig, type AxiosError } from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import * as cheerio from 'cheerio'; // Keep cheerio import if needed for handleCaptchaOrChallenge
 
 // --- User-Agent Rotation ---
 const userAgents = [
@@ -30,13 +32,13 @@ function getRandomProxy(): string | undefined {
 export function getProxyAgent(): HttpsProxyAgent<string> | undefined {
     const proxyUrl = getRandomProxy();
     if (!proxyUrl) {
-        console.warn('[ScraperUtils] No proxies configured or available.');
+        // console.warn('[ScraperUtils] No proxies configured or available.'); // Keep console logs server-side
         return undefined;
     }
     try {
         // Ensure the proxy URL includes the protocol (http or https)
         const agent = new HttpsProxyAgent(proxyUrl);
-        console.log(`[ScraperUtils] Using proxy: ${proxyUrl.split('@')[1] || proxyUrl}`); // Log proxy host, hide credentials
+        // console.log(`[ScraperUtils] Using proxy: ${proxyUrl.split('@')[1] || proxyUrl}`); // Keep console logs server-side
         return agent;
     } catch (error) {
          console.error(`[ScraperUtils] Error creating proxy agent for ${proxyUrl}:`, error);
@@ -60,10 +62,11 @@ interface RetryOptions {
 export async function fetchWithRetry<T>(
   url: string,
   axiosOptions: AxiosRequestConfig = {},
-  retryOptions: RetryOptions = { retries: 3, delayMs: 1000, backoffFactor: 1.5 }
+  retryOptions: RetryOptions = { retries: 3, delayMs: 1500, backoffFactor: 1.5 } // Increased base delay
 ): Promise<T> {
   let lastError: AxiosError | Error | null = null;
   let currentDelay = retryOptions.delayMs;
+  const timestamp = new Date().toISOString();
 
   for (let i = 0; i <= retryOptions.retries; i++) {
     try {
@@ -77,26 +80,31 @@ export async function fetchWithRetry<T>(
           'Accept-Language': 'en-US,en;q=0.5',
           'Connection': 'keep-alive',
           'Upgrade-Insecure-Requests': '1',
-          // Add Referer if applicable in the calling function
+          // Add Referer if applicable in the calling function's options
           ...(axiosOptions.headers || {}),
         },
         ...(agent && { httpsAgent: agent, proxy: false }), // Use agent for https, disable default proxy handling
          timeout: 15000, // Add a timeout (e.g., 15 seconds)
       };
 
-      console.log(`[fetchWithRetry] Attempt ${i + 1}/${retryOptions.retries + 1} - Fetching: ${url}`);
+      console.log(`[fetchWithRetry] [${timestamp}] Attempt ${i + 1}/${retryOptions.retries + 1} - Fetching: ${url}`);
       const response = await axios.get<T>(url, finalOptions);
-      // Check for Cloudflare challenges (basic example)
-      if (response.headers['server']?.includes('cloudflare') && response.status === 403) {
-          console.warn(`[fetchWithRetry] Cloudflare protection likely encountered for ${url}. Status: 403.`);
-          // Implement Cloudflare bypass logic here if needed (e.g., using puppeteer or cloudscraper equivalent)
-          // For now, we'll treat it as a retryable error.
-          throw new Error(`Cloudflare protection detected (403)`);
+
+      // Basic Cloudflare check (can be improved)
+      if (response.headers['server']?.includes('cloudflare') && (response.status === 403 || response.status === 503)) {
+          console.warn(`[fetchWithRetry] [${timestamp}] Cloudflare protection likely encountered for ${url}. Status: ${response.status}.`);
+          throw new Error(`Cloudflare protection detected (${response.status})`);
+      }
+       // Check for common blocking status codes
+      if (response.status === 403 || response.status === 429) {
+           console.warn(`[fetchWithRetry] [${timestamp}] Blocked or rate limited on attempt ${i + 1} for ${url}. Status: ${response.status}.`);
+           throw new Error(`Request blocked or rate limited (${response.status})`);
       }
       if (response.status >= 500) { // Retry on server errors (5xx)
-          throw new Error(`Server error ${response.status}`);
+          console.warn(`[fetchWithRetry] [${timestamp}] Server error on attempt ${i + 1} for ${url}. Status: ${response.status}.`);
+          throw new Error(`Server error (${response.status})`);
       }
-      // Potentially check response content for anti-bot messages
+      // Potentially check response content for anti-bot messages here if needed
 
       return response.data; // Success
 
@@ -106,18 +114,20 @@ export async function fetchWithRetry<T>(
       const status = axiosError.response?.status;
       const code = (axiosError.code || 'UNKNOWN_ERROR') as string;
 
-      console.warn(`[fetchWithRetry] Attempt ${i + 1} failed for ${url}. Status: ${status || 'N/A'}, Code: ${code}, Error: ${axiosError.message}`);
+      console.warn(`[fetchWithRetry] [${timestamp}] Attempt ${i + 1} failed for ${url}. Status: ${status || 'N/A'}, Code: ${code}, Error: ${axiosError.message}`);
 
       // Decide if retry is appropriate
-      const isNetworkError = ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN'].includes(code);
-      const isRetryableStatus = status && (status === 403 || status === 429 || status >= 500); // Retry on 403 (CF), 429 (Rate Limit), 5xx (Server Error)
+      const isNetworkError = ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNABORTED'].includes(code);
+      // Retry on 403 (CF/Forbidden), 429 (Rate Limit), 5xx (Server Error), and network errors
+      const isRetryableStatus = status && (status === 403 || status === 429 || status >= 500);
 
       if (i < retryOptions.retries && (isNetworkError || isRetryableStatus)) {
-        console.log(`[fetchWithRetry] Retrying in ${currentDelay}ms...`);
-        await delay(currentDelay);
+        const retryDelay = currentDelay + Math.random() * 500; // Add jitter
+        console.log(`[fetchWithRetry] [${timestamp}] Retrying in ${retryDelay.toFixed(0)}ms...`);
+        await delay(retryDelay);
         currentDelay *= retryOptions.backoffFactor || 1; // Apply backoff
       } else {
-        console.error(`[fetchWithRetry] Final attempt failed for ${url}. Error: ${lastError?.message}`);
+        console.error(`[fetchWithRetry] [${timestamp}] Final attempt failed for ${url}. Error: ${lastError?.message}`);
         // Rethrow the last encountered error after all retries
         throw lastError;
       }
@@ -129,21 +139,16 @@ export async function fetchWithRetry<T>(
 }
 
 // --- CAPTCHA/DDoS Handling (Placeholder) ---
-// Integrating real CAPTCHA solving (e.g., 2Captcha) requires API keys and specific library usage.
-// Advanced DDoS bypass often needs headless browsers (Puppeteer/Playwright).
-
 export async function handleCaptchaOrChallenge(htmlContent: string, url: string): Promise<string | null> {
-    // 1. Detect if CAPTCHA or JS challenge is present in htmlContent
-    if (htmlContent.includes('captcha') || htmlContent.includes('Cloudflare') /* add more specific checks */) {
-        console.warn(`[handleCaptchaOrChallenge] CAPTCHA or challenge detected on ${url}. Bypass not implemented.`);
-        // TODO:
-        // - Extract CAPTCHA details (site key, image URL)
-        // - Send to CAPTCHA solving service API
-        // - Submit solution
-        // OR
-        // - Use Puppeteer/Playwright to interact with the page and solve the challenge
-        return null; // Indicate failure to bypass
+    const timestamp = new Date().toISOString();
+    // Basic checks for Cloudflare or common CAPTCHA indicators
+    // More robust detection would involve checking for specific script tags, CSS classes, or challenge forms.
+    if (htmlContent.includes('challenge-running') || htmlContent.includes('cf-challenge') || htmlContent.includes('captcha') || htmlContent.includes('Verify you are human')) {
+        console.warn(`[handleCaptchaOrChallenge] [${timestamp}] CAPTCHA or challenge detected on ${url}. Bypass not implemented.`);
+        // In a real scenario, trigger Puppeteer/Playwright or a CAPTCHA solving service here.
+        // For now, return null to indicate the block.
+        return null;
     }
-    // 2. If no challenge detected, return original content (or null if check fails)
+    // If no challenge detected, return original content
     return htmlContent;
 }

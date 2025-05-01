@@ -1,13 +1,32 @@
+'use server'; // Mark this module as server-only
 
-// src/layers/aniwave.ts
 import * as cheerio from 'cheerio';
-import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils.ts'; // Corrected extension
+import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Corrected extension
 import axios from 'axios'; // Keep axios for potential AJAX calls
 
 const ANIWAVE_DOMAIN = 'https://aniwave.to'; // Target new domain .to
 
+interface AniwaveSearchResult {
+    title: string;
+    link: string;
+}
+
+interface EpisodeInfo {
+    id: string; // Unique episode identifier
+    number: number;
+    title: string;
+    link: string; // Link to the episode page on the source
+}
+
+interface EpisodeData {
+    number?: string | number;
+    link: string;
+    id?: string; // Optional episode ID if available/needed
+}
+
+
 // Function to search for anime
-async function fetchFromAniWave(title: string) {
+async function fetchFromAniWave(title: string): Promise<AniwaveSearchResult | null> {
   const timestamp = new Date().toISOString();
   // Use the filter endpoint which seems more reliable for searching
   const searchUrl = `${ANIWAVE_DOMAIN}/filter?keyword=${encodeURIComponent(title)}`;
@@ -15,7 +34,7 @@ async function fetchFromAniWave(title: string) {
 
   try {
     // Use fetchWithRetry which includes User-Agent rotation and proxy
-    const html = await fetchWithRetry(searchUrl);
+    const html = await fetchWithRetry<string>(searchUrl);
     const $ = cheerio.load(html);
 
     // Optional: Check for CAPTCHA/Challenge before proceeding
@@ -34,7 +53,9 @@ async function fetchFromAniWave(title: string) {
 
     if (!animeTitle || !animeLink) {
          console.warn(`[AniWave Layer] [${timestamp}] No results found for "${title}" on ${searchUrl}`);
-        throw new Error('AniWave no result found in DOM.');
+         // Don't throw, return null for fallback
+         return null;
+        // throw new Error('AniWave no result found in DOM.');
     }
 
     // Ensure link is absolute
@@ -42,8 +63,8 @@ async function fetchFromAniWave(title: string) {
 
     console.log(`[AniWave Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
-  } catch (err: any) {
-    const error = err as Error;
+  } catch (err: unknown) { // Catch unknown type
+    const error = err as Error; // Type assertion
     const statusCode = (error as any).response?.status;
     const errorCode = (error as any).code;
     console.error(`[AniWave Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
@@ -53,18 +74,19 @@ async function fetchFromAniWave(title: string) {
 }
 
 // Function to fetch episodes from an AniWave anime page
-async function fetchEpisodesFromAniWave(animeData: { title: string, link: string }) {
+async function fetchEpisodesFromAniWave(animeData: { title: string, link: string }): Promise<EpisodeInfo[] | null> {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.link || !animeData.title) {
       console.error(`[AniWave Layer] [${timestamp}] Invalid anime data provided to fetchEpisodesFromAniWave:`, animeData);
-      throw new Error('Invalid anime data provided.');
+      return null; // Return null for invalid input
+      // throw new Error('Invalid anime data provided.');
     }
 
     const animePageUrl = animeData.link;
     console.log(`[AniWave Layer] [${timestamp}] Fetching episodes from: ${animePageUrl}`);
 
     // --- Attempt 1: AJAX Request ---
-    let episodes = [];
+    let episodes: EpisodeInfo[] = [];
     const animeIdMatch = animePageUrl.match(/\/watch\/[a-z0-9-]+\.(\w+)/i);
     const animeInternalId = animeIdMatch ? animeIdMatch[1] : null;
 
@@ -73,7 +95,7 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
         console.log(`[AniWave Layer] [${timestamp}] Attempting AJAX fetch: ${ajaxEpisodesUrl}`);
         try {
             // Use fetchWithRetry for the AJAX call as well
-            const ajaxResponse = await fetchWithRetry(ajaxEpisodesUrl, {
+            const ajaxResponse = await fetchWithRetry<any>(ajaxEpisodesUrl, { // Use 'any' for flexible response structure
                 headers: {
                     'Referer': animePageUrl,
                     'X-Requested-With': 'XMLHttpRequest',
@@ -82,10 +104,10 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
             });
 
              // Check response structure carefully
-             if (ajaxResponse && typeof ajaxResponse === 'object' && (ajaxResponse as any).status && (ajaxResponse as any).result) {
-                const htmlFragment = (ajaxResponse as any).result;
+             if (ajaxResponse && typeof ajaxResponse === 'object' && ajaxResponse.status === true && ajaxResponse.result) {
+                const htmlFragment = ajaxResponse.result;
                 const $ajax = cheerio.load(htmlFragment);
-                const seenEpisodeNumbers = new Set();
+                const seenEpisodeNumbers = new Set<number>();
 
                 $ajax('.episodes li a, ul.episodes a').each((index, element) => { // Adjust selector based on AJAX response structure
                     const episodeLinkElement = $ajax(element);
@@ -123,9 +145,10 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
                 console.log(`[AniWave Layer] [${timestamp}] Found ${episodes.length} episodes via AJAX for "${animeData.title}".`);
             } else {
                 console.warn(`[AniWave Layer] [${timestamp}] AJAX response format invalid or status false for ${ajaxEpisodesUrl}. Response:`, ajaxResponse);
+                 // Fallthrough to static scraping if AJAX fails
             }
-        } catch (ajaxError: any) {
-             const error = ajaxError as Error;
+        } catch (ajaxError: unknown) { // Catch unknown type
+             const error = ajaxError as Error; // Type assertion
              console.warn(`[AniWave Layer] [${timestamp}] AJAX episode fetch failed for "${animeData.title}". Error: ${error.message}. Proceeding to static scrape.`);
              // Fallthrough to static scraping
         }
@@ -138,7 +161,7 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
     if (episodes.length === 0) {
         console.log(`[AniWave Layer] [${timestamp}] Falling back to static scraping for "${animeData.title}" from ${animePageUrl}`);
         try {
-            const html = await fetchWithRetry(animePageUrl, { headers: { 'Referer': ANIWAVE_DOMAIN }});
+            const html = await fetchWithRetry<string>(animePageUrl, { headers: { 'Referer': ANIWAVE_DOMAIN }});
             const $ = cheerio.load(html);
 
             // Optional: Check for CAPTCHA/Challenge
@@ -149,7 +172,7 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
              }
              const $challengeFree = cheerio.load(challengeFreeHtml);
 
-            const seenEpisodeNumbers = new Set(); // Use separate set for static scrape
+            const seenEpisodeNumbers = new Set<number>(); // Use separate set for static scrape
 
             // Add more potential selectors based on observation
             $challengeFree('.episodes-list a, #episodes-list a, div.server[data-server-id="1"] ul.episodes a').each((index, element) => {
@@ -192,8 +215,8 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
             } else {
                  console.log(`[AniWave Layer] [${timestamp}] Found ${episodes.length} episodes via static scraping for "${animeData.title}".`);
             }
-        } catch (scrapeError: any) {
-            const error = scrapeError as Error;
+        } catch (scrapeError: unknown) { // Catch unknown type
+            const error = scrapeError as Error; // Type assertion
             const statusCode = (error as any).response?.status;
             const errorCode = (error as any).code;
             console.error(`[AniWave Layer] [${timestamp}] Static scraping failed for "${animeData.title}" from ${animePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
@@ -207,11 +230,12 @@ async function fetchEpisodesFromAniWave(animeData: { title: string, link: string
 }
 
 // Function to fetch streaming links from an AniWave episode page
-async function fetchStreamingLinksFromAniWave(episodeData: { number?: string | number, link: string}) {
+async function fetchStreamingLinksFromAniWave(episodeData: EpisodeData): Promise<string | null> {
     const timestamp = new Date().toISOString();
     if (!episodeData || !episodeData.link) {
          console.error(`[AniWave Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
-        throw new Error('Invalid episode data provided.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid episode data provided.');
     }
 
     const episodePageUrl = episodeData.link;
@@ -219,7 +243,7 @@ async function fetchStreamingLinksFromAniWave(episodeData: { number?: string | n
 
     try {
         // Use fetchWithRetry for the episode page itself
-        const html = await fetchWithRetry(episodePageUrl, {
+        const html = await fetchWithRetry<string>(episodePageUrl, {
              headers: {
                 'Referer': ANIWAVE_DOMAIN // Referer is often crucial
             }
@@ -265,8 +289,8 @@ async function fetchStreamingLinksFromAniWave(episodeData: { number?: string | n
         // Return the iframe URL for the next step.
         return absoluteIframeSrc;
 
-    } catch (err: any) {
-         const error = err as Error;
+    } catch (err: unknown) { // Catch unknown type
+         const error = err as Error; // Type assertion
          const statusCode = (error as any).response?.status;
          const errorCode = (error as any).code;
          console.error(`[AniWave Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number ?? 'N/A'} from ${episodePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);

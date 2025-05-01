@@ -1,17 +1,36 @@
-// src/layers/animedao.ts
+'use server'; // Mark this module as server-only
+
 import * as cheerio from 'cheerio';
 import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
 
 const ANIMEDAO_DOMAIN = 'https://animedao.to';
 
+interface AnimeDaoSearchResult {
+    title: string;
+    link: string;
+}
+
+interface EpisodeInfo {
+    id: string; // Unique episode identifier
+    number: number;
+    title: string;
+    link: string; // Link to the episode page on the source
+}
+
+interface EpisodeData {
+    number?: string | number;
+    link: string;
+    id?: string; // Optional episode ID if available/needed
+}
+
 // Function to search for anime
-async function fetchFromAnimeDao(title: string) {
+async function fetchFromAnimeDao(title: string): Promise<AnimeDaoSearchResult | null> {
   const timestamp = new Date().toISOString();
   const searchUrl = `${ANIMEDAO_DOMAIN}/search/?q=${encodeURIComponent(title)}`;
   console.log(`[AnimeDao Layer] [${timestamp}] Searching: ${searchUrl}`);
 
   try {
-    const html = await fetchWithRetry(searchUrl); // Use fetchWithRetry
+    const html = await fetchWithRetry<string>(searchUrl); // Use fetchWithRetry
     const $ = cheerio.load(html);
 
     // Optional: Check for CAPTCHA/Challenge
@@ -29,7 +48,9 @@ async function fetchFromAnimeDao(title: string) {
 
     if (!animeTitle || !animeLink) {
          console.warn(`[AnimeDao Layer] [${timestamp}] No results found for "${title}" on ${searchUrl}`);
-         throw new Error('AnimeDao no result found in DOM.');
+         // Don't throw, return null for fallback
+         return null;
+        // throw new Error('AnimeDao no result found in DOM.');
     }
 
     // Ensure link is absolute
@@ -37,8 +58,8 @@ async function fetchFromAnimeDao(title: string) {
 
     console.log(`[AnimeDao Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
-  } catch (err: any) {
-    const error = err as Error;
+  } catch (err: unknown) { // Catch unknown type
+    const error = err as Error; // Type assertion
     const statusCode = (error as any).response?.status;
     const errorCode = (error as any).code;
     console.error(`[AnimeDao Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
@@ -48,18 +69,19 @@ async function fetchFromAnimeDao(title: string) {
 }
 
 // Function to fetch episodes from an AnimeDao anime page
-async function fetchEpisodesFromAnimeDao(animeData: { title: string, link: string }) {
+async function fetchEpisodesFromAnimeDao(animeData: { title: string, link: string }): Promise<EpisodeInfo[] | null> {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.link || !animeData.title) {
         console.error(`[AnimeDao Layer] [${timestamp}] Invalid anime data provided to fetchEpisodes:`, animeData);
-        throw new Error('Invalid anime data provided.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid anime data provided.');
     }
 
     const animePageUrl = animeData.link;
     console.log(`[AnimeDao Layer] [${timestamp}] Fetching episodes from: ${animePageUrl}`);
 
     try {
-        const html = await fetchWithRetry(animePageUrl, { headers: { 'Referer': ANIMEDAO_DOMAIN }});
+        const html = await fetchWithRetry<string>(animePageUrl, { headers: { 'Referer': ANIMEDAO_DOMAIN }});
         const $ = cheerio.load(html);
 
         // Optional: Check for CAPTCHA/Challenge
@@ -71,8 +93,8 @@ async function fetchEpisodesFromAnimeDao(animeData: { title: string, link: strin
         const $challengeFree = cheerio.load(challengeFreeHtml);
 
 
-        const episodes = [];
-        const seenEpisodeNumbers = new Set();
+        const episodes: EpisodeInfo[] = [];
+        const seenEpisodeNumbers = new Set<number>();
 
         // Try multiple selectors
         $challengeFree('.episode-list-item a, .ep-list a, #episode_related a').each((index, element) => {
@@ -118,8 +140,8 @@ async function fetchEpisodesFromAnimeDao(animeData: { title: string, link: strin
         console.log(`[AnimeDao Layer] [${timestamp}] Found ${episodes.length} episodes for "${animeData.title}"`);
         return episodes;
 
-    } catch (err: any) {
-        const error = err as Error;
+    } catch (err: unknown) { // Catch unknown type
+        const error = err as Error; // Type assertion
         const statusCode = (error as any).response?.status;
         const errorCode = (error as any).code;
         console.error(`[AnimeDao Layer] [${timestamp}] Failed to fetch episodes for "${animeData?.title}" from ${animePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
@@ -128,18 +150,19 @@ async function fetchEpisodesFromAnimeDao(animeData: { title: string, link: strin
     }
 }
 
-async function fetchStreamingLinksFromAnimeDao(episodeData: { number?: string | number, link: string}) {
+async function fetchStreamingLinksFromAnimeDao(episodeData: EpisodeData): Promise<string | null> {
     const timestamp = new Date().toISOString();
     if (!episodeData || !episodeData.link) {
         console.error(`[AnimeDao Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
-        throw new Error('Invalid episode data provided.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid episode data provided.');
     }
 
     const episodePageUrl = episodeData.link;
     console.log(`[AnimeDao Layer] [${timestamp}] Fetching streaming links from: ${episodePageUrl}`);
 
     try {
-        const html = await fetchWithRetry(episodePageUrl, { headers: { 'Referer': ANIMEDAO_DOMAIN } });
+        const html = await fetchWithRetry<string>(episodePageUrl, { headers: { 'Referer': ANIMEDAO_DOMAIN } });
         const $ = cheerio.load(html);
 
         // Optional: Check for CAPTCHA/Challenge
@@ -174,8 +197,8 @@ async function fetchStreamingLinksFromAnimeDao(episodeData: { number?: string | 
         // This link might be an iframe requiring further resolution by the API route handler.
         return streamingLink;
 
-    } catch (err: any) {
-        const error = err as Error;
+    } catch (err: unknown) { // Catch unknown type
+        const error = err as Error; // Type assertion
         const statusCode = (error as any).response?.status;
         const errorCode = (error as any).code;
         console.error(`[AnimeDao Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number ?? 'N/A'} from ${episodePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);

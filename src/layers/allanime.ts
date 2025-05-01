@@ -1,11 +1,61 @@
-// src/layers/allanime.ts
+'use server'; // Mark this module as server-only
+
 import axios from 'axios';
 import { fetchWithRetry, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use utils
 
 const ALLANIME_API_BASE = 'https://api.allanime.day/api'; // Define base URL
 
+interface AllAnimeEdge {
+    _id: string;
+    name: string;
+    availableEpisodesDetail?: {
+        sub?: string[];
+        dub?: string[];
+    };
+    thumbnail?: string;
+}
+
+interface AllAnimeSearchResult {
+    id: string;
+    title: string;
+    thumbnail?: string;
+    episodesDetail?: {
+        sub?: string[];
+        dub?: string[];
+    };
+    link: string;
+}
+
+interface AllAnimeApiResponse {
+     data?: {
+        shows?: {
+            edges?: AllAnimeEdge[];
+        }
+     }
+}
+
+interface AllAnimeEpisodeDetailsResponse {
+     data?: {
+         show?: {
+             availableEpisodesDetail?: {
+                 sub?: string[]; // Episode numbers as strings
+                 dub?: string[]; // Episode numbers as strings
+             }
+         }
+     }
+}
+
+
+interface EpisodeInfo {
+    id: string; // Unique episode identifier
+    number: number;
+    title: string;
+    link: string; // Link to the episode page on the source
+}
+
+
 // Function to search for anime using AllAnime API
-async function fetchFromAllAnime(title: string) {
+async function fetchFromAllAnime(title: string): Promise<AllAnimeSearchResult | null> {
   const timestamp = new Date().toISOString();
   // Use a more specific search endpoint if available, otherwise use generic query
   // This GraphQL-like structure is an example and might need adjustment based on the current API
@@ -16,7 +66,7 @@ async function fetchFromAllAnime(title: string) {
 
   try {
     // Use fetchWithRetry for API calls, providing headers
-    const responseData = await fetchWithRetry(searchUrl, {
+    const responseData = await fetchWithRetry<AllAnimeApiResponse>(searchUrl, {
         method: 'GET', // Explicitly set method
         headers: {
             'Accept': 'application/json',
@@ -25,23 +75,12 @@ async function fetchFromAllAnime(title: string) {
         }
     });
 
-    // Optional: Check for CAPTCHA/Challenge (less likely for direct API calls, but possible)
-    // if (typeof responseData === 'string') { // Check if raw HTML was returned instead of JSON
-    //    const challengeFreeData = await handleCaptchaOrChallenge(responseData, searchUrl);
-    //    if (!challengeFreeData) {
-    //        console.warn(`[AllAnime Layer] [${timestamp}] CAPTCHA/Challenge detected on API endpoint ${searchUrl}, returning null.`);
-    //        return null;
-    //    }
-    //     responseData = JSON.parse(challengeFreeData); // Parse if challenge was bypassed
-    // }
-
-
     // --- Process AllAnime API Response ---
     // Adjust based on the ACTUAL structure returned by AllAnime's API
     if (responseData?.data?.shows?.edges && responseData.data.shows.edges.length > 0) {
         const firstResult = responseData.data.shows.edges[0];
         if (firstResult?._id && firstResult?.name) {
-             const animeData = {
+             const animeData: AllAnimeSearchResult = {
                 id: firstResult._id, // Use the AllAnime specific ID
                 title: firstResult.name,
                 thumbnail: firstResult.thumbnail, // Use thumbnail if available
@@ -68,7 +107,7 @@ async function fetchFromAllAnime(title: string) {
 }
 
 // Function to fetch episodes from AllAnime API
-async function fetchEpisodesFromAllAnime(animeData: { id: string, title: string }) {
+async function fetchEpisodesFromAllAnime(animeData: { id: string, title: string }): Promise<EpisodeInfo[] | null> {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.id || !animeData.title) {
         console.error(`[AllAnime Layer] [${timestamp}] Invalid anime data provided to fetchEpisodes:`, animeData);
@@ -84,45 +123,43 @@ async function fetchEpisodesFromAllAnime(animeData: { id: string, title: string 
     console.log(`[AllAnime Layer] [${timestamp}] Fetching episode details from: ${episodesApiUrl}`);
 
     try {
-        const episodeDetailsResponse = await fetchWithRetry(episodesApiUrl, {
+        const episodeDetailsResponse = await fetchWithRetry<AllAnimeEpisodeDetailsResponse>(episodesApiUrl, {
             method: 'GET',
             headers: { 'Accept': 'application/json' }
         });
 
 
         // --- Process Episode Details ---
-        const subEpisodesCount = episodeDetailsResponse?.data?.show?.availableEpisodesDetail?.sub?.length || 0;
+        const subEpisodes = episodeDetailsResponse?.data?.show?.availableEpisodesDetail?.sub || [];
+        const subEpisodesCount = subEpisodes.length;
         // const dubEpisodesCount = episodeDetailsResponse?.data?.show?.availableEpisodesDetail?.dub?.length || 0;
 
         if (subEpisodesCount === 0) {
             console.warn(`[AllAnime Layer] [${timestamp}] No 'sub' episodes listed in details for "${animeData.title}" (ID: ${animeId})`);
-            return null; // Or return empty array?
+            return []; // Return empty array if no episodes
         }
 
-        console.log(`[AllAnime Layer] [${timestamp}] Found ${subEpisodesCount} potential 'sub' episodes for "${animeData.title}". Fetching stream info...`);
+        console.log(`[AllAnime Layer] [${timestamp}] Found ${subEpisodesCount} potential 'sub' episodes for "${animeData.title}".`);
 
-        // --- Fetch Actual Episode Stream Info (Might need another query) ---
-        // AllAnime often requires a separate query to get stream links for each episode number
-        // This part is complex and highly specific to their API.
-        // Placeholder: Assume we fetch links one by one or via a batch query if available.
-        // We will simulate returning basic episode info for now.
+        const episodes: EpisodeInfo[] = [];
+        for (const episodeNumStr of subEpisodes) {
+             const episodeNumber = parseInt(episodeNumStr, 10);
+             if (isNaN(episodeNumber)) continue; // Skip if parsing fails
 
-        const episodes = [];
-        for (let i = 1; i <= subEpisodesCount; i++) {
-             // In a real scenario, you'd likely make another API call here
+             // In a real scenario, you might need another API call here
              // to get the specific stream link/player URL for episode `i`.
-             // const streamInfo = await fetchStreamInfoForAllAnime(animeId, i, 'sub');
-            const uniqueEpisodeId = `${animeData.title.replace(/[^a-zA-Z0-9]/g, '-')}-ep-${i}`;
+             const uniqueEpisodeId = `${animeData.title.replace(/[^a-zA-Z0-9]/g, '-')}-ep-${episodeNumber}`;
 
             episodes.push({
                 id: uniqueEpisodeId, // Generated ID
-                number: i,
-                title: `Episode ${i}`, // Title often not available in list
+                number: episodeNumber,
+                title: `Episode ${episodeNumber}`, // Title often not available in list
                 // Link might be constructed or fetched from streamInfo
-                link: `https://allanime.to/anime/${animeId}/episodes/sub/${i}`, // Example constructed link
+                link: `https://allanime.to/anime/${animeId}/episodes/sub/${episodeNumber}`, // Example constructed link
             });
         }
 
+        episodes.sort((a, b) => a.number - b.number); // Ensure sorted order
         console.log(`[AllAnime Layer] [${timestamp}] Generated ${episodes.length} episode entries for "${animeData.title}"`);
         return episodes;
 
@@ -136,8 +173,14 @@ async function fetchEpisodesFromAllAnime(animeData: { id: string, title: string 
     }
 }
 
+interface EpisodeData {
+    id: string;
+    link: string;
+    number?: string | number;
+}
+
 // Function to fetch streaming links (placeholder, highly dependent on AllAnime API)
-async function fetchStreamingLinksFromAllAnime(episodeData: { id: string, link: string, number?: string | number }) {
+async function fetchStreamingLinksFromAllAnime(episodeData: EpisodeData): Promise<string | null> {
     const timestamp = new Date().toISOString();
      if (!episodeData || !episodeData.link || !episodeData.number || !episodeData.id) {
         console.error(`[AllAnime Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
@@ -146,26 +189,26 @@ async function fetchStreamingLinksFromAllAnime(episodeData: { id: string, link: 
 
     const episodeNumber = episodeData.number;
     // Extract animeId from the generated episode ID if needed
-    // const animeIdMatch = episodeData.id.match(/^(.*)-ep-\d+$/);
-    // const animeIdFromName = animeIdMatch ? animeIdMatch[1].replace(/-/g, ' ') : null; // Might not be the actual ID
+    const animeIdMatch = episodeData.id.match(/^(.*)-ep-\d+$/);
+    const animeIdFromId = animeIdMatch ? animeIdMatch[1].replace(/-/g, ' ') : null; // Might not be the actual ID
+
 
     // TODO: This part requires understanding how AllAnime provides stream links.
     // It likely involves another API call with the anime ID and episode number.
     // Example hypothetical call:
     // const streamApiUrl = `${ALLANIME_API_BASE}/getStream?animeId=${animeId}&episode=${episodeNumber}&type=sub`;
     // This often requires specific headers or tokens.
-    const streamApiUrl = `https://allanime.to/player/${episodeData.id}?episode=${episodeNumber}` // Placeholder using constructed link
 
-    console.log(`[AllAnime Layer] [${timestamp}] Fetching stream info from hypothetical URL: ${streamApiUrl}`);
+    // For now, return the episode page link as a placeholder needing resolution
+    console.warn(`[AllAnime Layer] [${timestamp}] Stream link fetching not fully implemented. Returning episode page link: ${episodeData.link}`);
+    return episodeData.link; // Needs further resolution by the API handler
 
+    /*
     try {
         // const streamResponse = await fetchWithRetry(streamApiUrl, { headers: { ... } });
         // Process streamResponse to extract the actual video URL (e.g., MP4, M3U8)
         // const actualStreamUrl = streamResponse?.data?.sources?.[0]?.url; // Highly speculative
-
-        // For now, return the episode page link as a placeholder needing resolution
-        console.warn(`[AllAnime Layer] [${timestamp}] Stream link fetching not fully implemented. Returning episode page link: ${episodeData.link}`);
-        return episodeData.link; // Needs further resolution by the API handler
+        // return actualStreamUrl || null;
 
     } catch (err: any) {
          const error = err as Error;
@@ -175,6 +218,7 @@ async function fetchStreamingLinksFromAllAnime(episodeData: { id: string, link: 
         // console.error(`[AllAnime Layer] Error Stack: ${error.stack}`);
         return null; // Return null on failure
     }
+    */
 }
 
 export { fetchFromAllAnime, fetchEpisodesFromAllAnime, fetchStreamingLinksFromAllAnime };

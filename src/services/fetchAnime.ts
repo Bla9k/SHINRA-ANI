@@ -1,13 +1,15 @@
-// src/services/fetchAnime.ts
+'use server'; // Mark this module as server-only
+
 // Import layer modules using ES6 syntax
 import { fetchFromAllAnime, fetchEpisodesFromAllAnime, fetchStreamingLinksFromAllAnime } from '../layers/allanime';
 import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge, fetchStreamingLinksFromAnimeSuge } from '../layers/animesuge';
 import { fetchFromAnimeDao, fetchEpisodesFromAnimeDao, fetchStreamingLinksFromAnimeDao } from '../layers/animedao';
 import { fetchFromAniWave, fetchEpisodesFromAniWave, fetchStreamingLinksFromAniWave } from '../layers/aniwave';
 
+// --- Interfaces ---
 interface AnimeSearchResult {
     source: string | null;
-    data: any | null; // Consider defining a more specific type for returned data
+    data: any | null; // Consider defining a more specific type for returned data from layers
     error?: string;
 }
 
@@ -18,16 +20,28 @@ interface EpisodeResult {
     link: string;
 }
 
+interface EpisodeData {
+    link: string;
+    number?: string | number;
+    id?: string; // Optional episode ID if needed by the layer
+}
+
+interface AnimeData {
+    title: string;
+    link: string;
+    id?: string; // Optional ID needed by some layers like AllAnime
+}
+
 // Function to search for anime across layers with fallback
 async function fetchAnime(title: string): Promise<AnimeSearchResult> {
   const timestamp = new Date().toISOString();
   console.log(`[fetchAnime] [${timestamp}] Starting search for: "${title}"`);
 
+  // Define layers with their search functions
   const layers = [
-    // Prioritize potentially more reliable sources if known
-    // { name: 'AllAnime', func: fetchFromAllAnime }, // AllAnime API might be less stable or require specific handling
+    // { name: 'AllAnime', func: fetchFromAllAnime }, // Temporarily disable if API is unstable
     { name: 'AnimeSuge', func: fetchFromAnimeSuge },
-    { name: 'AniWave', func: fetchFromAniWave },   // Prioritize AniWave over AnimeDao based on user feedback/observation
+    { name: 'AniWave', func: fetchFromAniWave },
     { name: 'AnimeDao', func: fetchFromAnimeDao },
   ];
 
@@ -37,12 +51,18 @@ async function fetchAnime(title: string): Promise<AnimeSearchResult> {
       const result = await layer.func(title);
       if (result) {
         console.log(`[fetchAnime] [${timestamp}] Found on ${layer.name}.`);
-        return { source: layer.name, data: result }; // Success
+        // Basic validation of the result structure expected (title and link)
+        if (result.title && result.link) {
+            return { source: layer.name, data: result }; // Success
+        } else {
+             console.warn(`[fetchAnime] [${timestamp}] Layer ${layer.name} returned incomplete data:`, result);
+             // Continue to the next layer if data is incomplete
+        }
       } else {
-         console.log(`[fetchAnime] [${timestamp}] Not found or blocked on ${layer.name}.`);
+         console.log(`[fetchAnime] [${timestamp}] Not found or skipped on ${layer.name}.`);
       }
-    } catch (layerError: any) {
-        const error = layerError as Error;
+    } catch (layerError: unknown) { // Catch unknown type
+        const error = layerError as Error; // Type assertion
         console.error(`[fetchAnime] [${timestamp}] Error during ${layer.name} search: ${error.message}`);
         // Continue to the next layer
     }
@@ -54,11 +74,12 @@ async function fetchAnime(title: string): Promise<AnimeSearchResult> {
 }
 
 // Function to fetch episodes based on the source and anime data
-async function fetchEpisodes(animeData: { source: string, data: { title: string, link: string, id?: string } }): Promise<EpisodeResult[] | null> {
+async function fetchEpisodes(animeData: { source: string, data: AnimeData }): Promise<EpisodeResult[] | null> {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.source || !animeData.data || !animeData.data.link) {
         console.error(`[fetchEpisodes] [${timestamp}] Invalid input: animeData object is missing source, data, or link. Data:`, animeData);
-        throw new Error('Invalid anime data provided to fetchEpisodes.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid anime data provided to fetchEpisodes.');
     }
 
     const source = animeData.source;
@@ -69,11 +90,14 @@ async function fetchEpisodes(animeData: { source: string, data: { title: string,
 
     try {
         switch (source) {
-            case 'AllAnime':
-                // Note: fetchEpisodesFromAllAnime might need the AllAnime ID, ensure it's in animeData.data.id
-                if (!data.id) throw new Error("AllAnime ID missing in provided data for fetchEpisodesFromAllAnime");
-                episodes = await fetchEpisodesFromAllAnime(data as { id: string, title: string });
-                break;
+            // case 'AllAnime':
+            //     // Note: fetchEpisodesFromAllAnime might need the AllAnime ID, ensure it's in animeData.data.id
+            //     if (!data.id) {
+            //         console.error("[fetchEpisodes] AllAnime ID missing for fetchEpisodesFromAllAnime");
+            //         return null;
+            //     }
+            //     episodes = await fetchEpisodesFromAllAnime(data as { id: string, title: string });
+            //     break;
             case 'AnimeSuge':
                 episodes = await fetchEpisodesFromAnimeSuge(data);
                 break;
@@ -85,10 +109,12 @@ async function fetchEpisodes(animeData: { source: string, data: { title: string,
                  break;
             default:
                 console.error(`[fetchEpisodes] [${timestamp}] Unknown source: ${source}`);
-                throw new Error(`Unsupported source for fetching episodes: ${source}`);
+                // throw new Error(`Unsupported source for fetching episodes: ${source}`);
+                return null; // Return null for unknown source
         }
-    } catch (error: any) {
-        console.error(`[fetchEpisodes] [${timestamp}] Error fetching episodes from ${source}:`, (error as Error).message);
+    } catch (error: unknown) { // Catch unknown type
+        const err = error as Error; // Type assertion
+        console.error(`[fetchEpisodes] [${timestamp}] Error fetching episodes from ${source}:`, err.message);
         return null; // Return null if fetching fails
     }
 
@@ -104,12 +130,13 @@ async function fetchEpisodes(animeData: { source: string, data: { title: string,
 }
 
 // Function to fetch streaming links for a specific episode
-async function fetchStreamingLinks(episodeData: { source: string, link: string, number?: string | number, id?: string }): Promise<string | null> {
+async function fetchStreamingLinks(episodeData: EpisodeData & { source: string }): Promise<string | null> {
     const timestamp = new Date().toISOString();
     // Ensure episodeData contains source and link (which is the episode page URL from the chosen provider)
     if (!episodeData || !episodeData.source || !episodeData.link) {
          console.error(`[fetchStreamingLinks] [${timestamp}] Invalid input: episodeData object is missing source or link. Data:`, episodeData);
-        throw new Error('Invalid episode data provided to fetchStreamingLinks.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid episode data provided to fetchStreamingLinks.');
     }
 
     const source = episodeData.source;
@@ -119,11 +146,13 @@ async function fetchStreamingLinks(episodeData: { source: string, link: string, 
 
     try {
         switch (source) {
-            case 'AllAnime':
-                 if (!episodeData.id) throw new Error("AllAnime episode ID missing in provided data for fetchStreamingLinksFromAllAnime");
-                 // Pass necessary fields, adjust interface if needed
-                streamLink = await fetchStreamingLinksFromAllAnime(episodeData as { id: string, link: string, number: string | number });
-                break;
+            // case 'AllAnime':
+            //      if (!episodeData.id || !episodeData.number) {
+            //          console.error("[fetchStreamingLinks] AllAnime ID or number missing");
+            //          return null;
+            //      }
+            //     streamLink = await fetchStreamingLinksFromAllAnime(episodeData as EpisodeData & { id: string, number: string | number });
+            //     break;
             case 'AnimeSuge':
                 streamLink = await fetchStreamingLinksFromAnimeSuge(episodeData);
                 break;
@@ -135,10 +164,12 @@ async function fetchStreamingLinks(episodeData: { source: string, link: string, 
                  break;
             default:
                 console.error(`[fetchStreamingLinks] [${timestamp}] Unknown source: ${source}`);
-                throw new Error(`Unsupported source for fetching streaming links: ${source}`);
+                // throw new Error(`Unsupported source for fetching streaming links: ${source}`);
+                return null; // Return null for unknown source
         }
-    } catch (error: any) {
-        console.error(`[fetchStreamingLinks] [${timestamp}] Error fetching streaming links from ${source}:`, (error as Error).message);
+    } catch (error: unknown) { // Catch unknown type
+        const err = error as Error; // Type assertion
+        console.error(`[fetchStreamingLinks] [${timestamp}] Error fetching streaming links from ${source}:`, err.message);
         return null; // Return null on failure
     }
 

@@ -1,17 +1,36 @@
-// src/layers/animesuge.ts
+'use server'; // Mark this module as server-only
+
 import * as cheerio from 'cheerio';
 import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
 
 const ANIMESUGE_DOMAIN = 'https://animesugetv.to';
 
+interface AnimeSugeSearchResult {
+    title: string;
+    link: string;
+}
+
+interface EpisodeInfo {
+    id: string; // Unique episode identifier
+    number: number;
+    title: string;
+    link: string; // Link to the episode page on the source
+}
+
+interface EpisodeData {
+    number?: string | number;
+    link: string;
+    id?: string; // Optional episode ID if available/needed
+}
+
 // Function to search for anime
-async function fetchFromAnimeSuge(title: string) {
+async function fetchFromAnimeSuge(title: string): Promise<AnimeSugeSearchResult | null> {
   const timestamp = new Date().toISOString();
   const searchUrl = `${ANIMESUGE_DOMAIN}/filter?keyword=${encodeURIComponent(title)}`;
   console.log(`[AnimeSuge Layer] [${timestamp}] Searching: ${searchUrl}`);
 
   try {
-    const html = await fetchWithRetry(searchUrl); // Use fetchWithRetry
+    const html = await fetchWithRetry<string>(searchUrl); // Specify string type
     const $ = cheerio.load(html);
 
     // Optional: Check for CAPTCHA/Challenge before proceeding
@@ -29,15 +48,17 @@ async function fetchFromAnimeSuge(title: string) {
 
     if (!animeTitle || !animeLink) {
         console.warn(`[AnimeSuge Layer] [${timestamp}] No results found for "${title}" on ${searchUrl}`);
-        throw new Error('AnimeSuge no result found in DOM.');
+        // Don't throw error here, return null to allow fallback
+        return null;
+        // throw new Error('AnimeSuge no result found in DOM.');
     }
 
     const absoluteLink = animeLink.startsWith('/') ? `${ANIMESUGE_DOMAIN}${animeLink}` : animeLink;
     console.log(`[AnimeSuge Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
 
-  } catch (err: any) {
-    const error = err as Error;
+  } catch (err: unknown) { // Catch unknown type
+    const error = err as Error; // Type assertion
     const statusCode = (error as any).response?.status; // Get status code if available
     const errorCode = (error as any).code; // Get network error code if available
 
@@ -53,18 +74,19 @@ async function fetchFromAnimeSuge(title: string) {
 }
 
 // Function to fetch episodes from an AnimeSuge anime page
-async function fetchEpisodesFromAnimeSuge(animeData: { title: string, link: string }) {
+async function fetchEpisodesFromAnimeSuge(animeData: { title: string, link: string }): Promise<EpisodeInfo[] | null> {
     const timestamp = new Date().toISOString();
     if (!animeData || !animeData.link || !animeData.title) {
         console.error(`[AnimeSuge Layer] [${timestamp}] Invalid anime data provided to fetchEpisodesFromAnimeSuge:`, animeData);
-        throw new Error('Invalid anime data provided.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid anime data provided.');
     }
 
     const animePageUrl = animeData.link; // Should be absolute URL
     console.log(`[AnimeSuge Layer] [${timestamp}] Fetching episodes from: ${animePageUrl}`);
 
     try {
-        const html = await fetchWithRetry(animePageUrl, { headers: { 'Referer': ANIMESUGE_DOMAIN } }); // Add Referer
+        const html = await fetchWithRetry<string>(animePageUrl, { headers: { 'Referer': ANIMESUGE_DOMAIN } }); // Add Referer
         const $ = cheerio.load(html);
 
         // Optional: Check for CAPTCHA/Challenge
@@ -76,8 +98,8 @@ async function fetchEpisodesFromAnimeSuge(animeData: { title: string, link: stri
         const $challengeFree = cheerio.load(challengeFreeHtml); // Use challenge-free HTML if applicable
 
 
-        const episodes = [];
-        const seenEpisodeNumbers = new Set();
+        const episodes: EpisodeInfo[] = [];
+        const seenEpisodeNumbers = new Set<number>();
 
         // Try multiple selectors for robustness
         $challengeFree('.episodes-list .nav-link, .ss-list a').each((index, element) => {
@@ -133,8 +155,8 @@ async function fetchEpisodesFromAnimeSuge(animeData: { title: string, link: stri
         console.log(`[AnimeSuge Layer] [${timestamp}] Found ${episodes.length} episodes for "${animeData.title}"`);
         return episodes;
 
-    } catch (err: any) {
-        const error = err as Error;
+    } catch (err: unknown) { // Catch unknown type
+        const error = err as Error; // Type assertion
         const statusCode = (error as any).response?.status;
         const errorCode = (error as any).code;
         console.error(`[AnimeSuge Layer] [${timestamp}] Failed to fetch episodes for "${animeData?.title}" from ${animePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
@@ -144,18 +166,19 @@ async function fetchEpisodesFromAnimeSuge(animeData: { title: string, link: stri
 }
 
 // Function to fetch streaming links from an AnimeSuge episode page
-async function fetchStreamingLinksFromAnimeSuge(episodeData: { number?: string | number, link: string}) {
+async function fetchStreamingLinksFromAnimeSuge(episodeData: EpisodeData): Promise<string | null> {
     const timestamp = new Date().toISOString();
     if (!episodeData || !episodeData.link) {
         console.error(`[AnimeSuge Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
-        throw new Error('Invalid episode data provided.');
+        return null; // Return null for invalid input
+        // throw new Error('Invalid episode data provided.');
     }
 
     const episodePageUrl = episodeData.link; // Use the link from the fetched episode object
     console.log(`[AnimeSuge Layer] [${timestamp}] Fetching streaming links from: ${episodePageUrl}`);
 
     try {
-        const html = await fetchWithRetry(episodePageUrl, { headers: { 'Referer': ANIMESUGE_DOMAIN } });
+        const html = await fetchWithRetry<string>(episodePageUrl, { headers: { 'Referer': ANIMESUGE_DOMAIN } });
         const $ = cheerio.load(html);
 
         // Optional: Check for CAPTCHA/Challenge
@@ -191,6 +214,15 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData: { number?: string |
                         return false; // Stop searching
                     }
                 }
+                 // Check for playlist pattern too
+                if (scriptContent && scriptContent.includes('playlist:')) {
+                     const playlistMatch = scriptContent.match(/file:\s*["']([^"']+\.m3u8[^"']*)["']/);
+                     if (playlistMatch && playlistMatch[1]) {
+                         streamDataUrl = playlistMatch[1];
+                         console.log(`[AnimeSuge Layer] [${timestamp}] Found potential playlist URL in script: ${streamDataUrl}`);
+                         return false; // Stop searching
+                     }
+                }
             });
             if (streamDataUrl) return streamDataUrl;
 
@@ -211,8 +243,8 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData: { number?: string |
         // The API route handler should attempt to resolve this further.
         return iframeSrc;
 
-    } catch (err: any) {
-        const error = err as Error; // Correctly type cast error
+    } catch (err: unknown) { // Catch unknown type
+        const error = err as Error; // Type assertion
         const statusCode = (error as any).response?.status;
         const errorCode = (error as any).code;
         console.error(`[AnimeSuge Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number ?? 'N/A'} from ${episodePageUrl}. Status: ${statusCode ?? 'N/A'}, Code: ${errorCode ?? 'N/A'}, Error: ${error.message}`);
@@ -222,4 +254,3 @@ async function fetchStreamingLinksFromAnimeSuge(episodeData: { number?: string |
 }
 
 export { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge, fetchStreamingLinksFromAnimeSuge };
-
