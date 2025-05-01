@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd } from 'lucide-react'; // Import icons
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2 } from 'lucide-react'; // Import icons
 import { Separator } from '@/components/ui/separator';
 import { AspectRatio } from '@/components/ui/aspect-ratio'; // For trailer
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -171,7 +171,7 @@ export default function AnimeDetailPage() {
 
            // Define providers to try in order
            const providers = [
-                // { name: 'AnimeSuge', searchFn: fetchFromAnimeSuge, fetchFn: fetchEpisodesFromAnimeSuge },
+                { name: 'AnimeSuge', searchFn: fetchFromAnimeSuge, fetchFn: fetchEpisodesFromAnimeSuge },
                 { name: 'AniWave', searchFn: fetchFromAniWave, fetchFn: fetchEpisodesFromAniWave },
                 // Add other layers here (e.g., AnimeDao)
            ];
@@ -389,7 +389,7 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-             {/* Episodes Section - Using AnimeSuge/AniWave Data */}
+             {/* Episodes Section - Using Scraper Data */}
             <section className="mb-12">
                  <div className="flex justify-between items-center mb-4">
                     <h3 className="text-2xl font-semibold flex items-center gap-2"><Film size={24}/> Episodes</h3>
@@ -404,7 +404,7 @@ export default function AnimeDetailPage() {
                      ) : episodeError ? (
                          <Alert variant="destructive" className="glass">
                              <AlertCircle className="h-4 w-4" />
-                             <AlertTitle>Error Loading Episodes</AlertTitle>
+                             <AlertTitle>Could Not Load Episodes</AlertTitle>
                              <AlertDescription>{episodeError}</AlertDescription>
                          </Alert>
                      ) : episodes.length === 0 ? (
@@ -581,5 +581,3 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
-
-```
