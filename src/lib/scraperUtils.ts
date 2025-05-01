@@ -1,4 +1,4 @@
-'use server'; // Mark this module as server-only
+// Removed 'use server' directive as this file contains utility functions, not server actions.
 
 import axios, { type AxiosRequestConfig, type AxiosError } from 'axios';
 import { HttpsProxyAgent } from 'https-proxy-agent';
