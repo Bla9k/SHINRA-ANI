@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -20,8 +19,8 @@ import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Us
 import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 // Import the specific episode fetchers we want to use
-import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge.ts'; // Corrected extension
-import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave.ts'; // Corrected extension
+import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge';
+import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave';
 // Add other layers if needed
 
 // --- Interfaces ---
@@ -179,14 +178,17 @@ export default function AnimeDetailPage() {
 
            let foundEpisodes: any[] | null = null;
            let sourceUsed: string | null = null;
+           let providerErrors: { name: string, error: string }[] = []; // Store errors from each provider
 
            for (const provider of providers) {
-               console.log(`[AnimeDetailPage] Trying provider: ${provider.name}`);
+               console.log(`[AnimeDetailPage] Trying provider: ${provider.name} for "${animeTitle}"`);
                try {
                    // Step 1: Search the provider to get the anime's page link on that provider
                    const searchResult = await provider.searchFn(animeTitle);
                    if (!searchResult || !searchResult.link) {
-                       console.warn(`[AnimeDetailPage] Provider ${provider.name} did not find a match for "${animeTitle}".`);
+                       const errorMsg = `Provider ${provider.name} did not find a match for "${animeTitle}".`;
+                       console.warn(`[AnimeDetailPage] ${errorMsg}`);
+                       providerErrors.push({ name: provider.name, error: "Anime not found on provider." });
                        continue; // Try next provider
                    }
                    console.log(`[AnimeDetailPage] Found link on ${provider.name}: ${searchResult.link}`);
@@ -200,10 +202,14 @@ export default function AnimeDetailPage() {
                         console.log(`[AnimeDetailPage] Successfully fetched ${foundEpisodes.length} episodes from ${provider.name}.`);
                         break; // Stop trying providers once episodes are found
                    } else {
-                       console.warn(`[AnimeDetailPage] Provider ${provider.name} returned no episodes for "${animeTitle}".`);
+                        const errorMsg = `Provider ${provider.name} returned no episodes for "${animeTitle}" (Link: ${searchResult.link}).`;
+                       console.warn(`[AnimeDetailPage] ${errorMsg}`);
+                       providerErrors.push({ name: provider.name, error: "No episodes found on provider page." });
                    }
                } catch (providerError: any) {
-                   console.error(`[AnimeDetailPage] Error fetching from provider ${provider.name}:`, providerError.message);
+                   const errorMsg = `Error fetching from provider ${provider.name}: ${providerError.message}`;
+                   console.error(`[AnimeDetailPage] ${errorMsg}`);
+                   providerErrors.push({ name: provider.name, error: providerError.message });
                }
            } // End of provider loop
 
@@ -229,7 +235,8 @@ export default function AnimeDetailPage() {
                setEpisodeError(null);
                console.log(`[AnimeDetailPage] Mapped ${mappedEpisodes.length} episodes from ${sourceUsed}.`);
            } else {
-               console.error(`[AnimeDetailPage] Failed to fetch episodes from any provider for "${animeTitle}".`);
+               // Log detailed errors if ALL providers failed
+               console.error(`[AnimeDetailPage] Failed to fetch episodes from ANY provider for "${animeTitle}". Errors:`, providerErrors);
                setEpisodeError("Could not load episode information from available sources.");
                setEpisodes([]);
                setActiveSource(null);
@@ -261,8 +268,18 @@ export default function AnimeDetailPage() {
   }
 
   if (!anime) {
-    return <AnimeDetailSkeleton />;
-  }
+     // Handle case where loading is finished but anime is still null (e.g., initial error during fetch)
+     // You could show a specific error message here or the skeleton again
+     return (
+       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
+         <Alert variant="destructive" className="max-w-md glass">
+           <AlertCircle className="h-4 w-4" />
+           <AlertTitle>Loading Error</AlertTitle>
+           <AlertDescription>Could not load anime details. Please try again later.</AlertDescription>
+         </Alert>
+       </div>
+     );
+   }
 
 
   return ( // Fixed: Correct placement of return statement
