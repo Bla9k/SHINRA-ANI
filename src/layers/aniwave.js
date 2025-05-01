@@ -1,197 +1,247 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
 
-// Target the new domain
-const ANIWAVE_DOMAIN = 'https://aniwave.uk';
+import * as cheerio from 'cheerio';
+import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
+import axios from 'axios'; // Keep axios for potential AJAX calls
+
+const ANIWAVE_DOMAIN = 'https://aniwave.to'; // Target new domain .to
 
 // Function to search for anime
 async function fetchFromAniWave(title) {
+  const timestamp = new Date().toISOString();
+  // Use the filter endpoint which seems more reliable for searching
+  const searchUrl = `${ANIWAVE_DOMAIN}/filter?keyword=${encodeURIComponent(title)}`;
+  console.log(`[AniWave Layer] [${timestamp}] Searching: ${searchUrl}`);
+
   try {
-    // Use the new domain for search
-    const searchUrl = `${ANIWAVE_DOMAIN}/filter?keyword=${encodeURIComponent(title)}`; // Use filter endpoint
-    console.log(`[AniWave Layer] Searching: ${searchUrl}`);
-    const response = await axios.get(searchUrl);
-    const $ = cheerio.load(response.data);
-    // Verify this selector on aniwave.uk
+    // Use fetchWithRetry which includes User-Agent rotation and proxy
+    const html = await fetchWithRetry(searchUrl);
+    const $ = cheerio.load(html);
+
+    // Optional: Check for CAPTCHA/Challenge before proceeding
+    // const challengeFreeHtml = await handleCaptchaOrChallenge(html, searchUrl);
+    // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
+    // const $ = cheerio.load(challengeFreeHtml);
+
+    // Updated selector based on common AniWave structure
     const firstResult = $('.film_list-wrap .flw-item').first();
-    const animeTitle = firstResult.find('.film-name a').text();
+    const animeTitle = firstResult.find('.film-name a').text()?.trim();
     const animeLink = firstResult.find('.film-name a').attr('href');
 
-    if (!animeTitle || !animeLink) throw new Error('AniWave no result');
+    if (!animeTitle || !animeLink) {
+         console.warn(`[AniWave Layer] [${timestamp}] No results found for "${title}" on ${searchUrl}`);
+        throw new Error('AniWave no result found in DOM.');
+    }
 
-    // Make link absolute using the new domain
+    // Ensure link is absolute
     const absoluteLink = animeLink.startsWith('/') ? `${ANIWAVE_DOMAIN}${animeLink}` : animeLink;
 
-    console.log(`[AniWave Layer] Found: ${animeTitle} at ${absoluteLink}`);
+    console.log(`[AniWave Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
   } catch (err) {
-    console.error('[AniWave Layer] Search failed:', err.message);
-    return null;
+    const error = err as Error;
+    console.error(`[AniWave Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Error: ${error.message}`);
+    // console.error(`[AniWave Layer] Error Stack: ${error.stack}`);
+    return null; // Return null on failure
   }
 }
 
 // Function to fetch episodes from an AniWave anime page
 async function fetchEpisodesFromAniWave(animeData) {
-  try {
-    if (!animeData || !animeData.link) {
-      throw new Error('Invalid anime data provided to fetchEpisodesFromAniWave.');
+    const timestamp = new Date().toISOString();
+    if (!animeData || !animeData.link || !animeData.title) {
+      console.error(`[AniWave Layer] [${timestamp}] Invalid anime data provided to fetchEpisodesFromAniWave:`, animeData);
+      throw new Error('Invalid anime data provided.');
     }
 
     const animePageUrl = animeData.link;
-    console.log(`[AniWave Layer] Fetching episodes from: ${animePageUrl}`);
+    console.log(`[AniWave Layer] [${timestamp}] Fetching episodes from: ${animePageUrl}`);
 
-    // AniWave often loads episodes dynamically via AJAX.
-    // First, try to get the anime ID from the page URL if possible, needed for AJAX request.
-    const animeIdMatch = animePageUrl.match(/\/watch\/[a-z0-9-]+\.(\w+)/i); // Try to extract ID like '1a2b' from URL
+    // --- Attempt 1: AJAX Request ---
+    let episodes = [];
+    const animeIdMatch = animePageUrl.match(/\/watch\/[a-z0-9-]+\.(\w+)/i);
     const animeInternalId = animeIdMatch ? animeIdMatch[1] : null;
 
-    if (!animeInternalId) {
-      console.warn(`[AniWave Layer] Could not extract internal ID from URL ${animePageUrl}. Static scraping might fail.`);
-      // Attempt static scraping anyway as a fallback
-    }
-
-    // --- AJAX Attempt (Preferred for AniWave) ---
-    let episodes = [];
     if (animeInternalId) {
-      const ajaxEpisodesUrl = `${ANIWAVE_DOMAIN}/ajax/episode/list/${animeInternalId}`; // Common AJAX pattern
-      console.log(`[AniWave Layer] Attempting AJAX fetch: ${ajaxEpisodesUrl}`);
-      try {
-        const ajaxResponse = await axios.get(ajaxEpisodesUrl, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
-            'Referer': animePageUrl,
-            'X-Requested-With': 'XMLHttpRequest', // Often required for AJAX
-          }
-        });
-
-        if (ajaxResponse.data && ajaxResponse.data.status && ajaxResponse.data.result) {
-           const $ajax = cheerio.load(ajaxResponse.data.result); // Load the HTML fragment
-           // Selector within the AJAX response HTML
-           $ajax('.episodes li a').each((index, element) => { // Adjust selector based on AJAX response structure
-                const episodeLinkElement = $ajax(element);
-                const episodeLink = episodeLinkElement.attr('href');
-                 // Extract number, often from data attributes like data-num
-                 const episodeNumberText = episodeLinkElement.data('num') || episodeLinkElement.find('.num').text() || episodeLinkElement.text().trim();
-                 const episodeNumberMatch = String(episodeNumberText).match(/(\d+(\.\d+)?)/); // Match integers or decimals
-                 let episodeNumber = NaN;
-                 if (episodeNumberMatch) {
-                     episodeNumber = parseFloat(episodeNumberMatch[1]);
-                 }
-                const episodeTitle = episodeLinkElement.attr('title') || episodeLinkElement.find('.title').text() || `Episode ${episodeNumber}`;
-
-                if (episodeLink && !isNaN(episodeNumber)) {
-                    const fullEpisodeLink = episodeLink.startsWith('/') ? `${ANIWAVE_DOMAIN}${episodeLink}` : episodeLink;
-                    // Generate a unique ID
-                    const uniqueEpisodeId = `${animeData.title.replace(/\s+/g, '-')}-ep-${episodeNumber}`;
-                    episodes.push({
-                        id: uniqueEpisodeId,
-                        number: episodeNumber,
-                        title: episodeTitle,
-                        link: fullEpisodeLink, // Link to the AniWave episode page
-                    });
+        const ajaxEpisodesUrl = `${ANIWAVE_DOMAIN}/ajax/episode/list/${animeInternalId}`;
+        console.log(`[AniWave Layer] [${timestamp}] Attempting AJAX fetch: ${ajaxEpisodesUrl}`);
+        try {
+            // Use fetchWithRetry for the AJAX call as well
+            const ajaxResponse = await fetchWithRetry(ajaxEpisodesUrl, {
+                headers: {
+                    'Referer': animePageUrl,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json, text/javascript, */*; q=0.01', // Common AJAX accept header
                 }
-           });
-           console.log(`[AniWave Layer] Found ${episodes.length} episodes via AJAX for ${animeData.title}`);
-        } else {
-            console.warn(`[AniWave Layer] AJAX request successful but invalid data format received: `, ajaxResponse.data);
-        }
+            });
 
-      } catch (ajaxError) {
-         console.warn(`[AniWave Layer] AJAX episode fetch failed for ${animeData.title}:`, ajaxError.message);
-         // Fallback to static scraping if AJAX fails
-      }
+             // Check response structure carefully
+             if (ajaxResponse && typeof ajaxResponse === 'object' && (ajaxResponse as any).status && (ajaxResponse as any).result) {
+                const htmlFragment = (ajaxResponse as any).result;
+                const $ajax = cheerio.load(htmlFragment);
+                const seenEpisodeNumbers = new Set();
+
+                $ajax('.episodes li a, ul.episodes a').each((index, element) => { // Adjust selector based on AJAX response structure
+                    const episodeLinkElement = $ajax(element);
+                    const episodeLink = episodeLinkElement.attr('href');
+                    const epNumFromData = episodeLinkElement.data('num');
+                    const epTitleAttr = episodeLinkElement.attr('title');
+                    const epNumFromTitle = epTitleAttr?.match(/Episode\s*(\d+)/i)?.[1];
+                    const epTextNum = episodeLinkElement.find('.num').text()?.trim() || episodeLinkElement.text().trim().match(/^(\d+)/)?.[0];
+
+                    let episodeNumberStr = epNumFromData || epNumFromTitle || epTextNum;
+                    let episodeNumber = NaN;
+                    if (episodeNumberStr) episodeNumber = parseInt(String(episodeNumberStr), 10);
+
+                     // Try extracting from URL as fallback
+                    if (isNaN(episodeNumber) && episodeLink) {
+                        const urlMatch = episodeLink.match(/\/ep-(\d+)/i);
+                        if (urlMatch && urlMatch[1]) episodeNumber = parseInt(urlMatch[1], 10);
+                    }
+
+                    const episodeTitle = epTitleAttr || episodeLinkElement.find('.title').text()?.trim() || `Episode ${episodeNumber}`;
+
+                    if (episodeLink && !isNaN(episodeNumber) && !seenEpisodeNumbers.has(episodeNumber)) {
+                        const fullEpisodeLink = episodeLink.startsWith('/') ? `${ANIWAVE_DOMAIN}${episodeLink}` : episodeLink;
+                        const uniqueEpisodeId = `${animeData.title.replace(/[^a-zA-Z0-9]/g, '-')}-ep-${episodeNumber}`;
+
+                        episodes.push({
+                            id: uniqueEpisodeId,
+                            number: episodeNumber,
+                            title: episodeTitle,
+                            link: fullEpisodeLink,
+                        });
+                        seenEpisodeNumbers.add(episodeNumber);
+                    }
+                });
+                console.log(`[AniWave Layer] [${timestamp}] Found ${episodes.length} episodes via AJAX for "${animeData.title}".`);
+            } else {
+                console.warn(`[AniWave Layer] [${timestamp}] AJAX response format invalid or status false for ${ajaxEpisodesUrl}. Response:`, ajaxResponse);
+            }
+        } catch (ajaxError) {
+             const error = ajaxError as Error;
+             console.warn(`[AniWave Layer] [${timestamp}] AJAX episode fetch failed for "${animeData.title}". Error: ${error.message}. Proceeding to static scrape.`);
+             // Fallthrough to static scraping
+        }
+    } else {
+         console.warn(`[AniWave Layer] [${timestamp}] Could not extract internal ID from URL: ${animePageUrl}. Proceeding to static scrape.`);
     }
 
-    // --- Static Scraping Fallback (If AJAX failed or no ID found) ---
-    if (episodes.length === 0) {
-        console.log(`[AniWave Layer] Falling back to static scraping for ${animeData.title}`);
-        const response = await axios.get(animePageUrl, {
-             headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36' }
-        });
-        const $ = cheerio.load(response.data);
-        // Try static selectors again (less likely to work)
-        $('.episodes-list a, #episodes-list a').each((index, element) => { // Adjust selectors
-            // ... (Static scraping logic similar to the AJAX one, but using the main '$') ...
-             const episodeLinkElement = $(element);
-             const episodeLink = episodeLinkElement.attr('href');
-             const episodeNumberText = episodeLinkElement.data('number') || episodeLinkElement.text().trim();
-             const episodeNumberMatch = String(episodeNumberText).match(/(\d+(\.\d+)?)/);
-             let episodeNumber = NaN;
-             if (episodeNumberMatch) episodeNumber = parseFloat(episodeNumberMatch[1]);
-             const episodeTitle = episodeLinkElement.attr('title') || `Episode ${episodeNumber}`;
 
-             if (episodeLink && !isNaN(episodeNumber)) {
-                 const fullEpisodeLink = episodeLink.startsWith('/') ? `${ANIWAVE_DOMAIN}${episodeLink}` : episodeLink;
-                 const uniqueEpisodeId = `${animeData.title.replace(/\s+/g, '-')}-ep-${episodeNumber}`;
-                  // Avoid duplicates if AJAX found some but not all
-                  if (!episodes.some(ep => ep.number === episodeNumber)) {
+    // --- Attempt 2: Static Scraping Fallback ---
+    if (episodes.length === 0) {
+        console.log(`[AniWave Layer] [${timestamp}] Falling back to static scraping for "${animeData.title}" from ${animePageUrl}`);
+        try {
+            const html = await fetchWithRetry(animePageUrl, { headers: { 'Referer': ANIWAVE_DOMAIN }});
+            const $ = cheerio.load(html);
+            const seenEpisodeNumbers = new Set(); // Use separate set for static scrape
+
+            // Add more potential selectors based on observation
+            $('.episodes-list a, #episodes-list a, div.server[data-server-id="1"] ul.episodes a').each((index, element) => {
+                 const episodeLinkElement = $(element);
+                 const episodeLink = episodeLinkElement.attr('href');
+                 const epNumFromData = episodeLinkElement.data('num');
+                 const epTitleAttr = episodeLinkElement.attr('title');
+                 const epNumFromTitle = epTitleAttr?.match(/Episode\s*(\d+)/i)?.[1];
+                 const epTextNum = episodeLinkElement.find('.num').text()?.trim() || episodeLinkElement.text().trim().match(/^(\d+)/)?.[0];
+
+                 let episodeNumberStr = epNumFromData || epNumFromTitle || epTextNum;
+                 let episodeNumber = NaN;
+                 if (episodeNumberStr) episodeNumber = parseInt(String(episodeNumberStr), 10);
+
+                  // Try extracting from URL as fallback
+                 if (isNaN(episodeNumber) && episodeLink) {
+                     const urlMatch = episodeLink.match(/\/ep-(\d+)/i);
+                     if (urlMatch && urlMatch[1]) episodeNumber = parseInt(urlMatch[1], 10);
+                 }
+
+                 const episodeTitle = epTitleAttr || episodeLinkElement.find('.title').text()?.trim() || `Episode ${episodeNumber}`;
+
+                 if (episodeLink && !isNaN(episodeNumber) && !seenEpisodeNumbers.has(episodeNumber)) {
+                     const fullEpisodeLink = episodeLink.startsWith('/') ? `${ANIWAVE_DOMAIN}${episodeLink}` : episodeLink;
+                     const uniqueEpisodeId = `${animeData.title.replace(/[^a-zA-Z0-9]/g, '-')}-ep-${episodeNumber}`;
+
                      episodes.push({
                          id: uniqueEpisodeId,
                          number: episodeNumber,
                          title: episodeTitle,
                          link: fullEpisodeLink,
                      });
-                  }
-             }
-        });
-        if (episodes.length > 0) {
-             console.log(`[AniWave Layer] Found ${episodes.length} episodes via static scraping.`);
-        } else {
-             console.warn(`[AniWave Layer] Static scraping also failed to find episodes for ${animeData.title}.`);
+                     seenEpisodeNumbers.add(episodeNumber);
+                 }
+            });
+
+            if (episodes.length === 0) {
+                 console.warn(`[AniWave Layer] [${timestamp}] Static scraping also failed to find episodes for "${animeData.title}" on ${animePageUrl}`);
+                 // console.log(`[AniWave Layer] HTML content for debugging: \n ${$.html().substring(0, 2000)}...`);
+            } else {
+                 console.log(`[AniWave Layer] [${timestamp}] Found ${episodes.length} episodes via static scraping for "${animeData.title}".`);
+            }
+        } catch (scrapeError) {
+            const error = scrapeError as Error;
+            console.error(`[AniWave Layer] [${timestamp}] Static scraping failed for "${animeData.title}" from ${animePageUrl}. Error: ${error.message}`);
+             // Return null if both AJAX and static scraping fail
+             return null;
         }
     }
-    // ---
 
-    // Sort episodes by number
     episodes.sort((a, b) => a.number - b.number);
-
     return episodes;
-
-  } catch (err) {
-    console.error(`[AniWave Layer] Failed to fetch episodes for ${animeData?.title}:`, err.message);
-    return null;
-  }
 }
 
 // Function to fetch streaming links from an AniWave episode page
 async function fetchStreamingLinksFromAniWave(episodeData) {
+    const timestamp = new Date().toISOString();
+    if (!episodeData || !episodeData.link || !episodeData.number) {
+         console.error(`[AniWave Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
+        throw new Error('Invalid episode data provided.');
+    }
+
+    const episodePageUrl = episodeData.link;
+    console.log(`[AniWave Layer] [${timestamp}] Fetching streaming links from: ${episodePageUrl}`);
+
     try {
-        if (!episodeData || !episodeData.link) {
-            throw new Error('Invalid episode data provided to fetchStreamingLinksFromAniWave.');
-        }
-
-        const episodePageUrl = episodeData.link; // Use the link from the fetched episode object
-        console.log(`[AniWave Layer] Fetching streaming links from: ${episodePageUrl}`);
-
-        const response = await axios.get(episodePageUrl, {
+        // Use fetchWithRetry for the episode page itself
+        const html = await fetchWithRetry(episodePageUrl, {
              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36',
-                'Referer': ANIWAVE_DOMAIN // Referer might be important
+                'Referer': ANIWAVE_DOMAIN // Referer is often crucial
             }
         });
-        const $ = cheerio.load(response.data);
+        const $ = cheerio.load(html);
 
         // --- Scraping Logic for Streaming Links ---
-        // This is highly dependent on AniWave's current player implementation.
-        // Often involves finding an iframe, then potentially making another request to the iframe source,
-        // and possibly decoding obfuscated source URLs within scripts.
-        const iframeSrc = $('#player iframe').attr('src') || $('.watch-video iframe').attr('src'); // Example selectors
+        // This is complex and might involve multiple steps:
+        // 1. Find the active video server (e.g., Vidplay, MyCloud, Filemoon).
+        // 2. Get the source URL (often an iframe src) for that server.
+        // 3. Potentially fetch the iframe source URL.
+        // 4. Extract the actual stream data (e.g., M3U8 link) from the iframe content or associated scripts/API calls.
+
+        // Example: Find iframe source (adapt selectors)
+        const iframeSrc = $('#player iframe').attr('src') || $('.watch-video iframe').attr('src') || $('#iframe-embed').attr('src');
 
         if (!iframeSrc) {
-            console.warn(`[AniWave Layer] No iframe source found for streaming links on ${episodePageUrl}. Dynamic loading likely needed.`);
-            // Add logic here to look for AJAX calls or script data that loads the player if needed.
+            console.warn(`[AniWave Layer] [${timestamp}] No iframe source found directly on ${episodePageUrl}. Player might load dynamically.`);
+            // Add more sophisticated logic here if needed (e.g., checking script tags for player data)
             return null;
         }
 
-        console.log(`[AniWave Layer] Found iframe source: ${iframeSrc}`);
-        // This iframe source (e.g., vidplay, mycloud) will likely need to be requested and parsed separately
-        // by the API route handler (/api/stream/[...]).
-        // Return the iframe source URL for further processing.
-        return iframeSrc;
+        // Ensure iframe source is absolute
+        let absoluteIframeSrc = iframeSrc;
+        if (iframeSrc.startsWith('//')) {
+            absoluteIframeSrc = 'https:' + iframeSrc;
+        } else if (iframeSrc.startsWith('/')) {
+            absoluteIframeSrc = `${ANIWAVE_DOMAIN}${iframeSrc}`;
+        }
+
+        console.log(`[AniWave Layer] [${timestamp}] Found potential streaming iframe: ${absoluteIframeSrc}`);
+        // This iframe source likely needs further resolution by the API route handler.
+        // Return the iframe URL for the next step.
+        return absoluteIframeSrc;
 
     } catch (err) {
-        console.error(`[AniWave Layer] Failed to fetch streaming links for episode ${episodeData?.number}:`, err.message);
-        return null;
+         const error = err as Error;
+        console.error(`[AniWave Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number} from ${episodePageUrl}. Error: ${error.message}`);
+         // console.error(`[AniWave Layer] Error Stack: ${error.stack}`);
+        return null; // Return null on failure
     }
 }
 

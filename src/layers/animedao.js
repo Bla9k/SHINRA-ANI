@@ -1,122 +1,170 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
+
+import * as cheerio from 'cheerio';
+import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
+
+const ANIMEDAO_DOMAIN = 'https://animedao.to';
 
 // Function to search for anime
 async function fetchFromAnimeDao(title) {
+  const timestamp = new Date().toISOString();
+  const searchUrl = `${ANIMEDAO_DOMAIN}/search/?q=${encodeURIComponent(title)}`;
+  console.log(`[AnimeDao Layer] [${timestamp}] Searching: ${searchUrl}`);
+
   try {
-    const response = await axios.get(`https://animedao.to/search/?q=${encodeURIComponent(title)}`);
-    const $ = cheerio.load(response.data);
+    const html = await fetchWithRetry(searchUrl); // Use fetchWithRetry
+    const $ = cheerio.load(html);
+
+    // Optional: Check for CAPTCHA/Challenge
+    // const challengeFreeHtml = await handleCaptchaOrChallenge(html, searchUrl);
+    // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
+    // const $ = cheerio.load(challengeFreeHtml);
+
     const firstResult = $('.anime_card').first();
-    const animeTitle = firstResult.find('h5 a').text();
+    const animeTitle = firstResult.find('h5 a').text()?.trim();
     const animeLink = firstResult.find('h5 a').attr('href');
 
-    if (!animeTitle || !animeLink) throw new Error('AnimeDao no result');
+    if (!animeTitle || !animeLink) {
+         console.warn(`[AnimeDao Layer] [${timestamp}] No results found for "${title}" on ${searchUrl}`);
+         throw new Error('AnimeDao no result found in DOM.');
+    }
 
     // Ensure link is absolute
-    const absoluteLink = animeLink.startsWith('http') ? animeLink : `https://animedao.to${animeLink}`;
+    const absoluteLink = animeLink.startsWith('http') ? animeLink : `${ANIMEDAO_DOMAIN}${animeLink}`;
 
+    console.log(`[AnimeDao Layer] [${timestamp}] Found: "${animeTitle}" at ${absoluteLink}`);
     return { title: animeTitle, link: absoluteLink };
   } catch (err) {
-    console.error('AnimeDao Search failed:', err.message);
-    return null;
+    const error = err as Error;
+    console.error(`[AnimeDao Layer] [${timestamp}] Search failed for "${title}" at ${searchUrl}. Error: ${error.message}`);
+    // console.error(`[AnimeDao Layer] Error Stack: ${error.stack}`);
+    return null; // Return null on failure
   }
 }
 
-// New function to fetch episodes from an AnimeDao anime page
+// Function to fetch episodes from an AnimeDao anime page
 async function fetchEpisodesFromAnimeDao(animeData) {
-  try {
-    if (!animeData || !animeData.link) {
-      throw new Error('Invalid anime data provided to fetchEpisodesFromAnimeDao.');
+    const timestamp = new Date().toISOString();
+    if (!animeData || !animeData.link || !animeData.title) {
+        console.error(`[AnimeDao Layer] [${timestamp}] Invalid anime data provided to fetchEpisodes:`, animeData);
+        throw new Error('Invalid anime data provided.');
     }
 
     const animePageUrl = animeData.link;
-    console.log(`[AnimeDao Layer] Fetching episodes from: ${animePageUrl}`);
+    console.log(`[AnimeDao Layer] [${timestamp}] Fetching episodes from: ${animePageUrl}`);
 
-    const response = await axios.get(animePageUrl);
-    const $ = cheerio.load(response.data);
+    try {
+        const html = await fetchWithRetry(animePageUrl, { headers: { 'Referer': ANIMEDAO_DOMAIN }});
+        const $ = cheerio.load(html);
 
-    const episodes = [];
+        // Optional: Check for CAPTCHA/Challenge
+        // const challengeFreeHtml = await handleCaptchaOrChallenge(html, animePageUrl);
+        // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
+        // const $ = cheerio.load(challengeFreeHtml);
 
-    // --- Scraping Logic for Episodes ---
-    // Selector might need adjustment for AnimeDao
-    // Example: find a list container and iterate through its items
-    $('.episode-list-item a, .ep-list a').each((index, element) => { // Combine potential selectors
-      const episodeLinkElement = $(element);
-      const episodeLink = episodeLinkElement.attr('href');
-      const episodeTitleRaw = episodeLinkElement.text().trim();
-      const episodeNumberMatch = episodeTitleRaw.match(/Episode (\d+)|EP (\d+)|(\d+)/i);
-      let episodeNumber = NaN;
-      if(episodeNumberMatch) {
-          // Find the first non-null captured group
-          const numberStr = episodeNumberMatch[1] || episodeNumberMatch[2] || episodeNumberMatch[3];
-          if(numberStr) {
-              episodeNumber = parseInt(numberStr, 10);
-          }
-      }
+        const episodes = [];
+        const seenEpisodeNumbers = new Set();
 
-      if (episodeLink && !isNaN(episodeNumber)) {
-        const fullEpisodeLink = episodeLink.startsWith('http') ? episodeLink : `https://animedao.to${episodeLink}`;
-        episodes.push({
-          number: episodeNumber,
-          title: episodeTitleRaw || `Episode ${episodeNumber}`, // Use raw text as title or default
-          link: fullEpisodeLink,
+        // Try multiple selectors
+        $('.episode-list-item a, .ep-list a, #episode_related a').each((index, element) => {
+            const episodeLinkElement = $(element);
+            const episodeLink = episodeLinkElement.attr('href');
+            const episodeTitleRaw = episodeLinkElement.text().trim();
+            // Robust episode number extraction
+            const episodeNumberMatch = episodeTitleRaw.match(/Episode (\d+)|EP (\d+)|(\d+)$/i); // Match number at end or with prefix
+            let episodeNumber = NaN;
+            if(episodeNumberMatch) {
+                const numberStr = episodeNumberMatch[1] || episodeNumberMatch[2] || episodeNumberMatch[3];
+                if(numberStr) episodeNumber = parseInt(numberStr, 10);
+            }
+
+             // Try extracting from URL as fallback
+             if (isNaN(episodeNumber) && episodeLink) {
+                const urlMatch = episodeLink.match(/-episode-(\d+)/i); // Common pattern
+                if (urlMatch && urlMatch[1]) episodeNumber = parseInt(urlMatch[1], 10);
+            }
+
+            if (episodeLink && !isNaN(episodeNumber) && !seenEpisodeNumbers.has(episodeNumber)) {
+                const fullEpisodeLink = episodeLink.startsWith('http') ? episodeLink : `${ANIMEDAO_DOMAIN}${episodeLink}`;
+                const uniqueEpisodeId = `${animeData.title.replace(/[^a-zA-Z0-9]/g, '-')}-ep-${episodeNumber}`; // Sanitize title
+
+                episodes.push({
+                    id: uniqueEpisodeId,
+                    number: episodeNumber,
+                    title: episodeTitleRaw || `Episode ${episodeNumber}`, // Use raw text as title or default
+                    link: fullEpisodeLink,
+                });
+                seenEpisodeNumbers.add(episodeNumber);
+            } else if (isNaN(episodeNumber)) {
+                 // console.warn(`[AnimeDao Layer] [${timestamp}] Could not parse episode number for element:`, episodeLinkElement.html());
+            }
         });
-      }
-    });
-    // ---
 
-    if (episodes.length === 0) {
-      console.warn(`[AnimeDao Layer] No episodes found using selectors for ${animeData.title}`);
+        if (episodes.length === 0) {
+            console.warn(`[AnimeDao Layer] [${timestamp}] No episodes found using selectors for "${animeData.title}" on ${animePageUrl}`);
+            // console.log(`[AnimeDao Layer] HTML content for debugging: \n ${$.html().substring(0, 2000)}...`);
+        }
+
+        episodes.sort((a, b) => a.number - b.number);
+        console.log(`[AnimeDao Layer] [${timestamp}] Found ${episodes.length} episodes for "${animeData.title}"`);
+        return episodes;
+
+    } catch (err) {
+        const error = err as Error;
+        console.error(`[AnimeDao Layer] [${timestamp}] Failed to fetch episodes for "${animeData?.title}" from ${animePageUrl}. Error: ${error.message}`);
+        // console.error(`[AnimeDao Layer] Error Stack: ${error.stack}`);
+        return null; // Return null on failure
     }
-
-    // Sort episodes by number
-    episodes.sort((a, b) => a.number - b.number);
-
-    console.log(`[AnimeDao Layer] Found ${episodes.length} episodes for ${animeData.title}`);
-    return episodes;
-
-  } catch (err) {
-    console.error(`[AnimeDao Layer] Failed to fetch episodes for ${animeData?.title}:`, err.message);
-    return null;
-  }
 }
 
 async function fetchStreamingLinksFromAnimeDao(episodeData) {
-  try {
-    if (!episodeData || !episodeData.link) {
-      throw new Error('Invalid episode data provided to fetchStreamingLinksFromAnimeDao.');
+    const timestamp = new Date().toISOString();
+    if (!episodeData || !episodeData.link || !episodeData.number) {
+        console.error(`[AnimeDao Layer] [${timestamp}] Invalid episode data provided to fetchStreamingLinks:`, episodeData);
+        throw new Error('Invalid episode data provided.');
     }
 
     const episodePageUrl = episodeData.link;
-    console.log(`[AnimeDao Layer] Fetching streaming links from: ${episodePageUrl}`);
+    console.log(`[AnimeDao Layer] [${timestamp}] Fetching streaming links from: ${episodePageUrl}`);
 
-    const response = await axios.get(episodePageUrl);
-    const $ = cheerio.load(response.data);
+    try {
+        const html = await fetchWithRetry(episodePageUrl, { headers: { 'Referer': ANIMEDAO_DOMAIN } });
+        const $ = cheerio.load(html);
 
-    // AnimeDao often has the video directly embedded or uses an iframe.
-    let streamingLink = $('iframe').attr('src');
+        // Optional: Check for CAPTCHA/Challenge
+        // const challengeFreeHtml = await handleCaptchaOrChallenge(html, episodePageUrl);
+        // if (!challengeFreeHtml) throw new Error('CAPTCHA/Challenge detected, bypass failed.');
+        // const $ = cheerio.load(challengeFreeHtml);
 
-    if (!streamingLink) {
-      // If no iframe, try to find a direct link
-      streamingLink = $('.anime_download a').attr('href');
+        // Look for iframe, direct video source, or download links
+        let streamingLink = $('iframe[src]').attr('src') || // Standard iframe
+                            $('video#player source[src]').attr('src') || // Direct video source
+                            $('.anime_video_body_watch source[src]').attr('src') || // Another possible video tag
+                            $('.anime_download a[href]').attr('href'); // Download link as last resort
+
+        if (!streamingLink) {
+            console.warn(`[AnimeDao Layer] [${timestamp}] No streaming links found (iframe, video, download) on ${episodePageUrl}.`);
+            // console.log(`[AnimeDao Layer] HTML content for debugging: \n ${$.html().substring(0, 2000)}...`);
+            return null;
+        }
+
+        // Ensure the link is absolute
+        if (streamingLink.startsWith('//')) {
+            streamingLink = 'https:' + streamingLink;
+        } else if (streamingLink.startsWith('/') && !streamingLink.startsWith('//')) {
+             streamingLink = `${ANIMEDAO_DOMAIN}${streamingLink}`;
+        }
+
+        console.log(`[AnimeDao Layer] [${timestamp}] Found potential streaming link/iframe: ${streamingLink}`);
+        // This link might be an iframe requiring further resolution by the API route handler.
+        return streamingLink;
+
+    } catch (err) {
+        const error = err as Error;
+        console.error(`[AnimeDao Layer] [${timestamp}] Failed to fetch streaming links for episode ${episodeData?.number} from ${episodePageUrl}. Error: ${error.message}`);
+        // console.error(`[AnimeDao Layer] Error Stack: ${error.stack}`);
+        return null; // Return null on failure
     }
-
-    if (!streamingLink) {
-      console.warn('[AnimeDao Layer] No streaming links found (iframe or direct link).');
-      return null;
-    }
-
-    // If the link is relative, make it absolute
-    streamingLink = streamingLink.startsWith('http') ? streamingLink : `https://animedao.to${streamingLink}`;
-
-    console.log(`[AnimeDao Layer] Found streaming link: ${streamingLink}`);
-    return streamingLink;
-
-  } catch (err) {
-    console.error(`[AnimeDao Layer] Failed to fetch streaming links from AnimeDao:`, err.message);
-    return null;
-  }
 }
 
 // Export both functions
-module.exports = { fetchFromAnimeDao, fetchEpisodesFromAnimeDao, fetchStreamingLinksFromAnimeDao };
+export { fetchFromAnimeDao, fetchEpisodesFromAnimeDao, fetchStreamingLinksFromAnimeDao };
