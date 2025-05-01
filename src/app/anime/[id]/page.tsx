@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -19,8 +20,8 @@ import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Us
 import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
 import { useToast } from '@/hooks/use-toast'; // Import useToast
 // Import the specific episode fetchers we want to use
-import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge.js';
-import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave.js';
+import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge.ts'; // Corrected extension
+import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave.ts'; // Corrected extension
 // Add other layers if needed
 
 // --- Interfaces ---
@@ -55,7 +56,7 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
 const renderHorizontalSection = (
     title: string,
     icon: React.ElementType,
-    items: Anime[] | Manga[], // Accept Anime or Manga
+    items: Anime[], // Assuming Manga type exists if used
     isLoading: boolean,
     emptyMessage: string = "Nothing to show here right now.",
     itemComponent: React.FC<{ item: any }> = ItemCard, // Use 'any' for now

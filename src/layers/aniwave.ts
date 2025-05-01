@@ -1,6 +1,7 @@
+
 // src/layers/aniwave.ts
 import * as cheerio from 'cheerio';
-import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils'; // Use fetchWithRetry and other utils
+import { fetchWithRetry, delay, handleCaptchaOrChallenge } from '../lib/scraperUtils.ts'; // Corrected extension
 import axios from 'axios'; // Keep axios for potential AJAX calls
 
 const ANIWAVE_DOMAIN = 'https://aniwave.to'; // Target new domain .to
@@ -275,4 +276,3 @@ async function fetchStreamingLinksFromAniWave(episodeData: { number?: string | n
 }
 
 export { fetchFromAniWave, fetchEpisodesFromAniWave, fetchStreamingLinksFromAniWave };
-
