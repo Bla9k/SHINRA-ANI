@@ -1,3 +1,4 @@
+// src/app/community/page.tsx
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -28,6 +29,7 @@ import {
   AlertCircle,
   Tv,
   Star,
+  Settings,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -39,7 +41,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { getCommunities, createCommunity, Community } from '@/services/community'; // Import community service
 import CreateCommunityModal from '@/components/community/CreateCommunityModal'; // Import the new modal component
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/context/AuthContext'; // Update import path
+import Footer from '@/components/layout/Footer'; // Import Footer
 
 // --- Interfaces ---
 // Community interface is now imported from services/community.ts
@@ -76,7 +79,7 @@ interface IndieManga {
 
 // Define a unified type for favorite items
 type FavoriteItem = (Anime | Manga) & {
-    id: number; // Use anilist_id or mal_id
+    id: number; // Use mal_id
     type: 'anime' | 'manga';
     imageUrl: string | null;
     title: string; // Ensure title is present
@@ -90,12 +93,12 @@ type FavoriteItem = (Anime | Manga) & {
 
 // Helper to map Anime/Manga service types to FavoriteItem
 const mapToFavoriteItem = (item: Anime | Manga): FavoriteItem | null => {
-    if (!item || typeof item.id !== 'number') return null; // Use consistent 'id'
+    if (!item || typeof item.mal_id !== 'number') return null; // Use Jikan's mal_id
     return {
         ...item,
-        id: item.id, // Already mapped in service
-        type: item.type === 'anime' ? 'anime' : 'manga', // Assuming type exists
-        imageUrl: item.imageUrl, // Already mapped
+        id: item.mal_id, // Use mal_id as the consistent ID
+        type: 'episodes' in item ? 'anime' : 'manga', // Differentiate based on episodes field
+        imageUrl: item.imageUrl, // Already mapped in service
         title: item.title,
         score: item.score ?? null,
         year: item.year ?? null,
@@ -243,12 +246,13 @@ const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
            {manga.genre.map((g: string) => <Badge key={g} variant="secondary" className="text-[10px] px-1 sm:px-1.5">{g}</Badge>)}
         </div>
         <div className="mt-auto flex justify-end">
-             <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior>
-                <a className="inline-block"> {/* Anchor tag wrapper */}
+             {/* Update link to actual indie manga reader page */}
+            <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior> {/* Changed link structure */}
+                <a> {/* Wrap button in anchor for legacyBehavior */}
                   <Button variant="link" size="sm" className="text-xs p-0 h-auto group-hover:underline text-primary">
                       Read Now <ArrowRight size={12} className="ml-1"/>
                   </Button>
-                </a>
+                 </a>
             </Link>
         </div>
       </CardContent>
@@ -396,7 +400,7 @@ export default function CommunityPage() {
         try {
             const [animeResponse, mangaResponse] = await Promise.all([
                 getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10), // Fetch popular anime
-                getMangas(undefined, undefined, undefined, undefined, 1, 'popularity', 10) // Fetch popular manga
+                getMangas(undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10) // Fetch popular manga
             ]);
 
              const mappedAnime = (animeResponse.animes || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
@@ -632,7 +636,7 @@ export default function CommunityPage() {
                              <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><UserIcon size={16} className="text-primary"/> Setting Up Your Profile</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Learn how to customize your profile, add an avatar, banner, and set your status.</CardDescription>
                             <Link href="/profile" passHref legacyBehavior>
-                                <a className="inline-block"> {/* Add anchor tag wrapper */}
+                                <a> {/* Add anchor tag wrapper */}
                                   <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Profile <ArrowRight size={12} className="ml-1"/></Button>
                                 </a>
                              </Link>
@@ -648,7 +652,7 @@ export default function CommunityPage() {
                              <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Upload size={16} className="text-primary"/> Uploading Manga</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Step-by-step guide on uploading your manga chapters, cover art, and details.</CardDescription>
                             <Link href="/upload" passHref legacyBehavior>
-                                <a className="inline-block"> {/* Add anchor tag wrapper */}
+                                <a> {/* Add anchor tag wrapper */}
                                   <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Upload Page <ArrowRight size={12} className="ml-1"/></Button>
                                 </a>
                             </Link>
