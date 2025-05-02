@@ -15,10 +15,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, Image as ImageIcon, Upload, Info } from 'lucide-react';
+import { Loader2, Image as ImageIcon, Upload, Info, Users } from 'lucide-react'; // Added Users icon
 import { useToast } from '@/hooks/use-toast';
 import { createCommunity, Community } from '@/services/community'; // Import service
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { useAuth } from '@/context/AuthContext'; // Corrected import path for useAuth
 import Image from 'next/image'; // Import Next Image for preview
 
 interface CreateCommunityModalProps {
