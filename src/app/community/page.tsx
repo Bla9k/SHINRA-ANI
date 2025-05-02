@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,53 +10,39 @@ import { Badge } from '@/components/ui/badge';
 import {
   Users,
   BookText,
-  MessageSquare,
-  Hash,
-  Mic,
-  Settings,
-  Plus,
-  HelpCircle,
   Compass,
-  Headphones,
-  User as UserIcon,
-  LogOut,
-  Bot,
-  Palette,
-  Upload,
-  X,
-  Search,
+  MessageCircle as MessageCircleIcon,
   PlusCircle,
-  Swords, // Example icon for Action
-  Sparkles, // Example icon for Fantasy
-  Heart, // Example icon for Romance
-  Rocket, // Example icon for Sci-Fi
-  Flame, // Example icon for Trending
-  MessageCircle as MessageCircleIcon, // Renamed to avoid conflict
-  Newspaper, // For announcements/features
-  Info, // For how-to guides
-  List, // For endpoints/features
-  Github, // Example for external links if needed
+  Swords,
+  Flame,
+  Sparkles,
+  Heart,
+  Rocket,
+  List,
+  Info,
+  User as UserIcon,
+  Upload,
   ArrowRight,
-  Trophy, // For favorites section
-  Tv, // For anime type
-  Star // For ratings
-} from 'lucide-react'; // Import icons
+  Trophy,
+  Loader2,
+  AlertCircle,
+  Tv,
+  Star,
+} from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
-import { getAnimes, getMangas, Anime, Manga } from '@/services'; // Import services
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { useToast } from '@/hooks/use-toast';
+import { getMangas, Manga } from '@/services/manga'; // Import manga service
+import { getAnimes, Anime } from '@/services/anime'; // Import anime service
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { getCommunities, createCommunity, Community } from '@/services/community'; // Import community service
+import CreateCommunityModal from '@/components/community/CreateCommunityModal'; // Import the new modal component
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
 
 // --- Interfaces ---
-interface Community {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ElementType;
-  imageUrl: string;
-  memberCount?: number; // Optional for now
-}
+// Community interface is now imported from services/community.ts
 
 interface Comment {
   id: string;
@@ -91,7 +76,7 @@ interface IndieManga {
 
 // Define a unified type for favorite items
 type FavoriteItem = (Anime | Manga) & {
-    id: number; // Use mal_id or anilist_id
+    id: number; // Use anilist_id or mal_id
     type: 'anime' | 'manga';
     imageUrl: string | null;
     title: string; // Ensure title is present
@@ -109,7 +94,7 @@ const mapToFavoriteItem = (item: Anime | Manga): FavoriteItem | null => {
     return {
         ...item,
         id: item.id, // Already mapped in service
-        type: 'episodes' in item ? 'anime' : 'manga',
+        type: item.type === 'anime' ? 'anime' : 'manga', // Assuming type exists
         imageUrl: item.imageUrl, // Already mapped
         title: item.title,
         score: item.score ?? null,
@@ -122,14 +107,7 @@ const mapToFavoriteItem = (item: Anime | Manga): FavoriteItem | null => {
 };
 
 
-// --- Placeholder Data ---
-
-const dummyFeaturedCommunities: Community[] = [
-    { id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', icon: Swords, imageUrl: 'https://picsum.photos/seed/action/80/80', memberCount: 1234 },
-    { id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art for strugglers.', icon: Flame, imageUrl: 'https://picsum.photos/seed/berserk/80/80', memberCount: 876 },
-    { id: 'isekai-tavern', name: 'Isekai Tavern', description: 'Share your other-world adventures!', icon: Sparkles, imageUrl: 'https://picsum.photos/seed/isekai/80/80', memberCount: 555 },
-    { id: 'romance-corner', name: 'Romance Corner', description: 'All things love and relationships.', icon: Heart, imageUrl: 'https://picsum.photos/seed/romance/80/80', memberCount: 910 },
-];
+// --- Placeholder Data (Keep for guides/features, remove for communities/favorites) ---
 
 const dummyTopComments: Comment[] = [
     { id: 'c1', user: 'GutsBestBoy', community: 'Berserk Fans', text: "Just reread the Golden Age arc... masterpiece.", timestamp: "2h ago", communityId: 'berserk-fans' },
@@ -137,20 +115,12 @@ const dummyTopComments: Comment[] = [
     { id: 'c3', user: 'IsekaiDreamer', community: 'Isekai Tavern', text: "Reincarnated as a vending machine, AMA.", timestamp: "1d ago", communityId: 'isekai-tavern' },
 ];
 
-const dummyAllCommunities: Community[] = [
-    ...dummyFeaturedCommunities,
-    { id: 'sci-fi-nexus', name: 'Sci-Fi Nexus', description: 'Explore futuristic worlds and tech.', icon: Rocket, imageUrl: 'https://picsum.photos/seed/scifi/80/80', memberCount: 720 },
-    { id: 'manga-creators-hq', name: 'Manga Creators HQ', description: 'Share tips, feedback, and collaborate.', icon: BookText, imageUrl: 'https://picsum.photos/seed/creators/80/80', memberCount: 310 },
-    { id: 'slice-of-life-cafe', name: 'Slice of Life Cafe', description: 'Relax and discuss comfy series.', icon: UserIcon, imageUrl: 'https://picsum.photos/seed/sol/80/80', memberCount: 650 },
-    { id: 'horror-zone', name: 'Horror Zone', description: 'For fans of the dark and spooky.', icon: MessageCircleIcon, imageUrl: 'https://picsum.photos/seed/horror/80/80', memberCount: 404 },
-];
-
 const dummyFeatures: Feature[] = [
     { name: 'Indie Manga Uploads', description: 'Share your original manga creations.', icon: Upload, link: '/upload' },
-    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageSquare, link: '/community' }, // Link to community home
-    { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '/community?action=create' }, // Example link
-    { name: 'Nami AI Integration', description: 'AI-powered chat and recommendations.', icon: Bot, link: '#' }, // Link to Nami info/chat
-    { name: 'Profile Customization', description: 'Personalize your Shinra-Ani identity.', icon: Palette, link: '/profile' },
+    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageCircleIcon, link: '/community' }, // Link to community home
+    { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '#' }, // Link now triggers modal
+    { name: 'Nami AI Integration', description: 'AI-powered chat and recommendations.', icon: Sparkles, link: '#' }, // Link to Nami info/chat
+    { name: 'Profile Customization', description: 'Personalize your Shinra-Ani identity.', icon: UserIcon, link: '/profile' },
     { name: 'Events & Competitions', description: 'Join community challenges.', icon: Swords, link: '#' }, // Link to events page
 ];
 
@@ -175,29 +145,48 @@ const dummyIndieManga: IndieManga[] = [
 // Card for showcasing a community - Updated with working links and join simulation
 const CommunityCard = ({ community }: { community: Community }) => {
     const { toast } = useToast();
+    const { user } = useAuth(); // Get user for joining logic
 
-    // Placeholder join function
+    // TODO: Implement actual joining logic (e.g., add user ID to community members in Firestore)
     const handleJoin = (e: React.MouseEvent) => {
         e.preventDefault(); // Prevent link navigation
         e.stopPropagation(); // Prevent card link click
+        if (!user) {
+            toast({ title: "Login Required", description: "Please log in to join communities.", variant: "destructive" });
+            return;
+        }
         // Simulate joining
         toast({
             title: "Joining Community...",
             description: `Successfully joined ${community.name}! (Simulation)`,
             variant: "default",
         });
-        // TODO: Replace with actual Firebase logic to add user to community
-        // e.g., addCommunityMember(user.uid, community.id);
+        // Example Firestore update (replace with your actual logic):
+        // addCommunityMember(user.uid, community.id);
     };
+
+    // Determine icon based on name or tags (example logic)
+     const IconComponent =
+           community.name.toLowerCase().includes('action') ? Swords :
+           community.name.toLowerCase().includes('berserk') ? Flame :
+           community.name.toLowerCase().includes('isekai') ? Sparkles :
+           community.name.toLowerCase().includes('romance') ? Heart :
+           community.name.toLowerCase().includes('sci-fi') ? Rocket :
+           community.name.toLowerCase().includes('creator') ? BookText :
+           Users; // Default icon
 
     return (
          // Main link to community detail page
         <Link href={`/community/${community.id}`} className="block group h-full">
             <Card className="glass neon-glow-hover h-full flex flex-col transition-all duration-300 hover:border-primary/50 group p-3 sm:p-4"> {/* Consistent padding */}
                 <CardHeader className="flex flex-row items-center gap-3 p-0 mb-2 sm:mb-3"> {/* Responsive gap */}
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/30 group-hover:border-primary transition-colors flex-shrink-0">
-                        <AvatarImage src={community.imageUrl} alt={community.name} />
-                        <AvatarFallback><community.icon size={16} /></AvatarFallback> {/* Smaller icon */}
+                     <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/30 group-hover:border-primary transition-colors flex-shrink-0">
+                        {community.imageUrl ? (
+                            <AvatarImage src={community.imageUrl} alt={community.name} />
+                        ) : (
+                             // Use IconComponent if no imageUrl
+                             <AvatarFallback><IconComponent size={16} /></AvatarFallback>
+                        )}
                     </Avatar>
                     <div className="flex-1 min-w-0"> {/* Ensure text truncates */}
                         <CardTitle className="text-sm sm:text-base group-hover:text-primary transition-colors truncate">{community.name}</CardTitle>
@@ -254,9 +243,7 @@ const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
            {manga.genre.map((g: string) => <Badge key={g} variant="secondary" className="text-[10px] px-1 sm:px-1.5">{g}</Badge>)}
         </div>
         <div className="mt-auto flex justify-end">
-            {/* Update link to actual indie manga reader page */}
-             {/* Fixed: Wrap Button in anchor tag for legacyBehavior */}
-            <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior>
+             <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior>
                 <a className="inline-block"> {/* Anchor tag wrapper */}
                   <Button variant="link" size="sm" className="text-xs p-0 h-auto group-hover:underline text-primary">
                       Read Now <ArrowRight size={12} className="ml-1"/>
@@ -393,6 +380,12 @@ export default function CommunityPage() {
     const [communityFavorites, setCommunityFavorites] = useState<FavoriteItem[]>([]);
     const [loadingFavorites, setLoadingFavorites] = useState(true);
     const [errorFavorites, setErrorFavorites] = useState<string | null>(null);
+    const [communities, setCommunities] = useState<Community[]>([]);
+    const [loadingCommunities, setLoadingCommunities] = useState(true);
+    const [errorCommunities, setErrorCommunities] = useState<string | null>(null);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false); // State for modal
+    const { user } = useAuth(); // Get user for create button logic
+
     const { toast } = useToast();
 
 
@@ -401,21 +394,16 @@ export default function CommunityPage() {
         setLoadingFavorites(true);
         setErrorFavorites(null);
         try {
-            // Fetch popular anime and manga as a proxy for community favorites
             const [animeResponse, mangaResponse] = await Promise.all([
-                // Use Jikan services directly
-                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'score', 10), // Top 10 scored anime
-                getMangas(undefined, undefined, undefined, undefined, 1, 'score', 10) // Top 10 scored manga
+                getAnimes(undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10), // Fetch popular anime
+                getMangas(undefined, undefined, undefined, undefined, 1, 'popularity', 10) // Fetch popular manga
             ]);
 
-             // Map Jikan data directly
              const mappedAnime = (animeResponse.animes || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
              const mappedManga = (mangaResponse.mangas || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
+             const combined = [...mappedAnime, ...mappedManga].sort(() => 0.5 - Math.random());
+             setCommunityFavorites(combined.slice(0, 10)); // Take top 10 mixed
 
-            // Combine and shuffle slightly for variety (or implement real voting logic)
-            const combined = [...mappedAnime, ...mappedManga].sort(() => 0.5 - Math.random());
-
-            setCommunityFavorites(combined.slice(0, 10)); // Take top 10 mixed
         } catch (err) {
             const errorMsg = err instanceof Error ? err.message : "An unknown error occurred";
             console.error("Error fetching community favorites data:", err);
@@ -431,17 +419,45 @@ export default function CommunityPage() {
     }, [toast]); // Add toast to dependency array
 
 
+    // Fetch Communities from Firestore
+     const fetchAllCommunities = useCallback(async () => {
+         setLoadingCommunities(true);
+         setErrorCommunities(null);
+         try {
+             const fetchedCommunities = await getCommunities();
+             setCommunities(fetchedCommunities);
+         } catch (err) {
+             const errorMsg = err instanceof Error ? err.message : "An unknown error occurred";
+             console.error("Error fetching communities:", err);
+             setErrorCommunities(`Could not load communities: ${errorMsg}`);
+             toast({
+                 title: "Error Loading Communities",
+                 description: errorMsg,
+                 variant: "destructive",
+             });
+         } finally {
+             setLoadingCommunities(false);
+         }
+     }, [toast]);
+
     useEffect(() => {
         fetchFavorites(); // Fetch initially on mount
-         const intervalId = setInterval(fetchFavorites, 120000); // Fetch every 2 minutes
-         return () => clearInterval(intervalId); // Cleanup
-    }, [fetchFavorites]);
+        fetchAllCommunities(); // Fetch communities
+         // Optional: Set interval for favorites update
+         // const intervalId = setInterval(fetchFavorites, 120000);
+         // return () => clearInterval(intervalId);
+    }, [fetchFavorites, fetchAllCommunities]);
 
+    const handleCommunityCreated = (newCommunity: Community) => {
+        // Add the new community to the list optimistically or refetch
+        setCommunities(prev => [...prev, newCommunity]);
+        setIsCreateModalOpen(false); // Close modal
+    };
 
 
   return (
-    // Use ScrollArea for the entire page content to manage scrolling
-    <ScrollArea className="h-full">
+    <>
+      <ScrollArea className="h-full">
         {/* Adjust main container padding for mobile */}
         <div className="container mx-auto px-0 sm:px-4 py-6 sm:py-8 space-y-8 md:space-y-12">
 
@@ -457,20 +473,24 @@ export default function CommunityPage() {
               <p className="text-sm sm:text-base md:text-lg text-muted-foreground mb-4 sm:mb-6 max-w-xl md:max-w-2xl mx-auto"> {/* Responsive text */}
                  Connect with fellow fans, discover indie creators, and dive into discussions.
               </p>
-              {/* Make featured communities grid responsive */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 max-w-xs sm:max-w-3xl mx-auto">
-                 {dummyFeaturedCommunities.map((community) => (
-                    <Link href={`/community/${community.id}`} key={community.id} className="block group">
-                        <Card className="glass p-2 sm:p-3 text-center transition-all duration-300 hover:scale-105 hover:bg-primary/10 border border-transparent hover:border-primary/30">
-                             <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-1 border-2 border-primary/50 group-hover:border-primary transition-colors">
-                                <AvatarImage src={community.imageUrl} alt={community.name} />
-                                <AvatarFallback><community.icon size={14} /></AvatarFallback> {/* Responsive icon */}
-                            </Avatar>
-                            <p className="text-[10px] sm:text-xs font-semibold truncate group-hover:text-primary transition-colors">{community.name}</p>
-                        </Card>
-                    </Link>
-                 ))}
-              </div>
+              {/* Featured Communities (Example - fetch dynamically or keep placeholders) */}
+               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 max-w-xs sm:max-w-3xl mx-auto">
+                  {communities.slice(0, 4).map((community) => ( // Show first 4 as featured
+                      <Link href={`/community/${community.id}`} key={community.id} className="block group">
+                         <Card className="glass p-2 sm:p-3 text-center transition-all duration-300 hover:scale-105 hover:bg-primary/10 border border-transparent hover:border-primary/30">
+                              {/* Determine Icon (example logic) */}
+                              <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-1 border-2 border-primary/50 group-hover:border-primary transition-colors">
+                                 {community.imageUrl ? (
+                                     <AvatarImage src={community.imageUrl} alt={community.name} />
+                                 ) : (
+                                     <AvatarFallback><Users size={14} /></AvatarFallback> // Default fallback
+                                 )}
+                              </Avatar>
+                              <p className="text-[10px] sm:text-xs font-semibold truncate group-hover:text-primary transition-colors">{community.name}</p>
+                          </Card>
+                      </Link>
+                   ))}
+               </div>
               {/* Responsive buttons */}
               <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row justify-center gap-2 sm:gap-3">
                   <Button size="lg" className="neon-glow-hover" asChild>
@@ -494,6 +514,13 @@ export default function CommunityPage() {
                FavoriteItemCard,
                SkeletonFavoriteCard
            )}
+            {errorFavorites && (
+                <Alert variant="destructive" className="mx-4 sm:mx-6">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error Loading Favorites</AlertTitle>
+                    <AlertDescription>{errorFavorites}</AlertDescription>
+                </Alert>
+            )}
 
            {/* Section 3: Top Interactions - Adjust padding/grid */}
            <section id="top-interactions" className="px-4 sm:px-6">
@@ -502,8 +529,10 @@ export default function CommunityPage() {
               </h2>
               {/* Adjust grid for mobile */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                 {/* TODO: Fetch and display real recent/top comments from Firestore */}
                  {dummyTopComments.map((comment) => (
-                    <Link href={`/community/${comment.communityId}?comment=${comment.id}`} key={comment.id} className="block group"> {/* Add query param */}
+                     // Wrap card in Link to community detail page, potentially focusing on comment
+                    <Link href={`/community/${comment.communityId}?comment=${comment.id}`} key={comment.id} className="block group">
                          <Card className="glass p-3 sm:p-4 flex flex-col group hover:bg-accent/10 transition-colors h-full">
                            <p className="text-xs sm:text-sm text-foreground/90 mb-2 flex-grow">"{comment.text}"</p>
                            <div className="text-[10px] sm:text-xs text-muted-foreground flex justify-between items-center mt-auto pt-2 border-t border-border/50">
@@ -513,6 +542,9 @@ export default function CommunityPage() {
                          </Card>
                     </Link>
                  ))}
+                   {dummyTopComments.length === 0 && !loadingCommunities && (
+                       <p className="col-span-full text-center text-muted-foreground italic py-4">No recent discussions to show.</p>
+                   )}
               </div>
            </section>
 
@@ -524,20 +556,52 @@ export default function CommunityPage() {
                  <h2 className="text-lg sm:text-xl md:text-2xl font-semibold flex items-center gap-1.5 sm:gap-2">
                     <Compass className="text-primary w-4 h-4 sm:w-5 sm:h-5"/> Community Directory
                  </h2>
-                  <Button variant="outline" size="sm" className="glass neon-glow-hover" onClick={() => toast({ title: "Coming Soon!", description: "Community creation feature is under development."})}>
+                  <Button
+                      variant="outline"
+                      size="sm"
+                      className="glass neon-glow-hover"
+                      onClick={() => {
+                           if (!user) {
+                               toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
+                               return;
+                           }
+                           setIsCreateModalOpen(true);
+                      }}
+                  >
                       <PlusCircle size={16} className="mr-1 sm:mr-1.5"/> Create
                   </Button>
               </div>
-               {/* Adjust grid columns */}
-               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                   {dummyAllCommunities.map((community) => (
-                       <CommunityCard key={community.id} community={community} />
-                   ))}
-               </div>
-               {/* Optional: Add "View All" button */}
-               <div className="mt-4 text-center">
+               {/* Loading State */}
+               {loadingCommunities && (
+                   <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                       {Array.from({ length: 8 }).map((_, i) => <Skeleton key={`com-skel-${i}`} className="h-40 glass rounded-lg" />)}
+                   </div>
+               )}
+               {/* Error State */}
+               {errorCommunities && !loadingCommunities && (
+                   <Alert variant="destructive">
+                       <AlertCircle className="h-4 w-4" />
+                       <AlertTitle>Error Loading Communities</AlertTitle>
+                       <AlertDescription>{errorCommunities}</AlertDescription>
+                   </Alert>
+               )}
+               {/* Data Loaded State */}
+               {!loadingCommunities && !errorCommunities && communities.length > 0 && (
+                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                      {communities.map((community) => (
+                          <CommunityCard key={community.id} community={community} />
+                      ))}
+                  </div>
+               )}
+                {/* No Communities Found State */}
+               {!loadingCommunities && !errorCommunities && communities.length === 0 && (
+                    <p className="col-span-full text-center text-muted-foreground italic py-8">No communities found. Why not create one?</p>
+               )}
+
+               {/* Optional: Add "View All" button if implementing pagination */}
+               {/* <div className="mt-4 text-center">
                    <Button variant="outline" className="glass">Browse All Communities</Button>
-               </div>
+               </div> */}
            </section>
 
            <Separator className="bg-border/50 mx-4 sm:mx-6"/>
@@ -568,7 +632,7 @@ export default function CommunityPage() {
                              <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><UserIcon size={16} className="text-primary"/> Setting Up Your Profile</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Learn how to customize your profile, add an avatar, banner, and set your status.</CardDescription>
                             <Link href="/profile" passHref legacyBehavior>
-                                <a> {/* Add anchor tag wrapper */}
+                                <a className="inline-block"> {/* Add anchor tag wrapper */}
                                   <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Profile <ArrowRight size={12} className="ml-1"/></Button>
                                 </a>
                              </Link>
@@ -584,7 +648,7 @@ export default function CommunityPage() {
                              <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Upload size={16} className="text-primary"/> Uploading Manga</CardTitle>
                             <CardDescription className="text-xs sm:text-sm">Step-by-step guide on uploading your manga chapters, cover art, and details.</CardDescription>
                             <Link href="/upload" passHref legacyBehavior>
-                                <a> {/* Add anchor tag wrapper */}
+                                <a className="inline-block"> {/* Add anchor tag wrapper */}
                                   <Button variant="link" size="sm" className="text-xs h-auto p-0 mt-1 text-primary">Go to Upload Page <ArrowRight size={12} className="ml-1"/></Button>
                                 </a>
                             </Link>
@@ -617,13 +681,16 @@ export default function CommunityPage() {
                </h2>
                {/* Responsive grid */}
                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+                   {/* TODO: Fetch and display real indie manga */}
                    {dummyIndieManga.slice(0, 5).map((manga) => (
                        <IndieMangaCard key={manga.id} manga={manga} />
                    ))}
+                    {dummyIndieManga.length === 0 && (
+                       <p className="col-span-full text-center text-muted-foreground italic py-8">No indie manga featured yet.</p>
+                   )}
                </div>
                {/* Optional: Link to a dedicated Indie Manga browse page */}
                <div className="mt-4 text-center">
-                   {/* Removed sm:size="default" as it's not a valid Button prop */}
                    <Button variant="outline" size="sm" className="glass neon-glow-hover" onClick={() => toast({ title: "Coming Soon!", description: "A dedicated page for browsing all Indie Manga is planned."})}>
                        Browse All Indie Manga
                    </Button>
@@ -633,13 +700,15 @@ export default function CommunityPage() {
         </div>
 
          {/* Footer-like section - Adjust padding */}
-         <footer className="text-center py-6 sm:py-8 mt-8 md:mt-12 border-t border-border/50">
-            <p className="text-[10px] sm:text-xs text-muted-foreground">
-                Shinra-Ani Community Hub - &copy; {new Date().getFullYear()}
-            </p>
-        </footer>
+         <Footer />
     </ScrollArea>
+
+     {/* Create Community Modal */}
+     <CreateCommunityModal
+         isOpen={isCreateModalOpen}
+         onClose={() => setIsCreateModalOpen(false)}
+         onCreate={handleCommunityCreated}
+     />
+    </>
   );
 }
-
-    
