@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Loader2 } from 'lucide-react';
@@ -98,7 +98,7 @@ export default function SignUpPage() {
                 <Input
                     id="password"
                     type="password"
-                    placeholder="Choose a strong password"
+                    placeholder="Choose a strong password (min. 6 chars)"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

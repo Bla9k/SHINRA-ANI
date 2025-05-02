@@ -19,7 +19,8 @@ interface AuthActionError {
     message: string;
 }
 
-export interface AuthContextProps { // Export the props interface
+// Export the props interface
+export interface AuthContextProps {
   user: User | null;
   loading: boolean;
   // Add new functions for email/password
@@ -101,7 +102,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Show loading spinner while checking auth state initially
-   if (loading) { // Simplified loading check
+   if (loading && !user) { // Show loader only if loading AND no user yet
        return (
           <div className="flex justify-center items-center min-h-screen bg-background">
              <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -116,12 +117,4 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Custom hook to use the auth context (remains the same - relies on the exported context now)
-// Keep this hook definition in src/hooks/useAuth.ts
-// export const useAuth = (): AuthContextProps => {
-//   const context = useContext(AuthContext);
-//   if (context === undefined) {
-//     throw new Error('useAuth must be used within an AuthProvider');
-//   }
-//   return context;
-// };
+// Custom hook is now defined in src/hooks/useAuth.ts

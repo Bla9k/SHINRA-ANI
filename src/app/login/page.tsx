@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input'; // Import Input
 import { Label } from '@/components/ui/label'; // Import Label
-import { useAuth } from '@/context/AuthContext'; // Use the updated hook
+import { useAuth } from '@/hooks/useAuth'; // Use the updated hook
 import { useRouter } from 'next/navigation';
 import Link from 'next/link'; // Import Link
 import { Loader2 } from 'lucide-react';
@@ -97,12 +97,6 @@ export default function LoginPage() {
                         className="glass"
                         disabled={loading}
                     />
-                     {/* Optional: Add 'Forgot Password?' link here */}
-                    {/* <div className="text-right">
-                       <Button variant="link" size="sm" className="text-xs p-0 h-auto" asChild>
-                           <Link href="/forgot-password">Forgot password?</Link>
-                       </Button>
-                    </div> */}
                 </div>
 
                  {/* Error Message Display */}
