@@ -1,68 +1,131 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/context/AuthContext'; // Use the custom hook from context
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input'; // Import Input
+import { Label } from '@/components/ui/label'; // Import Label
+import { useAuth } from '@/context/AuthContext'; // Use the updated hook
 import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react'; // For loading state
-
-// Simple Google Icon SVG (replace with a better one if desired)
-const GoogleIcon = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" className="mr-2">
-    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
-    <path d="M12 5.38c1.63 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-    <path d="M1 1h22v22H1z" fill="none"/>
-  </svg>
-);
+import Link from 'next/link'; // Import Link
+import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast'; // Import useToast for error display
 
 export default function LoginPage() {
-  const { user, googleSignIn, loading } = useAuth();
+  const { user, signInWithEmail, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast(); // Initialize toast
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null); // State for login errors
 
   // Redirect if user is already logged in
   useEffect(() => {
     if (user) {
-      router.push('/profile'); // Redirect to profile page or home
+      router.push('/'); // Redirect to home or profile
     }
   }, [user, router]);
 
-  const handleGoogleSignIn = async () => {
-    try {
-      await googleSignIn();
-      // Redirection is handled in AuthContext or by the effect above
-    } catch (error) {
-      console.error("Login page Google Sign-In error:", error);
-      // Handle error display if needed (e.g., using toast)
+  const handleSignIn = async (e: FormEvent) => {
+    e.preventDefault(); // Prevent default form submission
+    setError(null); // Clear previous errors
+
+    if (!email || !password) {
+      setError("Please enter both email and password.");
+      return;
+    }
+
+    const signInError = await signInWithEmail(email, password);
+
+    if (signInError) {
+        console.error("Login page Sign-In error:", signInError);
+        // Map common Firebase error codes to user-friendly messages
+        let userMessage = "Login failed. Please check your credentials and try again.";
+        if (signInError.code === 'auth/user-not-found' || signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential') {
+            userMessage = "Invalid email or password.";
+        } else if (signInError.code === 'auth/invalid-email') {
+            userMessage = "Please enter a valid email address.";
+        } else if (signInError.code === 'auth/too-many-requests') {
+            userMessage = "Too many login attempts. Please try again later.";
+        }
+        setError(userMessage); // Set state for display below form
+        toast({ // Also show a toast notification
+           title: "Login Failed",
+           description: userMessage,
+           variant: "destructive",
+        });
+    } else {
+        setError(null);
+        // Redirect is handled by AuthContext/useEffect
     }
   };
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-background via-card to-background/80">
       <Card className="w-full max-w-sm glass shadow-2xl border-primary/20">
-        <CardHeader className="text-center">
+        <CardHeader className="text-center space-y-1">
           <CardTitle className="text-2xl font-bold text-primary">Welcome Back!</CardTitle>
-          <CardDescription>Sign in to Shinra-Ani to continue.</CardDescription>
+          <CardDescription>Sign in to your Shinra-Ani account.</CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full neon-glow-hover flex items-center justify-center"
-            variant="outline"
-          >
-            {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" /> // Use Loader2 with spin
-            ) : (
-              <>
-                <GoogleIcon /> Sign in with Google
-              </>
-            )}
-          </Button>
-           {/* Add other sign-in methods here if needed */}
-        </CardContent>
+        <form onSubmit={handleSignIn}>
+            <CardContent className="space-y-4">
+                {/* Email Input */}
+                <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                        id="email"
+                        type="email"
+                        placeholder="you@example.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        className="glass"
+                        disabled={loading}
+                    />
+                </div>
+                {/* Password Input */}
+                <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                        id="password"
+                        type="password"
+                        placeholder="••••••••"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        className="glass"
+                        disabled={loading}
+                    />
+                     {/* Optional: Add 'Forgot Password?' link here */}
+                    {/* <div className="text-right">
+                       <Button variant="link" size="sm" className="text-xs p-0 h-auto" asChild>
+                           <Link href="/forgot-password">Forgot password?</Link>
+                       </Button>
+                    </div> */}
+                </div>
+
+                 {/* Error Message Display */}
+                 {error && (
+                    <p className="text-sm text-destructive text-center">{error}</p>
+                 )}
+
+                {/* Sign In Button */}
+                <Button type="submit" disabled={loading} className="w-full neon-glow-hover">
+                    {loading ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                    'Sign In'
+                    )}
+                </Button>
+            </CardContent>
+        </form>
+        <CardFooter className="flex flex-col items-center text-sm text-muted-foreground pt-4 border-t">
+           <p>Don't have an account?</p>
+           <Button variant="link" size="sm" className="p-0 h-auto mt-1 text-primary" asChild>
+                <Link href="/signup">Sign Up Here</Link>
+           </Button>
+        </CardFooter>
       </Card>
     </div>
   );

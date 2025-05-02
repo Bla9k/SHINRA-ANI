@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth } from 'firebase/auth'; // Removed GoogleAuthProvider
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
@@ -50,21 +50,21 @@ if (!getApps().length) {
 }
 
 // Initialize other Firebase services conditionally, only if app was successfully initialized
-let auth: any, db: any, storage: any, googleProvider: any; // Use 'any' or appropriate Firebase types
+let auth: any, db: any, storage: any; // Use 'any' or appropriate Firebase types
 
 if (app) {
   try {
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
-    googleProvider = new GoogleAuthProvider();
+    // googleProvider = new GoogleAuthProvider(); // Removed
   } catch (error) {
      console.error("Failed to initialize Firebase services (Auth, Firestore, Storage):", error);
      // Set services to null or handle the error as needed
      auth = null;
      db = null;
      storage = null;
-     googleProvider = null;
+     // googleProvider = null; // Removed
   }
 
 } else {
@@ -72,8 +72,8 @@ if (app) {
     auth = null;
     db = null;
     storage = null;
-    googleProvider = null;
+    // googleProvider = null; // Removed
 }
 
 
-export { app, auth, db, storage, googleProvider };
+export { app, auth, db, storage }; // Removed googleProvider

@@ -1,9 +1,9 @@
 // src/components/layout/TopBar.tsx
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react'; // Added useRef, useEffect
 import Link from 'next/link';
-import { Sparkles, Search as SearchIcon, Settings } from 'lucide-react';
+import { Sparkles, Search as SearchIcon, Settings, X } from 'lucide-react'; // Added X icon
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -18,6 +18,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useAuth } from '@/context/AuthContext'; // Import useAuth directly from context
+import anime from 'animejs'; // Import animejs
 
 interface TopBarProps {
   onSearchIconClick: () => void;
@@ -65,6 +66,7 @@ export default function TopBar({
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { user, signOutUser } = useAuth(); // Get user and signOut from auth context
+  const suggestionsRef = useRef<HTMLDivElement>(null); // Ref for suggestions box
 
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value;
@@ -83,23 +85,29 @@ export default function TopBar({
     }
   };
 
-  const handleAiSuggestionClick = () => {
-    const term = searchTerm.trim();
-    if (term) {
-      onOpenAiSearch(term);
-      setShowSuggestions(false);
-      setSearchTerm('');
-    }
+  // --- Suggestion Click Handlers ---
+  // Prevent default behavior and stop propagation to avoid closing the popup unintentionally
+  const handleSuggestionClick = (handler: () => void) => (e: React.MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      handler();
+      setShowSuggestions(false); // Close suggestions after click
+      setSearchTerm(''); // Clear search term
   };
 
-  const handleAdvancedSuggestionClick = () => {
-    const term = searchTerm.trim();
-    if (term) {
-      onOpenAdvancedSearch(term);
-      setShowSuggestions(false);
-      setSearchTerm('');
-    }
-  };
+  const handleAiSuggestion = handleSuggestionClick(() => {
+      const term = searchTerm.trim();
+      if (term) {
+         onOpenAiSearch(term);
+      }
+  });
+
+  const handleAdvancedSuggestion = handleSuggestionClick(() => {
+      const term = searchTerm.trim();
+      if (term) {
+          onOpenAdvancedSearch(term);
+      }
+  });
 
   const handleFocus = () => {
     if (searchTerm.trim()) {
@@ -107,9 +115,19 @@ export default function TopBar({
     }
   };
 
-  const handleBlur = () => {
-    setTimeout(() => setShowSuggestions(false), 150);
-  };
+   // Close suggestions when clicking outside
+   useEffect(() => {
+     const handleClickOutside = (event: MouseEvent) => {
+       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+         setShowSuggestions(false);
+       }
+     };
+     document.addEventListener('mousedown', handleClickOutside);
+     return () => {
+       document.removeEventListener('mousedown', handleClickOutside);
+     };
+   }, []);
+
 
   const handleLogout = async () => {
      try {
@@ -120,6 +138,30 @@ export default function TopBar({
        // Show toast notification for error
      }
    };
+
+   // Animate suggestions box
+   useEffect(() => {
+     if (suggestionsRef.current) {
+       anime({
+         targets: suggestionsRef.current,
+         opacity: showSuggestions ? [0, 1] : [1, 0],
+         translateY: showSuggestions ? [-10, 0] : [0, -10],
+         duration: 250, // Faster animation
+         easing: 'easeOutQuad',
+         begin: (anim) => {
+           if (showSuggestions && suggestionsRef.current) {
+             suggestionsRef.current.style.display = 'block';
+           }
+         },
+         complete: (anim) => {
+           if (!showSuggestions && suggestionsRef.current) {
+             suggestionsRef.current.style.display = 'none';
+           }
+         },
+       });
+     }
+   }, [showSuggestions]);
+
 
   return (
     <header
@@ -136,7 +178,7 @@ export default function TopBar({
       {/* Search Input with Suggestions */}
       <div className="relative hidden md:block">
         <form onSubmit={handleSearchFormSubmit} className="flex items-center w-full max-w-xs lg:max-w-sm">
-          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
           <Input
             type="search"
             placeholder="Search anime, manga..."
@@ -145,32 +187,34 @@ export default function TopBar({
             onChange={handleSearchInputChange}
             aria-label="Search"
             onFocus={handleFocus}
-            onBlur={handleBlur}
+            // Removed onBlur to rely on click outside logic
           />
         </form>
-        {showSuggestions && (
-          <div
-            className="absolute top-full left-0 mt-1.5 w-full z-10 bg-background/90 backdrop-blur-sm rounded shadow-md border border-border/50 overflow-hidden animate-fade-in"
-            onMouseDown={(e) => e.preventDefault()}
-          >
+         {/* Suggestions Box */}
+        <div
+            ref={suggestionsRef}
+            className="absolute top-full left-0 mt-1.5 w-full z-50 bg-background/95 backdrop-blur-lg rounded shadow-md border border-border/50 overflow-hidden" // Increased z-index
+            style={{ display: 'none' }} // Initially hidden, controlled by animation
+        >
+            {/* Advanced Search Suggestion */}
             <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-muted-foreground h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-accent/50 hover:text-foreground transition-smooth"
-              onClick={handleAdvancedSuggestionClick}
+                variant="ghost"
+                size="sm"
+                className="text-xs text-muted-foreground h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-accent/50 hover:text-foreground transition-smooth"
+                onMouseDown={handleAdvancedSuggestion} // Use onMouseDown to trigger before blur
             >
-              <Settings className="w-3 h-3 mr-1.5 flex-shrink-0" /> Advanced Search for "{searchTerm}"
+                <Settings className="w-3 h-3 mr-1.5 flex-shrink-0" /> Advanced Search for "{searchTerm}"
             </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-primary h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-primary/10 transition-smooth"
-              onClick={handleAiSuggestionClick}
+             {/* Nami AI Suggestion */}
+             <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs text-primary h-auto px-3 py-1.5 w-full text-left justify-start hover:bg-primary/10 transition-smooth"
+                onMouseDown={handleAiSuggestion} // Use onMouseDown
             >
-              <Sparkles className="w-3 h-3 mr-1.5 flex-shrink-0" /> Use Nami AI for "{searchTerm}"?
+                <Sparkles className="w-3 h-3 mr-1.5 flex-shrink-0" /> Use Nami AI for "{searchTerm}"?
             </Button>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Mobile Search Icon */}
@@ -195,20 +239,22 @@ export default function TopBar({
         <span className="sr-only">{isAiSearchActive ? 'Deactivate AI Search Mode' : 'Activate AI Search Mode'}</span>
       </Button>
 
-      {/* Profile Dropdown */}
-      {user ? ( // Check if user exists
+      {/* Profile Dropdown / Login Button */}
+      {user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover">
               <Avatar className="h-8 w-8">
                  <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
-                 <AvatarFallback>{(user.displayName || 'U').slice(0, 2).toUpperCase()}</AvatarFallback>
+                 {/* Fallback uses email initial if display name is missing */}
+                 <AvatarFallback>{(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="glass animate-fade-in">
-            <DropdownMenuLabel>{user.displayName || 'User Profile'}</DropdownMenuLabel>
+             {/* Display email if name is unavailable */}
+            <DropdownMenuLabel>{user.displayName || user.email || 'User Profile'}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
               <Link href="/profile">Profile</Link>
