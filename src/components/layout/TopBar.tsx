@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
-import { useAuth } from '@/context/AuthContext'; // Import useAuth directly from context
+import { useAuth } from '@/hooks/useAuth'; // Corrected import path for useAuth hook
 import anime from 'animejs'; // Import animejs
 
 interface TopBarProps {
@@ -67,6 +67,7 @@ export default function TopBar({
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
   const { user, signOutUser } = useAuth(); // Get user and signOut from auth context
   const suggestionsRef = useRef<HTMLDivElement>(null); // Ref for suggestions box
+  const inputRef = useRef<HTMLInputElement>(null); // Ref for the search input
 
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value;
@@ -83,16 +84,19 @@ export default function TopBar({
     } else {
       onSearchIconClick();
     }
+    // Clear input and lose focus after submission
+    setSearchTerm('');
+    inputRef.current?.blur();
   };
 
   // --- Suggestion Click Handlers ---
-  // Prevent default behavior and stop propagation to avoid closing the popup unintentionally
   const handleSuggestionClick = (handler: () => void) => (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       handler();
       setShowSuggestions(false); // Close suggestions after click
       setSearchTerm(''); // Clear search term
+      inputRef.current?.blur(); // Lose focus
   };
 
   const handleAiSuggestion = handleSuggestionClick(() => {
@@ -118,7 +122,8 @@ export default function TopBar({
    // Close suggestions when clicking outside
    useEffect(() => {
      const handleClickOutside = (event: MouseEvent) => {
-       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
+           inputRef.current && !inputRef.current.contains(event.target as Node)) { // Also check if click is outside input
          setShowSuggestions(false);
        }
      };
@@ -145,8 +150,8 @@ export default function TopBar({
        anime({
          targets: suggestionsRef.current,
          opacity: showSuggestions ? [0, 1] : [1, 0],
-         translateY: showSuggestions ? [-10, 0] : [0, -10],
-         duration: 250, // Faster animation
+         translateY: showSuggestions ? [-5, 0] : [0, -5], // Reduced distance
+         duration: 200, // Faster animation
          easing: 'easeOutQuad',
          begin: (anim) => {
            if (showSuggestions && suggestionsRef.current) {
@@ -180,6 +185,7 @@ export default function TopBar({
         <form onSubmit={handleSearchFormSubmit} className="flex items-center w-full max-w-xs lg:max-w-sm">
           <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none z-10" />
           <Input
+            ref={inputRef} // Assign ref to input
             type="search"
             placeholder="Search anime, manga..."
             className="pl-9 pr-4 py-2 h-9 w-full glass border-primary/20 rounded-full transition-smooth"
@@ -193,7 +199,7 @@ export default function TopBar({
          {/* Suggestions Box */}
         <div
             ref={suggestionsRef}
-            className="absolute top-full left-0 mt-1.5 w-full z-50 bg-background/95 backdrop-blur-lg rounded shadow-md border border-border/50 overflow-hidden" // Increased z-index
+            className="absolute top-full left-0 mt-1.5 w-full z-50 bg-background/95 backdrop-blur-lg rounded-lg shadow-md border border-border/50 overflow-hidden" // Increased z-index, rounded-lg
             style={{ display: 'none' }} // Initially hidden, controlled by animation
         >
             {/* Advanced Search Suggestion */}

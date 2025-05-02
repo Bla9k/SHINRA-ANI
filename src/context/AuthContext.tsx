@@ -19,7 +19,7 @@ interface AuthActionError {
     message: string;
 }
 
-interface AuthContextProps {
+export interface AuthContextProps { // Export the props interface
   user: User | null;
   loading: boolean;
   // Add new functions for email/password
@@ -28,8 +28,8 @@ interface AuthContextProps {
   signOutUser: () => Promise<void>;
 }
 
-// No need to export AuthContext itself if useAuth is the intended way to access it
-const AuthContext = createContext<AuthContextProps | undefined>(undefined);
+// Export the context itself
+export const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -116,11 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Custom hook to use the auth context (remains the same)
-export const useAuth = (): AuthContextProps => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
-};
+// Custom hook to use the auth context (remains the same - relies on the exported context now)
+// Keep this hook definition in src/hooks/useAuth.ts
+// export const useAuth = (): AuthContextProps => {
+//   const context = useContext(AuthContext);
+//   if (context === undefined) {
+//     throw new Error('useAuth must be used within an AuthProvider');
+//   }
+//   return context;
+// };
