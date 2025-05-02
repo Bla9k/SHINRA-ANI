@@ -1,3 +1,4 @@
+
 // src/app/community/page.tsx
 'use client';
 
@@ -43,6 +44,8 @@ import { getCommunities, createCommunity, Community } from '@/services/community
 import CreateCommunityModal from '@/components/community/CreateCommunityModal'; // Import the new modal component
 import { useAuth } from '@/hooks/useAuth'; // Use corrected hook import
 import Footer from '@/components/layout/Footer'; // Import Footer
+import { ItemCard, SkeletonItemCard, BannerCard, SkeletonBannerCard } from '@/components/shared/ItemCard'; // Import shared cards
+
 
 // --- Interfaces ---
 // Community interface is now imported from services/community.ts
@@ -89,38 +92,21 @@ type FavoriteItem = (Anime | Manga) & {
     episodes?: number | null; // For anime
     chapters?: number | null; // For manga
     volumes?: number | null; // For manga
-};
-
-// Helper to map Anime/Manga service types to FavoriteItem
-const mapToFavoriteItem = (item: Anime | Manga): FavoriteItem | null => {
-    if (!item || typeof item.mal_id !== 'number') return null; // Use Jikan's mal_id
-    return {
-        ...item,
-        id: item.mal_id, // Use mal_id as the consistent ID
-        type: 'episodes' in item ? 'anime' : 'manga', // Differentiate based on episodes field
-        imageUrl: item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || null, // Use Jikan structure
-        title: item.title,
-        score: item.score ?? null,
-        year: item.year ?? null,
-        status: item.status ?? null,
-        episodes: 'episodes' in item ? item.episodes : null,
-        chapters: 'chapters' in item ? item.chapters : null,
-        volumes: 'volumes' in item ? item.volumes : null,
-    };
+    synopsis?: string | null; // Added synopsis for display in some cards
 };
 
 
 // --- Placeholder Data (Keep for guides/features, remove for communities/favorites) ---
 
 const dummyTopComments: Comment[] = [
-    { id: 'c1', user: 'GutsBestBoy', community: 'Berserk Fans', text: "Just reread the Golden Age arc... masterpiece.", timestamp: "2h ago", communityId: 'berserk-fans' },
-    { id: 'c2', user: 'ShinraFanatic', community: 'Action Hub', text: "That new mecha anime trailer looks insane!", timestamp: "5h ago", communityId: 'action-hub' },
-    { id: 'c3', user: 'IsekaiDreamer', community: 'Isekai Tavern', text: "Reincarnated as a vending machine, AMA.", timestamp: "1d ago", communityId: 'isekai-tavern' },
+    // { id: 'c1', user: 'GutsBestBoy', community: 'Berserk Fans', text: "Just reread the Golden Age arc... masterpiece.", timestamp: "2h ago", communityId: 'berserk-fans' },
+    // { id: 'c2', user: 'ShinraFanatic', community: 'Action Hub', text: "That new mecha anime trailer looks insane!", timestamp: "5h ago", communityId: 'action-hub' },
+    // { id: 'c3', user: 'IsekaiDreamer', community: 'Isekai Tavern', text: "Reincarnated as a vending machine, AMA.", timestamp: "1d ago", communityId: 'isekai-tavern' },
 ];
 
 const dummyFeatures: Feature[] = [
     { name: 'Indie Manga Uploads', description: 'Share your original manga creations.', icon: Upload, link: '/upload' },
-    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageCircleIcon, link: '/community' }, // Link to community home
+    { name: 'Text & Voice Chat', description: 'Real-time discussion rooms.', icon: MessageCircleIcon, link: '#community-directory' }, // Link to community directory
     { name: 'Community Creation', description: 'Start your own themed community.', icon: Users, link: '#' }, // Link now triggers modal
     { name: 'Nami AI Integration', description: 'AI-powered chat and recommendations.', icon: Sparkles, link: '#' }, // Link to Nami info/chat
     { name: 'Profile Customization', description: 'Personalize your Shinra-Ani identity.', icon: UserIcon, link: '/profile' },
@@ -181,14 +167,14 @@ const CommunityCard = ({ community }: { community: Community }) => {
     return (
         // Main link to community detail page
         <Link href={`/community/${community.id}`} className="block group h-full">
-            <Card className="glass neon-glow-hover h-full flex flex-col transition-all duration-300 hover:border-primary/50 group p-3 sm:p-4"> {/* Consistent padding */}
+            <Card className="glass neon-glow-hover h-full flex flex-col transition-all duration-300 hover:border-primary/50 group p-3 sm:p-4 rounded-lg"> {/* Added rounded-lg */}
                 <CardHeader className="flex flex-row items-center gap-3 p-0 mb-2 sm:mb-3"> {/* Responsive gap */}
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/30 group-hover:border-primary transition-colors flex-shrink-0">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 border-2 border-primary/30 group-hover:border-primary transition-colors flex-shrink-0 rounded-md"> {/* Changed to rounded-md */}
                         {community.imageUrl ? (
-                            <AvatarImage src={community.imageUrl} alt={community.name} />
+                            <AvatarImage src={community.imageUrl} alt={community.name} className="rounded-md" />
                         ) : (
                             // Use IconComponent if no imageUrl
-                            <AvatarFallback><IconComponent size={16} /></AvatarFallback>
+                            <AvatarFallback className="rounded-md"><IconComponent size={16} /></AvatarFallback>
                         )}
                     </Avatar>
                     <div className="flex-1 min-w-0"> {/* Ensure text truncates */}
@@ -216,7 +202,7 @@ const CommunityCard = ({ community }: { community: Community }) => {
 // Card for showcasing a feature
 const FeatureCard = ({ feature }: { feature: Feature }) => (
     <Link href={feature.link || '#'} className="block h-full">
-        <Card className="glass h-full flex flex-col p-4 items-center text-center transition-transform duration-300 hover:scale-105 border border-transparent hover:border-primary/30">
+        <Card className="glass rounded-lg h-full flex flex-col p-4 items-center text-center transition-transform duration-300 hover:scale-105 border border-transparent hover:border-primary/30"> {/* Added rounded-lg */}
             <feature.icon className="w-7 h-7 sm:w-8 sm:h-8 mb-2 text-primary" /> {/* Responsive icon */}
             <CardTitle className="text-xs sm:text-sm font-semibold mb-1">{feature.name}</CardTitle>
             <CardDescription className="text-[11px] sm:text-xs">{feature.description}</CardDescription> {/* Responsive text */}
@@ -226,7 +212,7 @@ const FeatureCard = ({ feature }: { feature: Feature }) => (
 
 // Card for showcasing indie manga (Simplified) - Updated link
 const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
-    <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group h-full flex flex-col border-primary/10 hover:border-primary/30">
+    <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 hover:scale-[1.02] group h-full flex flex-col border-primary/10 hover:border-primary/30 rounded-lg"> {/* Added rounded-lg */}
       <CardHeader className="p-0 relative aspect-[2/3] w-full">
         <Image
           src={manga.imageUrl || 'https://picsum.photos/200/300?grayscale'}
@@ -247,91 +233,19 @@ const IndieMangaCard = ({ manga }: { manga: IndieManga }) => (
            {manga.genre.map((g: string) => <Badge key={g} variant="secondary" className="text-[10px] px-1 sm:px-1.5">{g}</Badge>)}
         </div>
         <div className="mt-auto flex justify-end">
-             {/* Update link to actual indie manga reader page */}
-            <Link href={`/manga/indie/${manga.id}`} > {/* Removed legacyBehavior and wrapper */}
-                <Button variant="link" size="sm" className="text-xs p-0 h-auto group-hover:underline text-primary">
-                    Read Now <ArrowRight size={12} className="ml-1"/>
-                </Button>
+            {/* Update link to actual indie manga reader page */}
+            <Link href={`/manga/indie/${manga.id}`} passHref legacyBehavior>
+                 <a> {/* Wrap button in anchor for legacyBehavior */}
+                   <Button variant="link" size="sm" className="text-xs p-0 h-auto group-hover:underline text-primary">
+                       Read Now <ArrowRight size={12} className="ml-1"/>
+                   </Button>
+                </a>
             </Link>
         </div>
       </CardContent>
      </Card>
 );
 
-// Card for community favorites (similar to homepage ItemCard)
-const FavoriteItemCard = ({ item }: { item: FavoriteItem }) => {
-    if (!item) return null;
-    const linkHref = `/${item.type}/${item.id}`;
-
-    return (
-        <Link href={linkHref} passHref legacyBehavior>
-            {/* Adjust width for mobile */}
-            <a className="block w-32 sm:w-36 md:w-40 flex-shrink-0 h-full snap-start group">
-                <Card className="overflow-hidden glass neon-glow-hover transition-all duration-300 group-hover:scale-105 h-full flex flex-col">
-                    <CardHeader className="p-0 relative aspect-[2/3] w-full overflow-hidden">
-                        {item.imageUrl ? (
-                            <Image
-                                src={item.imageUrl}
-                                alt={item.title}
-                                fill
-                                sizes="(max-width: 640px) 35vw, (max-width: 768px) 25vw, 160px" // Responsive sizes
-                                className="object-cover transition-transform duration-300 group-hover:scale-110"
-                                priority={false}
-                                onError={(e) => { (e.target as HTMLImageElement).src = `https://picsum.photos/seed/${item.id}/200/300?grayscale`; }}
-                                data-ai-hint={item.type === 'anime' ? 'anime poster' : 'manga cover'}
-                            />
-                        ) : (
-                            <div className="absolute inset-0 bg-muted flex items-center justify-center">
-                                {item.type === 'anime' ? <Tv className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground opacity-50" /> : <BookText className="w-8 h-8 sm:w-10 sm:h-10 text-muted-foreground opacity-50" />}
-                            </div>
-                        )}
-                         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                         <div className="absolute bottom-1 left-1.5 right-1.5 z-10"> {/* Adjust padding */}
-                            <CardTitle className="text-[11px] sm:text-xs font-semibold text-primary-foreground line-clamp-2 shadow-text">{item.title}</CardTitle>
-                         </div>
-                         <Badge variant="secondary" className="absolute top-1 right-1 text-[9px] sm:text-[10px] capitalize backdrop-blur-sm bg-background/60 px-1 sm:px-1.5 py-0.5 z-10"> {/* Responsive badge */}
-                           {item.type}
-                         </Badge>
-                    </CardHeader>
-                     <CardContent className="p-1.5 sm:p-2 flex flex-col flex-grow"> {/* Responsive padding */}
-                         <div className="flex justify-between items-center text-[9px] sm:text-[10px] text-muted-foreground mt-auto pt-1 border-t border-border/50"> {/* Responsive text */}
-                             {item.score !== null && item.score !== undefined && (
-                                <span className="flex items-center gap-0.5" title="Score">
-                                    <Star size={10} className="text-yellow-400" /> {item.score.toFixed(1)}
-                                </span>
-                             )}
-                             {item.year && (
-                                <span className="flex items-center gap-0.5" title="Year">
-                                    {/* Placeholder for year/status */}
-                                    {item.year}
-                                </span>
-                             )}
-                              <span className="text-primary text-[10px] font-medium group-hover:underline">Details</span>
-                         </div>
-                     </CardContent>
-                </Card>
-            </a>
-        </Link>
-    );
-};
-
-// Skeleton needs responsive width too
-const SkeletonFavoriteCard = () => (
-    <Card className="overflow-hidden glass w-32 sm:w-36 md:w-40 flex-shrink-0 h-full flex flex-col snap-start">
-        <CardHeader className="p-0 relative aspect-[2/3] w-full">
-            <Skeleton className="h-full w-full" />
-        </CardHeader>
-        <CardContent className="p-1.5 sm:p-2 space-y-1">
-            <Skeleton className="h-3 w-3/4" />
-            <Skeleton className="h-3 w-1/2" />
-            <div className="flex justify-between items-center pt-1 border-t border-border/50">
-                <Skeleton className="h-3 w-8" />
-                <Skeleton className="h-3 w-8" />
-                <Skeleton className="h-4 w-10" />
-            </div>
-        </CardContent>
-    </Card>
-);
 
 // --- Helper function to render horizontal scrolling section ---
 const renderHorizontalSection = (
@@ -340,8 +254,8 @@ const renderHorizontalSection = (
     items: FavoriteItem[], // Expecting FavoriteItem[]
     isLoading: boolean,
     viewAllLink?: string,
-    itemComponent: React.FC<{ item: FavoriteItem }> = FavoriteItemCard, // Default to FavoriteItemCard
-    skeletonComponent: React.FC = SkeletonFavoriteCard // Default skeleton
+    itemComponent: React.FC<{ item: FavoriteItem }> = ItemCard, // Default to ItemCard
+    skeletonComponent: React.FC = SkeletonItemCard // Default skeleton
 ) => {
     const validItems = Array.isArray(items) ? items : [];
 
@@ -398,14 +312,18 @@ export default function CommunityPage() {
         setLoadingFavorites(true);
         setErrorFavorites(null);
         try {
+            // Use Jikan to fetch popular anime and manga
             const [animeResponse, mangaResponse] = await Promise.all([
-                getAnimes(undefined, undefined, undefined, undefined, 1, 'popularity', 10), // Fetch popular anime
-                getMangas(undefined, undefined, undefined, undefined, 1, 'popularity', 10) // Fetch popular manga
+                getAnimes(undefined, undefined, undefined, undefined, 'popularity', 1, 10), // Fetch popular anime
+                getMangas(undefined, undefined, undefined, undefined, 'popularity', 1, 10) // Fetch popular manga
             ]);
 
-            const mappedAnime = (animeResponse.animes || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
-            const mappedManga = (mangaResponse.mangas || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
+             const mappedAnime = (animeResponse.animes || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
+             const mappedManga = (mangaResponse.mangas || []).map(mapToFavoriteItem).filter((item): item is FavoriteItem => item !== null);
+
+            // Combine and randomize a bit for variety
             const combined = [...mappedAnime, ...mappedManga].sort(() => 0.5 - Math.random());
+
             setCommunityFavorites(combined.slice(0, 10)); // Take top 10 mixed
 
         } catch (err) {
@@ -490,12 +408,12 @@ export default function CommunityPage() {
                                 ? Array.from({ length: 4 }).map((_, i) => <Skeleton key={`feat-skel-${i}`} className="h-24 sm:h-28 glass rounded-lg" />)
                                 : communities.slice(0, 4).map((community) => (
                                     <Link href={`/community/${community.id}`} key={community.id} className="block group">
-                                        <Card className="glass p-2 sm:p-3 text-center transition-all duration-300 hover:scale-105 hover:bg-primary/10 border border-transparent hover:border-primary/30">
-                                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-1 border-2 border-primary/50 group-hover:border-primary transition-colors">
+                                        <Card className="glass p-2 sm:p-3 text-center transition-all duration-300 hover:scale-105 hover:bg-primary/10 border border-transparent hover:border-primary/30 rounded-lg"> {/* Added rounded-lg */}
+                                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 mx-auto mb-1 border-2 border-primary/50 group-hover:border-primary transition-colors rounded-md"> {/* Changed to rounded-md */}
                                                 {community.imageUrl ? (
-                                                    <AvatarImage src={community.imageUrl} alt={community.name} />
+                                                    <AvatarImage src={community.imageUrl} alt={community.name} className="rounded-md"/>
                                                 ) : (
-                                                    <AvatarFallback><Users size={14} /></AvatarFallback> // Default fallback
+                                                    <AvatarFallback className="rounded-md"><Users size={14} /></AvatarFallback> // Default fallback
                                                 )}
                                             </Avatar>
                                             <p className="text-[10px] sm:text-xs font-semibold truncate group-hover:text-primary transition-colors">{community.name}</p>
@@ -517,22 +435,22 @@ export default function CommunityPage() {
                     </section>
 
                     {/* Section 2: Community Favorites */}
-                    {renderHorizontalSection(
-                        "Community Favorites",
-                        Trophy,
-                        communityFavorites,
-                        loadingFavorites,
-                        undefined, // Optional link
-                        FavoriteItemCard,
-                        SkeletonFavoriteCard
-                    )}
-                    {errorFavorites && (
-                        <Alert variant="destructive" className="mx-4 sm:mx-6">
-                            <AlertCircle className="h-4 w-4" />
-                            <AlertTitle>Error Loading Favorites</AlertTitle>
-                            <AlertDescription>{errorFavorites}</AlertDescription>
-                        </Alert>
-                    )}
+                     {renderHorizontalSection(
+                         "Community Favorites",
+                         Trophy,
+                         communityFavorites,
+                         loadingFavorites,
+                         undefined, // Optional link
+                         ItemCard, // Use ItemCard which now handles Favorites
+                         SkeletonItemCard
+                     )}
+                     {errorFavorites && (
+                         <Alert variant="destructive" className="mx-4 sm:mx-6">
+                             <AlertCircle className="h-4 w-4" />
+                             <AlertTitle>Error Loading Favorites</AlertTitle>
+                             <AlertDescription>{errorFavorites}</AlertDescription>
+                         </Alert>
+                     )}
 
                     {/* Section 3: Top Interactions - Adjust padding/grid */}
                     <section id="top-interactions" className="px-4 sm:px-6">
@@ -545,7 +463,7 @@ export default function CommunityPage() {
                             {dummyTopComments.map((comment) => (
                                 // Wrap card in Link to community detail page, potentially focusing on comment
                                 <Link href={`/community/${comment.communityId}?comment=${comment.id}`} key={comment.id} className="block group">
-                                    <Card className="glass p-3 sm:p-4 flex flex-col group hover:bg-accent/10 transition-colors h-full">
+                                    <Card className="glass p-3 sm:p-4 flex flex-col group hover:bg-accent/10 transition-colors h-full rounded-lg"> {/* Added rounded-lg */}
                                         <p className="text-xs sm:text-sm text-foreground/90 mb-2 flex-grow">"{comment.text}"</p>
                                         <div className="text-[10px] sm:text-xs text-muted-foreground flex justify-between items-center mt-auto pt-2 border-t border-border/50">
                                             <span>by <strong className="text-primary group-hover:underline">{comment.user}</strong> in <span className="italic">{comment.community}</span></span>
@@ -640,7 +558,7 @@ export default function CommunityPage() {
                             <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2"><Info className="text-primary w-4 h-4 sm:w-5 sm:h-5" /> How Does It Work?</h2>
                             <div className="space-y-3">
                                 {/* Profile Creation Guide */}
-                                <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10">
+                                <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10 rounded-lg"> {/* Added rounded-lg */}
                                     <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><UserIcon size={16} className="text-primary" /> {guides.profile.title}</CardTitle>
                                     <CardDescription className="text-xs sm:text-sm">{guides.profile.description}</CardDescription>
                                     <Link href={guides.profile.link} passHref >
@@ -648,7 +566,7 @@ export default function CommunityPage() {
                                     </Link>
                                 </Card>
                                 {/* Community Guide */}
-                                <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10">
+                                <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10 rounded-lg"> {/* Added rounded-lg */}
                                     <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Users size={16} className="text-primary" /> {guides.community.title}</CardTitle>
                                     <CardDescription className="text-xs sm:text-sm">{guides.community.description}</CardDescription>
                                      {/* Make button clickable once guide exists */}
@@ -660,7 +578,7 @@ export default function CommunityPage() {
                                     </Link> */}
                                 </Card>
                                 {/* Upload Guide */}
-                                <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10">
+                                <Card className="glass p-3 sm:p-4 transition-colors hover:bg-accent/10 rounded-lg"> {/* Added rounded-lg */}
                                     <CardTitle className="text-sm sm:text-base mb-1 flex items-center gap-1 sm:gap-1.5"><Upload size={16} className="text-primary" /> {guides.upload.title}</CardTitle>
                                     <CardDescription className="text-xs sm:text-sm">{guides.upload.description}</CardDescription>
                                     <Link href={guides.upload.link} passHref >
@@ -673,7 +591,7 @@ export default function CommunityPage() {
                         {/* Upcoming Features */}
                         <div>
                             <h2 className="text-lg sm:text-xl md:text-2xl font-semibold mb-3 sm:mb-4 flex items-center gap-1.5 sm:gap-2"><Rocket className="text-primary w-4 h-4 sm:w-5 sm:h-5" /> Upcoming Features</h2>
-                            <Card className="glass p-3 sm:p-4">
+                            <Card className="glass p-3 sm:p-4 rounded-lg"> {/* Added rounded-lg */}
                                 <ul className="space-y-2">
                                     {dummyUpcomingFeatures.map((feature) => (
                                         <li key={feature.name} className="flex justify-between items-center text-xs sm:text-sm border-b border-border/30 pb-1.5 last:border-b-0">
@@ -726,3 +644,4 @@ export default function CommunityPage() {
         </>
     );
 }
+
