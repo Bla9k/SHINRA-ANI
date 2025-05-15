@@ -46,6 +46,10 @@ body {
     --chart-4: 43 74% 66%;  /* Gold/Yellowish */
     --chart-5: 27 87% 67%;  /* Orangeish */
     --radius: 0.5rem;
+
+    /* For Bottom Nav Panel */
+    --bottom-nav-panel-max-height: 16rem; /* Approx 256px, adjust as needed */
+
   }
 
   .dark {
@@ -235,5 +239,3 @@ body {
         box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); /* Use fiery accent for shadow */
     }
 }
-
-    

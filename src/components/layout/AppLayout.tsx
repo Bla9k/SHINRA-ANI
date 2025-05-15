@@ -1,3 +1,4 @@
+
 // src/components/layout/AppLayout.tsx
 'use client';
 
@@ -9,20 +10,19 @@ import SearchPopup from '@/components/search/SearchPopup';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { useAnimation } from '@/context/AnimationContext';
-import BootAnimation from './BootAnimation'; // Import BootAnimation
-import SubscriptionModal, { type Tier } from '@/components/subscription/SubscriptionModal'; // Import SubscriptionModal and Tier type
+import BootAnimation from './BootAnimation';
+import SubscriptionModal, { type Tier } from '@/components/subscription/SubscriptionModal';
+import CreateCommunityModal from '@/components/community/CreateCommunityModal'; // Import CreateCommunityModal
 import { useAuth } from '@/hooks/useAuth';
 import { UserProfileData, updateUserSubscriptionTier } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, Flame, Zap, Rocket, Star } from 'lucide-react'; // Ensured all icons are imported
-
+import { Sparkles, Flame, Zap, Rocket, Star } from 'lucide-react';
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-// Moved TIER_DATA_RAW here to be accessible by handleSelectTier
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
@@ -58,7 +58,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Ignite Experience',
         isPopular: true,
-        tierColorClass: 'text-accent',
+        tierColorClass: 'text-accent', // Fiery
         iconGlowClass: 'fiery-glow-icon',
     },
     {
@@ -76,7 +76,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-free experience (conceptual)', included: true },
         ],
         buttonText: 'Unleash Hellfire',
-        tierColorClass: 'text-accent',
+        tierColorClass: 'text-accent', // Fiery
         iconGlowClass: 'fiery-glow-icon',
     },
     {
@@ -93,7 +93,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Increased indie upload limits', included: true },
         ],
         buttonText: 'Go Burst Drive',
-        tierColorClass: 'text-accent',
+        tierColorClass: 'text-accent', // Fiery
         iconGlowClass: 'fiery-glow-icon',
     },
 ];
@@ -107,39 +107,38 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [initialSearchTerm, setInitialSearchTerm] = useState('');
   const [openWithFilters, setOpenWithFilters] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false); // New state
 
   const pathname = usePathname();
   const { playAnimation } = useAnimation();
-  const { user, userProfile, loading: authLoading, fetchUserProfile } = useAuth();
+  const { user, userProfile, loading: authLoading, fetchUserProfile, signOutUser } = useAuth();
   const { toast } = useToast();
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Only run modal logic if auth is not loading and we have user/profile info
     if (!authLoading && user && userProfile) {
       if (userProfile.subscriptionTier === null) {
         let appLaunchCount = 0;
         try {
-          appLaunchCount = parseInt(localStorage.getItem('appLaunchCount') || '0', 10) + 1;
+          const storedCount = localStorage.getItem('appLaunchCount');
+          appLaunchCount = storedCount ? parseInt(storedCount, 10) + 1 : 1;
           localStorage.setItem('appLaunchCount', appLaunchCount.toString());
         } catch (error) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
-          // Fallback to showing modal on first load if localStorage fails
           if (!localStorage.getItem('hasSeenSubModalOnce')) {
             appLaunchCount = 1;
             localStorage.setItem('hasSeenSubModalOnce', 'true');
           }
         }
-
-        if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0)) {
+        // For testing: show every 2 launches. For production: (appLaunchCount -1) % 30 === 0
+        if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0) ) {
           console.log(`App launch count: ${appLaunchCount}. Showing subscription modal.`);
           setShowSubscriptionModal(true);
         }
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, userProfile, authLoading]); // Rerun when auth state or profile changes
-
+  }, [user, userProfile, authLoading]);
 
   const handleAnimationComplete = useCallback(() => {
     setIsBooting(false);
@@ -157,16 +156,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, [playAnimation]);
 
   const handleSearchToggle = useCallback(() => {
-    setInitialSearchTerm(''); // Clear initial term when just toggling
+    setInitialSearchTerm('');
     setIsSearchOpen((prev) => !prev);
-    // setIsAiSearchActive(false); // Keep AI state as is or reset based on preference
-    setOpenWithFilters(false);
-  }, []);
-
-  const handleOpenSearchWithTerm = useCallback((term: string = '') => {
-    setInitialSearchTerm(term);
-    setIsSearchOpen(true);
-    setIsAiSearchActive(false); // Default to standard search when opened via TopBar submit
     setOpenWithFilters(false);
   }, []);
 
@@ -176,61 +167,65 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setOpenWithFilters(false);
   }, []);
 
-  const handleAiToggleInPopup = useCallback(() => { // Renamed to avoid confusion
-    setIsAiSearchActive(prev => !prev);
-    // If search isn't open when AI is toggled, it remains closed.
-    // If it is open, it just switches mode.
-  }, []);
-
-
-  const handleOpenAiSearch = useCallback((term: string) => {
-    setInitialSearchTerm(term);
-    setIsAiSearchActive(true);
-    setIsSearchOpen(true);
-    setOpenWithFilters(false);
-  }, []);
-
-  const handleOpenAdvancedSearch = useCallback((term: string) => {
-    setInitialSearchTerm(term);
-    setIsAiSearchActive(false);
-    setOpenWithFilters(true);
-    setIsSearchOpen(true);
-  }, []);
-
   const handleOpenSubscriptionModal = useCallback(() => {
     setShowSubscriptionModal(true);
   }, []);
 
+  const handleOpenCreateCommunityModal = useCallback(() => { // New handler
+    if (!user) {
+        toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
+        return;
+    }
+    // Add tier check from userProfile if needed, e.g.,
+    // if (userProfile?.subscriptionTier === 'spark') { ... }
+    setIsCreateCommunityModalOpen(true);
+  }, [user, toast]);
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      toast({
+         title: "Logged Out",
+         description: "You have been successfully logged out.",
+         variant: "default",
+      });
+      // Router push to /login is handled in AuthContext
+    } catch (error) {
+      console.error("Logout failed in AppLayout:", error);
+      toast({
+         title: "Logout Failed",
+         description: "Could not log you out. Please try again.",
+         variant: "destructive",
+      });
+    }
+  };
+
+
   const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
     if (user?.uid) {
-      // const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
-      // const tierName = selectedTierInfo?.name || 'the selected tier';
-      // console.log(`[AppLayout] Simulating tier selection for ${tierName}. Backend update skipped.`);
-
-      // **Temporarily comment out Firestore update for UI testing of toast and modal close**
-      // try {
-      //   await updateUserSubscriptionTier(user.uid, tierId);
-      //   if (fetchUserProfile) {
-      //     await fetchUserProfile(user.uid); // Refetch profile to update tier locally
-      //   }
-      // } catch (error: any) {
-      //   toast({
-      //     title: "Update Failed",
-      //     description: error.message || "Could not update your subscription tier.",
-      //     variant: "destructive",
-      //   });
-      //   return; // Don't show success toast or close modal if update fails
-      // }
-
       const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
       const tierName = selectedTierInfo?.name || 'the selected tier';
-
-      toast({
-        title: `Welcome to the ${tierName}!`,
-        description: "Thank you for supporting Shinra-Ani and unlocking new features!",
-        variant: "default",
-      });
-      setShowSubscriptionModal(false);
+      setIsLoading(true); // You might need an isLoading state in AppLayout for this
+      try {
+        await updateUserSubscriptionTier(user.uid, tierId);
+        if (fetchUserProfile) {
+          await fetchUserProfile(user.uid); // Refetch profile to update tier locally
+        }
+        toast({
+          title: `Welcome to the ${tierName}!`,
+          description: "Thank you for supporting Shinra-Ani and unlocking new features!",
+          variant: "default",
+        });
+        setShowSubscriptionModal(false);
+      } catch (error: any) {
+        toast({
+          title: "Update Failed",
+          description: error.message || "Could not update your subscription tier.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
     } else {
         toast({
             title: "Login Required",
@@ -239,6 +234,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         });
     }
   };
+   const [isLoading, setIsLoading] = useState(false); // Add isLoading state for tier selection
 
   return (
     <>
@@ -256,25 +252,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
               "flex flex-col min-h-screen h-screen overflow-hidden relative bg-background text-foreground",
             )}
           >
-            <TopBar
-              onSearchIconClick={handleSearchToggle} // For mobile search icon
-              onSearchSubmit={handleOpenSearchWithTerm} // For desktop search submit
-            />
-            <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin"> {/* Ensure pb-20 for BottomNav clearance */}
+            <TopBar onSearchIconClick={handleSearchToggle} />
+            {/* Main content area should allow for bottom nav clearance */}
+            <div className="flex-1 overflow-y-auto pb-16 scrollbar-thin"> {/* pb-16 for BottomNav clearance */}
               <main className="transition-smooth">
                 {children}
               </main>
             </div>
             <BottomNavigationBar
-                onSearchIconClick={handleSearchToggle} // Search icon on bottom nav
+                onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
+                onOpenCreateCommunityModal={handleOpenCreateCommunityModal} // Pass handler
+                handleLogout={handleLogout} // Pass handler
             />
             <SearchPopup
               isOpen={isSearchOpen}
               onClose={handleCloseSearch}
               isAiActive={isAiSearchActive}
               initialSearchTerm={initialSearchTerm}
-              onAiToggle={handleAiToggleInPopup} // Pass the correct handler
+              onAiToggle={() => setIsAiSearchActive(prev => !prev)}
               openWithFilters={openWithFilters}
             />
             <SubscriptionModal
@@ -283,6 +279,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 currentTier={userProfile?.subscriptionTier || null}
                 onSelectTier={handleSelectTier}
                 TIER_DATA={TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}))}
+            />
+            <CreateCommunityModal // Render the modal
+                isOpen={isCreateCommunityModalOpen}
+                onClose={() => setIsCreateCommunityModalOpen(false)}
+                onCreate={(newCommunity) => {
+                    console.log("Community created in AppLayout:", newCommunity);
+                    // Optionally refetch communities list or update local state
+                    setIsCreateCommunityModalOpen(false); // Close modal on creation
+                }}
             />
             <Toaster />
           </motion.div>
