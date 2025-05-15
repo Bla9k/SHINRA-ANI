@@ -11,7 +11,8 @@ import {
     Timestamp,
     arrayUnion,
     arrayRemove,
-    writeBatch
+    writeBatch,
+    FirebaseError // Import FirebaseError
 } from 'firebase/firestore';
 
 // --- Interfaces ---
@@ -37,7 +38,7 @@ export interface UserProfileData {
     badges: string[];
     stats: {
         animeWatched: number;
-        episodesWatched: number; // Corrected: Removed extra comma
+        episodesWatched: number;
         mangaRead: number;
         chaptersRead: number;
         uploads: number; // For indie manga
@@ -94,49 +95,66 @@ export async function createUserProfileDocument(
     try {
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
-            console.log(`[createUserProfileDocument] Profile already exists for UID: ${uid}. Updating last login.`);
-            // Optionally update last login time or other fields if user already exists
+            console.log(`[createUserProfileDocument] Profile already exists for UID: ${uid}. Updating last login/details.`);
             const existingData = docSnap.data();
             const updatePayload: Partial<UserProfileData> = {
                 updatedAt: serverTimestamp() as Timestamp,
-                email: initialData.email || existingData.email,
-                username: initialData.username || existingData.username,
+                email: initialData.email || existingData.email, // Prefer new initial data if available
+                username: initialData.username || existingData.username || `User-${uid.substring(0,5)}`,
             };
-            if (initialData.avatarUrl !== undefined) { // Only update avatarUrl if provided, even if null
+            // Only update avatarUrl if explicitly provided (even if it's null to clear it)
+            if (initialData.avatarUrl !== undefined) {
                 updatePayload.avatarUrl = initialData.avatarUrl;
+            } else if (existingData.avatarUrl === undefined) { // If existing doesn't have it, and new doesn't provide it, set to null
+                updatePayload.avatarUrl = null;
             }
 
-            await updateDoc(userDocRef, updatePayload);
 
-            return {
+            await updateDoc(userDocRef, updatePayload as any); // Cast to any to handle serverTimestamp
+
+            const mergedData = {
                 uid,
-                ...defaultUserProfileData, // Apply defaults first
-                ...existingData,        // Then existing data
-                ...updatePayload, // Apply latest updates
+                ...defaultUserProfileData,
+                ...existingData,
+                ...updatePayload, // Apply new email/username/avatar if they changed
                 createdAt: (existingData.createdAt as Timestamp)?.toDate() || new Date(),
-                updatedAt: new Date(), // Reflect update time
+                updatedAt: new Date(), // Reflect update time for immediate use
             } as UserProfileData;
+            // Clean up any undefined fields that might have come from partial initialData
+            Object.keys(mergedData).forEach(key => {
+                if (mergedData[key as keyof UserProfileData] === undefined) {
+                    delete mergedData[key as keyof UserProfileData];
+                }
+            });
+            return mergedData;
+
         } else {
             console.log(`[createUserProfileDocument] No profile found for UID: ${uid}. Creating new profile.`);
-            const newProfile: UserProfileData = {
+            const newProfileData: UserProfileData = {
                 uid,
                 email: initialData.email || '',
                 username: initialData.username || initialData.email?.split('@')[0] || `User-${uid.substring(0,5)}`,
-                avatarUrl: initialData.avatarUrl === undefined ? null : initialData.avatarUrl, // Handle undefined photoURL
+                avatarUrl: initialData.avatarUrl === undefined ? null : initialData.avatarUrl,
                 ...defaultUserProfileData,
-                createdAt: serverTimestamp() as Timestamp, // Use serverTimestamp, will be converted on read
+                createdAt: serverTimestamp() as Timestamp,
                 updatedAt: serverTimestamp() as Timestamp,
             };
-            await setDoc(userDocRef, newProfile);
+            await setDoc(userDocRef, newProfileData);
             console.log(`[createUserProfileDocument] New profile created for UID: ${uid}`);
             return {
-                ...newProfile,
+                ...newProfileData,
                 createdAt: new Date(), // Convert to Date for immediate use
                 updatedAt: new Date(),
             };
         }
     } catch (error) {
-        console.error("Error creating/updating user profile document:", error);
+        const firebaseError = error as FirebaseError;
+        console.error("[createUserProfileDocument] Error creating/updating user profile:", firebaseError.code, firebaseError.message);
+        if (firebaseError.code === 'unavailable') {
+            throw new Error("Failed to create/update profile: The app is offline or cannot connect to the database. Please check your internet connection.");
+        } else if (firebaseError.code === 'permission-denied') {
+            throw new Error("Failed to create/update profile: Permission denied. Please check Firestore security rules.");
+        }
         throw new Error("Failed to create or update user profile.");
     }
 }
@@ -149,7 +167,7 @@ export async function createUserProfileDocument(
  */
 export async function getUserProfileDocument(uid: string): Promise<UserProfileData | null> {
   if (!uid) {
-    console.error("getUserProfileDocument: UID is undefined or null.");
+    console.error("[getUserProfileDocument] UID is undefined or null.");
     return null;
   }
   const userDocRef = doc(db, 'users', uid);
@@ -159,9 +177,8 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
     if (docSnap.exists()) {
       const data = docSnap.data();
       console.log(`[getUserProfileDocument] Profile data found for UID ${uid}.`);
-      // Convert Timestamps to Dates
-      const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : (data.createdAt || new Date());
-      const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : (data.updatedAt || new Date());
+      const createdAt = (data.createdAt as Timestamp)?.toDate() || new Date();
+      const updatedAt = (data.updatedAt as Timestamp)?.toDate() || new Date();
 
       // Ensure all fields from UserProfileData are present, falling back to defaults
       const profile: UserProfileData = {
@@ -187,11 +204,17 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
       };
       return profile;
     } else {
-      console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}.`);
-      return null;
+      console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}. This is expected for new users.`);
+      return null; // Return null if document doesn't exist
     }
   } catch (error) {
-    console.error("[getUserProfileDocument] Error fetching user profile:", error);
+    const firebaseError = error as FirebaseError;
+    console.error("[getUserProfileDocument] Error fetching user profile:", firebaseError.code, firebaseError.message);
+    if (firebaseError.code === 'unavailable') {
+        throw new Error("Failed to fetch profile: The app is offline or cannot connect to the database. Please check your internet connection.");
+    } else if (firebaseError.code === 'permission-denied') {
+        throw new Error("Failed to fetch profile: Permission denied. Please check Firestore security rules.");
+    }
     throw new Error("Failed to fetch user profile.");
   }
 }
@@ -211,7 +234,13 @@ export async function updateUserProfileDocument(uid: string, data: Partial<UserP
     });
     console.log(`[updateUserProfileDocument] Profile updated successfully for UID: ${uid}`);
   } catch (error) {
-    console.error("Error updating user profile document:", error);
+    const firebaseError = error as FirebaseError;
+    console.error("[updateUserProfileDocument] Error updating user profile:", firebaseError.code, firebaseError.message);
+    if (firebaseError.code === 'unavailable') {
+        throw new Error("Failed to update profile: The app is offline or cannot connect to the database. Please check your internet connection.");
+    } else if (firebaseError.code === 'permission-denied') {
+        throw new Error("Failed to update profile: Permission denied. Please check Firestore security rules.");
+    }
     throw new Error("Failed to update user profile.");
   }
 }
@@ -232,11 +261,18 @@ export async function addItemToList(
     const userDocRef = doc(db, 'users', uid);
     try {
         await updateDoc(userDocRef, {
-            [listName]: arrayUnion(item) // arrayUnion adds if not present
+            [listName]: arrayUnion(item), // arrayUnion adds if not present
+            updatedAt: serverTimestamp()
         });
         console.log(`Item ${item.id} added to ${listName} for user ${uid}`);
     } catch (error) {
-        console.error(`Error adding item to ${listName}:`, error);
+        const firebaseError = error as FirebaseError;
+        console.error(`Error adding item to ${listName}:`, firebaseError.code, firebaseError.message);
+        if (firebaseError.code === 'unavailable') {
+            throw new Error(`Failed to add item: App offline or cannot connect.`);
+        } else if (firebaseError.code === 'permission-denied') {
+            throw new Error(`Failed to add item: Permission denied.`);
+        }
         throw new Error(`Failed to add item to ${listName}.`);
     }
 }
@@ -256,16 +292,27 @@ export async function removeItemFromList(
 ): Promise<void> {
     const userDocRef = doc(db, 'users', uid);
     try {
+        // Firestore's arrayRemove requires the exact object to remove.
+        // So, we need to construct it or fetch the current list and filter.
+        // For simplicity and to ensure we remove the correct item if duplicates exist with different user data,
+        // it's often better to fetch, filter, and then set the array.
         const userProfile = await getUserProfileDocument(uid);
         if (userProfile && userProfile[listName]) {
             const updatedList = userProfile[listName].filter(item => !(item.id === itemId && item.type === itemType));
             await updateDoc(userDocRef, {
-                [listName]: updatedList
+                [listName]: updatedList,
+                updatedAt: serverTimestamp()
             });
             console.log(`Item ${itemId} (type: ${itemType}) removed from ${listName} for user ${uid}`);
         }
     } catch (error) {
-        console.error(`Error removing item from ${listName}:`, error);
+        const firebaseError = error as FirebaseError;
+        console.error(`Error removing item from ${listName}:`, firebaseError.code, firebaseError.message);
+         if (firebaseError.code === 'unavailable') {
+            throw new Error(`Failed to remove item: App offline or cannot connect.`);
+        } else if (firebaseError.code === 'permission-denied') {
+            throw new Error(`Failed to remove item: Permission denied.`);
+        }
         throw new Error(`Failed to remove item from ${listName}.`);
     }
 }
@@ -288,20 +335,33 @@ export async function updateItemInList(
             const list = userProfile[listName];
             const itemIndex = list.findIndex(item => item.id === updatedItem.id && item.type === updatedItem.type);
             if (itemIndex > -1) {
-                list[itemIndex] = updatedItem;
-                await updateDoc(userDocRef, { [listName]: list });
+                list[itemIndex] = updatedItem; // Update the item in the array
+                await updateDoc(userDocRef, { 
+                    [listName]: list,
+                    updatedAt: serverTimestamp()
+                });
                 console.log(`Item ${updatedItem.id} updated in ${listName} for user ${uid}`);
             } else {
-                console.warn(`Item ${updatedItem.id} (type: ${updatedItem.type}) not found in ${listName} for user ${uid} to update. Adding it instead.`);
-                await addItemToList(uid, listName, updatedItem); // Add if not found
+                // If item not found, add it instead (optional behavior, or throw error)
+                console.warn(`Item ${updatedItem.id} (type: ${updatedItem.type}) not found in ${listName} for user ${uid} to update. Adding it.`);
+                await addItemToList(uid, listName, updatedItem);
             }
         } else {
              // If the list doesn't exist, create it with the item
              console.warn(`List ${listName} does not exist for user ${uid}. Creating list and adding item.`);
-             await updateDoc(userDocRef, { [listName]: [updatedItem] });
+             await updateDoc(userDocRef, { 
+                [listName]: [updatedItem],
+                updatedAt: serverTimestamp()
+            });
         }
     } catch (error) {
-        console.error(`Error updating item in ${listName}:`, error);
+        const firebaseError = error as FirebaseError;
+        console.error(`Error updating item in ${listName}:`, firebaseError.code, firebaseError.message);
+        if (firebaseError.code === 'unavailable') {
+            throw new Error(`Failed to update item: App offline or cannot connect.`);
+        } else if (firebaseError.code === 'permission-denied') {
+            throw new Error(`Failed to update item: Permission denied.`);
+        }
         throw new Error(`Failed to update item in ${listName}.`);
     }
 }
