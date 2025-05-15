@@ -1,4 +1,3 @@
-
 // src/components/layout/BottomNavigationBar.tsx
 'use client';
 
@@ -20,10 +19,11 @@ import {
   Star,
   ChevronUp,
   Palette,
-  Flame, // Added Flame for Shinra Fire theme
+  Flame,
+  ShieldCheck, // For premium features/tiers
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card } from '@/components/ui/card'; // Import Card
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -33,15 +33,17 @@ import {
 } from '@/components/ui/tooltip';
 import { useAnimation } from '@/context/AnimationContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useTheme } from 'next-themes'; // Import useTheme
+import { useTheme } from 'next-themes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth'; // For checking user profile
 
 interface NavSubItem {
   label: string;
   icon: React.ElementType;
   href?: string;
   onClick?: () => void;
+  premium?: boolean; // Flag for premium features
 }
 
 interface NavSection {
@@ -74,8 +76,9 @@ export default function BottomNavigationBar({
   const pathname = usePathname();
   const router = useRouter();
   const { playAnimation } = useAnimation();
-  const { theme, setTheme } = useTheme(); // Destructure setTheme
+  const { theme, setTheme } = useTheme();
   const { toast } = useToast();
+  const { user, userProfile } = useAuth(); // Get userProfile
 
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -110,8 +113,7 @@ export default function BottomNavigationBar({
       mainHref: '/community',
       subItems: [
         { label: 'Explore Hubs', icon: Users, href: '/community' },
-        { label: 'Create Community', icon: PlusCircle, onClick: onOpenCreateCommunityModal },
-        // { label: 'My Hubs', icon: Star, href: '/community/my-hubs' }, // Example future link
+        { label: 'Create Community', icon: PlusCircle, onClick: onOpenCreateCommunityModal, premium: true }, // Example: Mark as premium
       ],
     },
     {
@@ -132,7 +134,15 @@ export default function BottomNavigationBar({
       subItems: [
         { label: 'Light Theme', icon: Sun, onClick: () => setTheme('light') },
         { label: 'Dark Theme', icon: Moon, onClick: () => setTheme('dark') },
-        { label: 'Shinra Fire Theme', icon: Flame, onClick: () => setTheme('shinra-fire') },
+        {
+          label: 'Shinra Fire Theme',
+          icon: Flame,
+          onClick: () => {
+            // Removed subscription check for beta
+            setTheme('shinra-fire');
+            toast({ title: "Shinra Fire Activated!", description: "Enjoy the inferno!", variant: "default" });
+          },
+        },
         { label: 'Subscription Tiers', icon: Star, onClick: onOpenSubscriptionModal },
         {
           label: 'Community Theme',
@@ -159,7 +169,6 @@ export default function BottomNavigationBar({
 
   const closePanel = useCallback(() => {
     setIsPanelOpen(false);
-    // Delay clearing expandedSectionId to allow panel to animate out
     setTimeout(() => setExpandedSectionId(null), 300);
   }, []);
 
@@ -168,42 +177,39 @@ export default function BottomNavigationBar({
     const lastClickTime = lastClickTimestampRef.current[section.id] || 0;
 
     if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-        clickTimeoutRef.current = null;
+      clearTimeout(clickTimeoutRef.current);
+      clickTimeoutRef.current = null;
     }
 
     if (targetElement && playAnimation) {
-        const svgIcon = targetElement.querySelector('svg');
-        if (svgIcon) {
-            playAnimation(svgIcon, { scale: [1, 0.8, 1.1, 1], duration: 300, easing: 'easeInOutQuad' });
-        }
+      const svgIcon = targetElement.querySelector('svg');
+      if (svgIcon) {
+        playAnimation(svgIcon, { scale: [1, 0.8, 1.1, 1], duration: 300, easing: 'easeInOutQuad' });
+      }
     }
 
     if (section.isDirectAction && section.directAction) {
-        section.directAction();
-        closePanel(); // Close panel if a direct action is taken
-        return;
+      section.directAction();
+      closePanel();
+      return;
     }
 
     if (section.mainHref && (now - lastClickTime < DOUBLE_CLICK_THRESHOLD)) {
-        // Double click: navigate and close panel
-        router.push(section.mainHref);
-        closePanel();
-        lastClickTimestampRef.current[section.id] = 0; // Reset timestamp to prevent immediate re-trigger
+      router.push(section.mainHref);
+      closePanel();
+      lastClickTimestampRef.current[section.id] = 0;
     } else {
-        // Single click or no mainHref: toggle panel
-        lastClickTimestampRef.current[section.id] = now;
-        clickTimeoutRef.current = setTimeout(() => {
-            if (expandedSectionId === section.id && isPanelOpen) {
-                closePanel();
-            } else {
-                setExpandedSectionId(section.id);
-                setIsPanelOpen(true);
-            }
-        }, DOUBLE_CLICK_THRESHOLD);
+      lastClickTimestampRef.current[section.id] = now;
+      clickTimeoutRef.current = setTimeout(() => {
+        if (expandedSectionId === section.id && isPanelOpen) {
+          closePanel();
+        } else {
+          setExpandedSectionId(section.id);
+          setIsPanelOpen(true);
+        }
+      }, DOUBLE_CLICK_THRESHOLD);
     }
-};
-
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -233,11 +239,23 @@ export default function BottomNavigationBar({
 
   const activeSectionDetails = navSections.find(s => s.id === expandedSectionId);
 
-  // NavItem component for rendering individual items in the main bar
-  const NavItem = ({ section }: { section: NavSection }) => {
+  const NavItem = React.forwardRef<HTMLAnchorElement | HTMLButtonElement, { section: NavSection }>(
+    ({ section }, ref) => {
     const isLinkActive = section.mainHref ? (pathname === section.mainHref || (section.mainHref !== '/' && pathname.startsWith(section.mainHref))) : false;
     const isSectionExpanded = expandedSectionId === section.id && isPanelOpen;
-    const itemRef = React.useRef<HTMLButtonElement>(null);
+
+    const commonClasses = cn(
+      'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm relative focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md',
+      'nav-item-base', // Base class for consistent hover
+      (isLinkActive && !section.isDirectAction && !isSectionExpanded)
+        ? 'active-nav-item text-primary'
+        : isSectionExpanded
+        ? 'text-primary'
+        : 'text-muted-foreground',
+      '[&_svg]:transition-transform [&_svg]:duration-200 [&_svg]:ease-in-out',
+      '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out',
+      theme === 'shinra-fire' && 'sf-bansho-button' // Apply Bansho glow to all nav items in Shinra Fire theme
+    );
 
     const iconAndLabel = (
       <>
@@ -250,26 +268,32 @@ export default function BottomNavigationBar({
       <TooltipProvider key={section.id} delayDuration={100}>
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button
-              ref={itemRef}
-              variant="ghost"
-              className={cn(
-                'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm relative',
-                'hover:bg-transparent',
-                (isLinkActive && !section.isDirectAction && !isSectionExpanded)
-                  ? 'active-nav-item text-primary'
-                  : isSectionExpanded
-                  ? 'text-primary' // Keep expanded section icon primary
-                  : 'text-muted-foreground hover:text-primary',
-                '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out',
-                '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out'
-              )}
-              onClick={(e) => handleMainIconClickInternal(section, e.currentTarget)}
-              aria-pressed={isSectionExpanded}
-              aria-label={section.label}
-            >
-              {iconAndLabel}
-            </Button>
+            {section.mainHref && !section.isDirectAction ? (
+              <Link href={section.mainHref} legacyBehavior passHref>
+                <a
+                  ref={ref as React.RefObject<HTMLAnchorElement>}
+                  className={commonClasses}
+                  onClick={(e) => {
+                    e.preventDefault(); // Prevent default Link navigation
+                    handleMainIconClickInternal(section, e.currentTarget as HTMLElement);
+                  }}
+                  aria-current={isLinkActive ? 'page' : undefined}
+                >
+                  {iconAndLabel}
+                </a>
+              </Link>
+            ) : (
+              <Button
+                ref={ref as React.RefObject<HTMLButtonElement>}
+                variant="ghost"
+                className={commonClasses}
+                onClick={(e) => handleMainIconClickInternal(section, e.currentTarget as HTMLElement)}
+                aria-pressed={isSectionExpanded}
+                aria-label={section.label}
+              >
+                {iconAndLabel}
+              </Button>
+            )}
           </TooltipTrigger>
           <TooltipContent side="top" className="hidden sm:block bg-popover text-popover-foreground glass-deep text-xs">
             <p>{section.label}</p>
@@ -277,8 +301,8 @@ export default function BottomNavigationBar({
         </Tooltip>
       </TooltipProvider>
     );
-  };
-
+  });
+  NavItem.displayName = 'NavItem';
 
   return (
     <>
@@ -290,7 +314,7 @@ export default function BottomNavigationBar({
             animate={{ opacity: 1, y: 0, height: "var(--bottom-nav-panel-max-height, 16rem)" }}
             exit={{ opacity: 0, y: "100%", height: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md" // Ensure panel is above content
+            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md"
             style={{ maxHeight: 'var(--bottom-nav-panel-max-height, 16rem)' }}
           >
             <div className="p-2">
@@ -306,40 +330,66 @@ export default function BottomNavigationBar({
                 </div>
                 <ScrollArea className="flex-grow p-2">
                   <div className="space-y-1">
-                    {activeSectionDetails.subItems.map((item) => (
-                      <TooltipProvider key={item.label} delayDuration={100}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            {item.href ? (
-                               <Link href={item.href} legacyBehavior passHref>
-                                <a
-                                  className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                                  onClick={closePanel} // Close panel on sub-item click
+                    {activeSectionDetails.subItems.map((item) => {
+                       const isPremium = item.premium && (!userProfile || userProfile.subscriptionTier === 'spark' || userProfile.subscriptionTier === null);
+                       return (
+                        <TooltipProvider key={item.label} delayDuration={100}>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              {item.href ? (
+                                 <Link href={item.href} legacyBehavior passHref>
+                                  <a
+                                    className={cn(
+                                        "flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors",
+                                        theme === 'shinra-fire' && 'sf-bansho-button', // Apply Bansho glow
+                                        isPremium && "opacity-50 cursor-not-allowed"
+                                    )}
+                                    onClick={() => {
+                                        if (isPremium) {
+                                            onOpenSubscriptionModal();
+                                            toast({ title: "Premium Feature", description: "Upgrade your tier to access this feature.", variant: "default" });
+                                        }
+                                        closePanel();
+                                    }}
+                                    aria-disabled={isPremium}
+                                  >
+                                    <item.icon size={16} />
+                                    <span>{item.label}</span>
+                                    {item.premium && <ShieldCheck size={14} className="ml-auto text-yellow-500" />}
+                                  </a>
+                                </Link>
+                              ) : (
+                                <Button
+                                  variant="ghost"
+                                  className={cn(
+                                    "flex items-center gap-3 w-full justify-start px-3 py-2.5 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors",
+                                    theme === 'shinra-fire' && 'sf-bansho-button', // Apply Bansho glow
+                                    isPremium && "opacity-50 cursor-not-allowed"
+                                  )}
+                                  onClick={() => {
+                                    if (isPremium) {
+                                        onOpenSubscriptionModal();
+                                        toast({ title: "Premium Feature", description: "Upgrade your tier to access this feature.", variant: "default" });
+                                    } else if (item.onClick) {
+                                        item.onClick();
+                                    }
+                                    closePanel();
+                                  }}
+                                  disabled={isPremium}
                                 >
                                   <item.icon size={16} />
                                   <span>{item.label}</span>
-                                </a>
-                              </Link>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                className="flex items-center gap-3 w-full justify-start px-3 py-2.5 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                                onClick={() => {
-                                  item.onClick?.();
-                                  closePanel(); // Close panel on sub-item click
-                                }}
-                              >
-                                <item.icon size={16} />
-                                <span>{item.label}</span>
-                              </Button>
-                            )}
-                          </TooltipTrigger>
-                          <TooltipContent side="right" className="glass-deep text-xs">
-                            <p>{item.label}</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    ))}
+                                  {item.premium && <ShieldCheck size={14} className="ml-auto text-yellow-500" />}
+                                </Button>
+                              )}
+                            </TooltipTrigger>
+                            <TooltipContent side="right" className="glass-deep text-xs">
+                              <p>{isPremium ? `${item.label} (Premium)` : item.label}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                       );
+                    })}
                   </div>
                 </ScrollArea>
               </Card>
@@ -352,12 +402,13 @@ export default function BottomNavigationBar({
         ref={navBarRef}
         className={cn(
           'fixed bottom-0 left-0 right-0 z-50 h-16 border-t transition-smooth',
-          'bg-background/90 border-border/70 glass-deep shadow-top-md', // Ensure consistent styling
+          'bg-background/90 border-border/70 glass-deep shadow-top-md',
           className
         )}
       >
         <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-1 relative">
           {navSections.map((section) => (
+            // @ts-ignore itemRef type mismatch can be ignored with forwardRef
             <NavItem key={section.id} section={section} />
           ))}
         </div>

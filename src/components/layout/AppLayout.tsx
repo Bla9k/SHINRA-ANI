@@ -1,9 +1,9 @@
-
 // src/components/layout/AppLayout.tsx
 'use client';
 
 import React, { useState, type ReactNode, useCallback, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { useTheme } from "next-themes";
 import TopBar from './TopBar';
 import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup';
@@ -12,17 +12,15 @@ import { cn } from '@/lib/utils';
 import { useAnimation } from '@/context/AnimationContext';
 import BootAnimation from './BootAnimation';
 import SubscriptionModal, { type Tier } from '@/components/subscription/SubscriptionModal';
-import CreateCommunityModal from '@/components/community/CreateCommunityModal'; // Import CreateCommunityModal
+import CreateCommunityModal from '@/components/community/CreateCommunityModal';
 import { useAuth } from '@/hooks/useAuth';
 import { UserProfileData, updateUserSubscriptionTier } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, Flame, Zap, Rocket, Star } from 'lucide-react';
+import { Sparkles, Flame, Zap, Rocket, Star, Palette, User as UserIconLucide, Settings, LogOut, PlusCircle, Search as SearchIconLucide, Home as HomeIcon, Users as UsersIcon, Tv, BookText, Moon, Sun, ShieldCheck  } from 'lucide-react'; // Added more icons
+import anime from 'animejs'; // Ensure animejs is imported
 
-interface AppLayoutProps {
-  children: ReactNode;
-}
-
+// Define TIER_DATA_RAW here or import from a shared config
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
@@ -35,9 +33,9 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Read/Watch 3 indie items/day', included: true },
             { text: 'Join up to 2 communities', included: true },
             { text: 'Standard Nami AI search', included: true },
-            { text: 'Ad-supported (conceptual)', included: true },
+            // { text: 'Ad-supported (conceptual)', included: true },
         ],
-        buttonText: 'Start with Spark',
+        buttonText: 'Select Spark', // Changed for consistency
         tierColorClass: 'text-primary',
         iconGlowClass: 'neon-glow-icon',
     },
@@ -54,11 +52,11 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Post in communities', included: true },
             { text: 'Basic profile customization', included: true },
             { text: 'Create 1 community', included: true },
-            { text: 'Reduced ads (conceptual)', included: true },
+            // { text: 'Reduced ads (conceptual)', included: true },
         ],
-        buttonText: 'Ignite Experience',
+        buttonText: 'Select Ignition',
         isPopular: true,
-        tierColorClass: 'text-accent', // Fiery
+        tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
     },
     {
@@ -75,8 +73,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Create up to 3 communities', included: true },
             { text: 'Ad-free experience (conceptual)', included: true },
         ],
-        buttonText: 'Unleash Hellfire',
-        tierColorClass: 'text-accent', // Fiery
+        buttonText: 'Select Hellfire',
+        tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
     },
     {
@@ -92,12 +90,16 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Create unlimited communities', included: true },
             { text: 'Increased indie upload limits', included: true },
         ],
-        buttonText: 'Go Burst Drive',
-        tierColorClass: 'text-accent', // Fiery
+        buttonText: 'Select Burst Drive',
+        tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
     },
 ];
 
+
+interface AppLayoutProps {
+  children: ReactNode;
+}
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isBooting, setIsBooting] = useState(true);
@@ -107,12 +109,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [initialSearchTerm, setInitialSearchTerm] = useState('');
   const [openWithFilters, setOpenWithFilters] = useState(false);
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false); // New state
+  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
+  const [isLoadingTier, setIsLoadingTier] = useState(false); // Specific loading for tier selection
 
   const pathname = usePathname();
   const { playAnimation } = useAnimation();
   const { user, userProfile, loading: authLoading, fetchUserProfile, signOutUser } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -126,11 +130,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
         } catch (error) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
           if (!localStorage.getItem('hasSeenSubModalOnce')) {
-            appLaunchCount = 1;
+            appLaunchCount = 1; // Treat as first launch if localStorage fails but first time seeing modal
             localStorage.setItem('hasSeenSubModalOnce', 'true');
           }
         }
-        // For testing: show every 2 launches. For production: (appLaunchCount -1) % 30 === 0
+        // For beta, show every 5 launches. For production: (appLaunchCount -1) % 30 === 0
         if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0) ) {
           console.log(`App launch count: ${appLaunchCount}. Showing subscription modal.`);
           setShowSubscriptionModal(true);
@@ -139,6 +143,23 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, userProfile, authLoading]);
+
+  // Effect to revert theme if user doesn't have access to Shinra Fire
+  useEffect(() => {
+    if (theme === 'shinra-fire' && userProfile) {
+      const allowedTiersForShinraFire = ['ignition', 'hellfire', 'burstdrive'];
+      // For beta, everything is free, so this check is removed.
+      // if (!userProfile.subscriptionTier || !allowedTiersForShinraFire.includes(userProfile.subscriptionTier)) {
+      //   setTheme('dark'); // Revert to dark theme
+      //   toast({
+      //     title: "Premium Theme",
+      //     description: "Shinra Fire theme is available for Ignition Tier and above. Reverted to Dark theme.",
+      //     variant: "destructive"
+      //   });
+      // }
+    }
+  }, [theme, userProfile, setTheme, toast]);
+
 
   const handleAnimationComplete = useCallback(() => {
     setIsBooting(false);
@@ -171,15 +192,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setShowSubscriptionModal(true);
   }, []);
 
-  const handleOpenCreateCommunityModal = useCallback(() => { // New handler
+  const handleOpenCreateCommunityModal = useCallback(() => {
     if (!user) {
         toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
         return;
     }
-    // Add tier check from userProfile if needed, e.g.,
-    // if (userProfile?.subscriptionTier === 'spark') { ... }
+    // For beta, allow all users to create communities
+    // const allowedTiers = ['ignition', 'hellfire', 'burstdrive'];
+    // if (!userProfile?.subscriptionTier || !allowedTiers.includes(userProfile.subscriptionTier)) {
+    //     toast({ title: "Tier Requirement", description: "Upgrade to Ignition Tier or higher to create communities.", variant: "destructive" });
+    //     setShowSubscriptionModal(true); // Open modal to prompt upgrade
+    //     return;
+    // }
     setIsCreateCommunityModalOpen(true);
-  }, [user, toast]);
+  }, [user, userProfile, toast]);
 
   const handleLogout = async () => {
     try {
@@ -189,7 +215,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
          description: "You have been successfully logged out.",
          variant: "default",
       });
-      // Router push to /login is handled in AuthContext
     } catch (error) {
       console.error("Logout failed in AppLayout:", error);
       toast({
@@ -200,41 +225,42 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-
   const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
-    if (user?.uid) {
-      const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
-      const tierName = selectedTierInfo?.name || 'the selected tier';
-      setIsLoading(true); // You might need an isLoading state in AppLayout for this
-      try {
-        await updateUserSubscriptionTier(user.uid, tierId);
-        if (fetchUserProfile) {
-          await fetchUserProfile(user.uid); // Refetch profile to update tier locally
-        }
-        toast({
-          title: `Welcome to the ${tierName}!`,
-          description: "Thank you for supporting Shinra-Ani and unlocking new features!",
-          variant: "default",
-        });
-        setShowSubscriptionModal(false);
-      } catch (error: any) {
-        toast({
-          title: "Update Failed",
-          description: error.message || "Could not update your subscription tier.",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
+    if (!user?.uid) {
+        toast({ title: "Login Required", description: "Please log in to select a subscription tier.", variant: "destructive" });
+        return;
+    }
+    if (!tierId) {
+        toast({ title: "Error", description: "No tier was selected.", variant: "destructive" });
+        return;
+    }
+
+    setIsLoadingTier(true);
+    try {
+      // For beta, we are skipping actual payment and just updating the tier
+      await updateUserSubscriptionTier(user.uid, tierId);
+      if (fetchUserProfile) {
+        await fetchUserProfile(user.uid); // Refetch profile to update tier locally
       }
-    } else {
-        toast({
-            title: "Login Required",
-            description: "Please log in to select a subscription tier.",
-            variant: "destructive",
-        });
+      const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
+      const tierName = selectedTierInfo?.name || 'your new tier';
+
+      toast({
+        title: `Welcome to ${tierName}!`,
+        description: "Thank you for supporting Shinra-Ani and unlocking new features!",
+        variant: "default",
+      });
+      setShowSubscriptionModal(false);
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Could not update your subscription tier.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingTier(false);
     }
   };
-   const [isLoading, setIsLoading] = useState(false); // Add isLoading state for tier selection
 
   return (
     <>
@@ -253,8 +279,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
             )}
           >
             <TopBar onSearchIconClick={handleSearchToggle} />
-            {/* Main content area should allow for bottom nav clearance */}
-            <div className="flex-1 overflow-y-auto pb-16 scrollbar-thin"> {/* pb-16 for BottomNav clearance */}
+            <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin"> {/* Increased pb for bottom nav clearance */}
               <main className="transition-smooth">
                 {children}
               </main>
@@ -262,8 +287,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <BottomNavigationBar
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
-                onOpenCreateCommunityModal={handleOpenCreateCommunityModal} // Pass handler
-                handleLogout={handleLogout} // Pass handler
+                onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
+                handleLogout={handleLogout}
             />
             <SearchPopup
               isOpen={isSearchOpen}
@@ -280,13 +305,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onSelectTier={handleSelectTier}
                 TIER_DATA={TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}))}
             />
-            <CreateCommunityModal // Render the modal
+            <CreateCommunityModal
                 isOpen={isCreateCommunityModalOpen}
                 onClose={() => setIsCreateCommunityModalOpen(false)}
                 onCreate={(newCommunity) => {
                     console.log("Community created in AppLayout:", newCommunity);
-                    // Optionally refetch communities list or update local state
-                    setIsCreateCommunityModalOpen(false); // Close modal on creation
+                    setIsCreateCommunityModalOpen(false);
                 }}
             />
             <Toaster />

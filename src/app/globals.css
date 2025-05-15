@@ -172,11 +172,13 @@ body {
     .animate-pulse { animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-    /* Glows now use primary for general, accent for fiery by default */
+    /* Glows use accent for fiery by default now, primary for general */
     .neon-glow { box-shadow: 0 0 5px hsl(var(--primary) / 0.4), 0 0 10px hsl(var(--primary) / 0.2); border-color: hsl(var(--primary) / 0.4); }
     .neon-glow-hover:hover { box-shadow: 0 0 7px hsl(var(--primary) / 0.6), 0 0 14px hsl(var(--primary) / 0.3); }
+
     .fiery-glow { box-shadow: 0 0 6px hsl(var(--accent) / 0.6), 0 0 12px hsl(var(--accent) / 0.3); border-color: hsl(var(--accent) / 0.5) !important; }
     .fiery-glow-hover:hover { box-shadow: 0 0 9px hsl(var(--accent) / 0.8), 0 0 18px hsl(var(--accent) / 0.5); border-color: hsl(var(--accent) / 0.7) !important; }
+
     .neon-glow-focus:focus-visible { box-shadow: 0 0 7px hsl(var(--ring) / 0.7), 0 0 14px hsl(var(--ring) / 0.5); border-color: hsl(var(--ring) / 0.7) !important; outline: 2px solid transparent; outline-offset: 2px; }
     .neon-glow-icon svg { filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7)) drop-shadow(0 0 6px hsl(var(--primary) / 0.5)); }
     .fiery-glow-icon svg { filter: drop-shadow(0 0 4px hsl(var(--accent) / 0.8)) drop-shadow(0 0 8px hsl(var(--accent) / 0.6)); }
@@ -189,26 +191,93 @@ body {
     .tier-card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); }
 
     /* Shinra Fire Theme Specific Effects */
-    .shinra-fire-text-glow { text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.7), 0 0 15px hsl(var(--primary) / 0.5); }
-    html[data-theme="shinra-fire"] .shinra-fire-text-glow {
-        text-shadow: 0 0 5px hsl(var(--primary)), 0 0 10px hsl(var(--primary) / 0.7), 0 0 15px hsl(var(--primary) / 0.5);
+    /* Text Glow - more intense */
+    html[data-theme="shinra-fire"] .sf-text-glow {
+      text-shadow: 0 0 6px hsl(var(--primary)), 0 0 12px hsl(var(--primary)/0.8), 0 0 18px hsl(var(--primary)/0.6), 0 0 24px hsl(var(--accent)/0.5);
     }
-    html[data-theme="shinra-fire"] .shinra-fire-border-glow {
-        box-shadow: 0 0 8px hsl(var(--primary)), 0 0 15px hsl(var(--primary) / 0.7), 0 0 20px hsl(var(--primary) / 0.5);
+
+    /* Border/Box Glow - more intense */
+    html[data-theme="shinra-fire"] .sf-border-glow {
+      box-shadow: 0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary)/0.7), 0 0 24px hsl(var(--accent)/0.5);
     }
-    html[data-theme="shinra-fire"] .shinra-glitch-subtle {
-        animation: subtle-glitch 5s infinite step-end;
+
+    /* Radiating Aura Target - base class for elements that will get aura on hover/focus */
+    html[data-theme="shinra-fire"] .sf-radiating-aura-target {
+      transition: box-shadow 0.3s ease-out; /* Smooth transition for the aura */
     }
-    @keyframes subtle-glitch {
-      0%, 100% { transform: translateX(0); opacity: 1; }
-      2% { transform: translateX(-1px) skewX(-2deg); opacity: 0.95; }
-      4% { transform: translateX(1px) skewX(2deg); opacity: 1; }
-      4.5% { transform: translateX(0); opacity: 1; }
-      50% { transform: translateX(0); opacity: 1; } /* Keep stable for a while */
-      50.1% { opacity: 0.8; color: hsl(var(--accent)); } /* Quick color flash */
-      50.3% { opacity: 1; color: inherit; }
-      52% { transform: translateX(1px) skewY(1deg); opacity: 0.98; }
-      54% { transform: translateX(-1px) skewY(-1deg); opacity: 1; }
-      54.5% { transform: translateX(0); opacity: 1; }
+    html[data-theme="shinra-fire"] .sf-radiating-aura-target:hover,
+    html[data-theme="shinra-fire"] .sf-radiating-aura-target:focus-within {
+      animation: sf-radiate 2s infinite ease-out;
+    }
+    @keyframes sf-radiate {
+      0%, 100% { box-shadow: 0 0 5px hsl(var(--primary)/0.4), 0 0 10px hsl(var(--primary)/0.2), 0 0 15px hsl(var(--accent)/0.1), 0 0 20px hsl(var(--accent)/0.05); }
+      50% { box-shadow: 0 0 10px hsl(var(--primary)/0.6), 0 0 20px hsl(var(--primary)/0.4), 0 0 30px hsl(var(--accent)/0.2), 0 0 40px hsl(var(--accent)/0.1); }
+    }
+
+    /* Intense Glitch Effect - for titles or key elements */
+    html[data-theme="shinra-fire"] .sf-glitch-intense {
+      position: relative; /* Needed for pseudo-elements */
+    }
+    html[data-theme="shinra-fire"] .sf-glitch-intense::before,
+    html[data-theme="shinra-fire"] .sf-glitch-intense::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: hsl(var(--background)); /* Match background to hide original text during glitch */
+      clip-path: inset(50% 0 0 0);
+      --glitch-intensity: 2px; /* Control intensity via CSS variable */
+    }
+    html[data-theme="shinra-fire"] .sf-glitch-intense::before {
+      color: hsl(var(--primary));
+      text-shadow: -1.5px 0 hsl(var(--accent)/0.7);
+      animation: sf-glitch-anim-1 3s infinite steps(2, end) alternate-reverse;
+    }
+    html[data-theme="shinra-fire"] .sf-glitch-intense::after {
+      color: hsl(var(--accent));
+      text-shadow: 1.5px 0 hsl(var(--primary)/0.7);
+      animation: sf-glitch-anim-2 2.5s infinite steps(2, end) alternate-reverse;
+    }
+    @keyframes sf-glitch-anim-1 {
+      0% { transform: translate(var(--glitch-intensity), calc(var(--glitch-intensity) * -0.5)); clip-path: inset(20% 0 60% 0); }
+      25% { transform: translate(calc(var(--glitch-intensity) * -1), var(--glitch-intensity)); clip-path: inset(80% 0 5% 0); }
+      50% { transform: translate(calc(var(--glitch-intensity) * 0.5), calc(var(--glitch-intensity) * -1)); clip-path: inset(50% 0 20% 0); }
+      75% { transform: translate(calc(var(--glitch-intensity) * -0.5), var(--glitch-intensity)); clip-path: inset(5% 0 70% 0); }
+      100% { transform: translate(0); clip-path: inset(30% 0 50% 0); }
+    }
+    @keyframes sf-glitch-anim-2 {
+      0% { transform: translate(calc(var(--glitch-intensity) * -1), var(--glitch-intensity)); clip-path: inset(70% 0 10% 0); }
+      25% { transform: translate(var(--glitch-intensity), calc(var(--glitch-intensity) * -0.5)); clip-path: inset(15% 0 65% 0); }
+      50% { transform: translate(calc(var(--glitch-intensity) * -0.5), var(--glitch-intensity)); clip-path: inset(60% 0 10% 0); }
+      75% { transform: translate(var(--glitch-intensity), calc(var(--glitch-intensity) * 0.5)); clip-path: inset(35% 0 45% 0); }
+      100% { transform: translate(0); clip-path: inset(50% 0 30% 0); }
+    }
+
+    /* Bansho Man Button Glow - for primary actions */
+    html[data-theme="shinra-fire"] .sf-bansho-button {
+        position: relative; /* For z-index and potential pseudo-elements */
+    }
+    html[data-theme="shinra-fire"] .sf-bansho-button:focus-visible,
+    html[data-theme="shinra-fire"] .sf-bansho-button:active,
+    html[data-theme="shinra-fire"] .sf-bansho-button:hover { /* Added hover for more reactivity */
+      animation: sf-bansho-burst 0.5s ease-out forwards;
+      z-index: 1;
+    }
+    @keyframes sf-bansho-burst {
+      0% {
+        box-shadow: 0 0 3px 1px hsl(var(--primary)/0.7), 0 0 6px 3px hsl(var(--accent)/0.5);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 8px 4px hsl(var(--primary)/0.9), 0 0 15px 8px hsl(var(--accent)/0.7), 0 0 25px 15px hsl(var(--accent)/0.3);
+        transform: scale(1.03);
+      }
+      100% {
+        box-shadow: 0 0 5px 2px hsl(var(--primary)/0.7), 0 0 10px 5px hsl(var(--accent)/0.5);
+        transform: scale(1);
+      }
     }
 }
