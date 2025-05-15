@@ -1,4 +1,4 @@
-
+// src/components/layout/AppLayout.tsx
 'use client';
 
 import React, { useState, type ReactNode, useCallback, useEffect, useRef } from 'react';
@@ -12,209 +12,22 @@ import { useAnimation } from '@/context/AnimationContext';
 import BootAnimation from './BootAnimation';
 import SubscriptionModal from '@/components/subscription/SubscriptionModal';
 import { useAuth } from '@/hooks/useAuth';
-import { UserProfileData, updateUserSubscriptionTier } from '@/services/profile.ts';
+import { UserProfileData, updateUserSubscriptionTier } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
-import { AnimatePresence, motion } from 'framer-motion'; // Import AnimatePresence and motion
+import { AnimatePresence, motion } from 'framer-motion';
+import { Sparkles, Flame, Zap, Rocket, Star } from 'lucide-react'; // Added missing icons
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-export default function AppLayout({ children }: AppLayoutProps) {
-  const [isBooting, setIsBooting] = useState(true);
-  const [showApp, setShowApp] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isAiSearchActive, setIsAiSearchActive] = useState(false);
-  const [initialSearchTerm, setInitialSearchTerm] = useState('');
-  const [openWithFilters, setOpenWithFilters] = useState(false);
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-
-  const pathname = usePathname();
-  const { playAnimation } = useAnimation();
-  const { user, userProfile, loading: authLoading, fetchUserProfile } = useAuth();
-  const { toast } = useToast();
-  const mainContentRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (user && userProfile && !authLoading) {
-      if (userProfile.subscriptionTier === null) {
-        let appLaunchCount = 0;
-        try {
-          appLaunchCount = parseInt(localStorage.getItem('appLaunchCount') || '0', 10) + 1;
-          localStorage.setItem('appLaunchCount', appLaunchCount.toString());
-        } catch (error) {
-          console.warn("Could not access localStorage for appLaunchCount:", error);
-          // Fallback or do nothing if localStorage is not available
-        }
-
-        if (appLaunchCount > 0 && (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount - 1) % 5 === 0))) {
-          console.log(`App launch count: ${appLaunchCount}. Showing subscription modal.`);
-          setShowSubscriptionModal(true);
-        }
-      }
-    }
-  }, [user, userProfile, authLoading]);
-
-  const handleAnimationComplete = useCallback(() => {
-    setIsBooting(false);
-    setTimeout(() => {
-      setShowApp(true);
-      if (mainContentRef.current && playAnimation) {
-        playAnimation(mainContentRef.current, {
-          opacity: [0, 1],
-          translateY: [10, 0],
-          duration: 500,
-          easing: 'easeOutQuad',
-        });
-      }
-    }, 100);
-  }, [playAnimation]);
-
-  const handleSearchToggle = useCallback((term: string = '') => {
-    setInitialSearchTerm(term);
-    setIsSearchOpen((prev) => !prev);
-    if (!isSearchOpen && isAiSearchActive) {
-      // Keep AI active
-    } else {
-      setIsAiSearchActive(false);
-    }
-    setOpenWithFilters(false);
-  }, [isSearchOpen, isAiSearchActive]);
-
-  const handleOpenSearchWithTerm = useCallback((term: string = '') => {
-    setInitialSearchTerm(term);
-    setIsSearchOpen(true);
-    setIsAiSearchActive(false);
-    setOpenWithFilters(false);
-  }, []);
-
-  const handleCloseSearch = useCallback(() => {
-    setIsSearchOpen(false);
-    setInitialSearchTerm('');
-    setOpenWithFilters(false);
-  }, []);
-
-  const handleAiToggleInternal = useCallback(() => {
-    const newAiState = !isAiSearchActive;
-    setIsAiSearchActive(newAiState);
-    if (!isSearchOpen && newAiState) {
-      setIsSearchOpen(true);
-      setInitialSearchTerm('');
-      setOpenWithFilters(false);
-    }
-    if (playAnimation) {
-      playAnimation('.ai-toggle-button-bottom-nav', { scale: [1, 1.2, 1], duration: 300, easing: 'easeInOutQuad' });
-    }
-  }, [isAiSearchActive, isSearchOpen, playAnimation]);
-
-  const handleOpenAiSearch = useCallback((term: string) => {
-    setInitialSearchTerm(term);
-    setIsAiSearchActive(true);
-    setIsSearchOpen(true);
-    setOpenWithFilters(false);
-  }, []);
-
-  const handleOpenAdvancedSearch = useCallback((term: string) => {
-    setInitialSearchTerm(term);
-    setIsAiSearchActive(false);
-    setOpenWithFilters(true);
-    setIsSearchOpen(true);
-  }, []);
-
-  const handleOpenSubscriptionModal = useCallback(() => {
-    setShowSubscriptionModal(true);
-  }, []);
-
-  const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
-    if (user?.uid) {
-      try {
-        await updateUserSubscriptionTier(user.uid, tierId);
-        // Find tier name for the toast
-        const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
-        toast({
-          title: `Welcome to the ${selectedTierInfo?.name || 'new tier'}!`,
-          description: "Thank you for supporting Shinra-Ani and unlocking new features!",
-          variant: "default",
-        });
-        setShowSubscriptionModal(false);
-        if (fetchUserProfile) {
-          await fetchUserProfile(user.uid);
-        }
-      } catch (error: any) {
-        toast({
-          title: "Update Failed",
-          description: error.message || "Could not update your subscription tier.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
-  return (
-    <>
-      {isBooting && <BootAnimation onAnimationComplete={handleAnimationComplete} />}
-      <AnimatePresence>
-        {showApp && (
-          <motion.div
-            ref={mainContentRef}
-            key="appContent" // Add key for AnimatePresence
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className={cn(
-              "flex flex-col min-h-screen h-screen overflow-hidden relative bg-background text-foreground",
-            )}
-          >
-            <TopBar
-              onSearchIconClick={() => handleSearchToggle()}
-              onSearchSubmit={handleOpenSearchWithTerm}
-              onAiToggle={handleAiToggleInternal}
-              isAiSearchActive={isAiSearchActive}
-              onOpenAiSearch={handleOpenAiSearch}
-              onOpenAdvancedSearch={handleOpenAdvancedSearch}
-            />
-            <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin">
-              <main className="transition-smooth">
-                {children}
-              </main>
-            </div>
-
-            <BottomNavigationBar
-                onSearchIconClick={handleSearchToggle}
-                onOpenSubscriptionModal={handleOpenSubscriptionModal}
-            />
-
-            <SearchPopup
-              isOpen={isSearchOpen}
-              onClose={handleCloseSearch}
-              isAiActive={isAiSearchActive}
-              initialSearchTerm={initialSearchTerm}
-              onAiToggle={handleAiToggleInternal}
-              openWithFilters={openWithFilters}
-            />
-            <SubscriptionModal
-                isOpen={showSubscriptionModal}
-                onClose={() => setShowSubscriptionModal(false)}
-                currentTier={userProfile?.subscriptionTier || null}
-                onSelectTier={handleSelectTier}
-            />
-            <Toaster />
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
-
-
-// Raw tier data, can be moved to a config file if needed
+// Raw tier data, moved here for direct use in AppLayout
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
         name: 'Spark Tier',
         slogan: 'You’re just lighting the fuse.',
-        icon: Sparkles,
+        icon: Sparkles, // Now correctly referenced
         features: [
             { text: 'Basic browsing of anime & manga', included: true },
             { text: 'Limited search results (e.g., top 10)', included: true },
@@ -224,14 +37,14 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-supported (conceptual)', included: true },
         ],
         buttonText: 'Start with Spark',
-        tierColorClass: 'text-primary',
-        iconGlowClass: 'neon-glow-icon',
+        tierColorClass: 'text-primary', // Example color class
+        iconGlowClass: 'neon-glow-icon',  // Example glow class
     },
     {
         id: 'ignition',
         name: 'Ignition Tier',
         slogan: 'First burst of power.',
-        icon: Flame,
+        icon: Flame, // Now correctly referenced
         features: [
             { text: 'All Spark features', included: true },
             { text: 'Unlimited search results', included: true },
@@ -251,7 +64,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'hellfire',
         name: 'Hellfire Tier',
         slogan: 'Shinra-style blazing speed and fury.',
-        icon: Zap,
+        icon: Zap, // Now correctly referenced
         features: [
             { text: 'All Ignition features', included: true },
             { text: 'Unlimited indie reading/watching', included: true },
@@ -269,7 +82,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'burstdrive',
         name: 'Burst Drive Tier',
         slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket,
+        icon: Rocket, // Now correctly referenced
         features: [
             { text: 'All Hellfire features', included: true },
             { text: 'Exclusive profile badges & themes', included: true },
@@ -300,4 +113,186 @@ interface Tier {
 interface TierFeature {
     text: string;
     included: boolean;
+}
+
+
+export default function AppLayout({ children }: AppLayoutProps) {
+  const [isBooting, setIsBooting] = useState(true);
+  const [showApp, setShowApp] = useState(false);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAiSearchActive, setIsAiSearchActive] = useState(false);
+  const [initialSearchTerm, setInitialSearchTerm] = useState('');
+  const [openWithFilters, setOpenWithFilters] = useState(false);
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+
+  const pathname = usePathname();
+  const { playAnimation } = useAnimation();
+  const { user, userProfile, loading: authLoading, fetchUserProfile } = useAuth();
+  const { toast } = useToast();
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (user && userProfile && !authLoading) {
+      if (userProfile.subscriptionTier === null) {
+        let appLaunchCount = 0;
+        try {
+          appLaunchCount = parseInt(localStorage.getItem('appLaunchCount') || '0', 10) + 1;
+          localStorage.setItem('appLaunchCount', appLaunchCount.toString());
+        } catch (error) {
+          console.warn("Could not access localStorage for appLaunchCount:", error);
+        }
+
+        if (appLaunchCount > 0 && (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount - 1) % 5 === 0))) {
+          console.log(`App launch count: ${appLaunchCount}. Showing subscription modal.`);
+          setShowSubscriptionModal(true);
+        }
+      }
+    }
+  }, [user, userProfile, authLoading]);
+
+  const handleAnimationComplete = useCallback(() => {
+    setIsBooting(false);
+    setTimeout(() => {
+      setShowApp(true);
+      if (mainContentRef.current && playAnimation) {
+        playAnimation(mainContentRef.current, {
+          opacity: [0, 1],
+          translateY: [10, 0],
+          duration: 500,
+          easing: 'easeOutQuad',
+        });
+      }
+    }, 100);
+  }, [playAnimation]);
+
+  const handleSearchToggle = useCallback((term: string = '') => {
+    setInitialSearchTerm(term);
+    setIsSearchOpen((prev) => !prev);
+    setIsAiSearchActive(false); // Default to standard search when toggling
+    setOpenWithFilters(false);
+  }, []);
+
+  const handleOpenSearchWithTerm = useCallback((term: string = '') => {
+    setInitialSearchTerm(term);
+    setIsSearchOpen(true);
+    setIsAiSearchActive(false);
+    setOpenWithFilters(false);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    setInitialSearchTerm('');
+    setOpenWithFilters(false);
+  }, []);
+
+  const handleAiToggleInAppLayout = useCallback(() => {
+    const newAiState = !isAiSearchActive;
+    setIsAiSearchActive(newAiState);
+    if (!isSearchOpen && newAiState) {
+      setIsSearchOpen(true); // Open search if AI is toggled on and search isn't open
+      setInitialSearchTerm('');
+      setOpenWithFilters(false);
+    }
+    // Animation for the AI toggle button can be handled within BottomNavigationBar if needed
+  }, [isAiSearchActive, isSearchOpen]);
+
+  const handleOpenAiSearch = useCallback((term: string) => {
+    setInitialSearchTerm(term);
+    setIsAiSearchActive(true);
+    setIsSearchOpen(true);
+    setOpenWithFilters(false);
+  }, []);
+
+  const handleOpenAdvancedSearch = useCallback((term: string) => {
+    setInitialSearchTerm(term);
+    setIsAiSearchActive(false);
+    setOpenWithFilters(true);
+    setIsSearchOpen(true);
+  }, []);
+
+  const handleOpenSubscriptionModal = useCallback(() => {
+    setShowSubscriptionModal(true);
+  }, []);
+
+  const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
+    if (user?.uid) {
+      try {
+        await updateUserSubscriptionTier(user.uid, tierId);
+        const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
+        toast({
+          title: `Welcome to the ${selectedTierInfo?.name || 'new tier'}!`,
+          description: "Thank you for supporting Shinra-Ani and unlocking new features!",
+          variant: "default",
+        });
+        setShowSubscriptionModal(false);
+        if (fetchUserProfile) {
+          await fetchUserProfile(user.uid); // Refetch profile to update tier locally
+        }
+      } catch (error: any) {
+        toast({
+          title: "Update Failed",
+          description: error.message || "Could not update your subscription tier.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  return (
+    <>
+      {isBooting && <BootAnimation onAnimationComplete={handleAnimationComplete} />}
+      <AnimatePresence>
+        {showApp && (
+          <motion.div
+            ref={mainContentRef}
+            key="appContent"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className={cn(
+              "flex flex-col min-h-screen h-screen overflow-hidden relative bg-background text-foreground",
+            )}
+          >
+            <TopBar
+              onSearchIconClick={() => handleSearchToggle()}
+              onSearchSubmit={handleOpenSearchWithTerm}
+              onAiToggle={handleAiToggleInAppLayout}
+              isAiSearchActive={isAiSearchActive}
+              onOpenAiSearch={handleOpenAiSearch}
+              onOpenAdvancedSearch={handleOpenAdvancedSearch}
+            />
+            <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin">
+              <main className="transition-smooth">
+                {children}
+              </main>
+            </div>
+            <BottomNavigationBar
+                onSearchIconClick={handleSearchToggle}
+                onOpenSubscriptionModal={handleOpenSubscriptionModal}
+                onAiToggle={handleAiToggleInAppLayout} // Pass AI toggle handler
+                isAiActive={isAiSearchActive} // Pass AI active state
+            />
+            <SearchPopup
+              isOpen={isSearchOpen}
+              onClose={handleCloseSearch}
+              isAiActive={isAiSearchActive}
+              initialSearchTerm={initialSearchTerm}
+              onAiToggle={handleAiToggleInAppLayout} // Pass AI toggle handler to search popup
+              openWithFilters={openWithFilters}
+            />
+            <SubscriptionModal
+                isOpen={showSubscriptionModal}
+                onClose={() => setShowSubscriptionModal(false)}
+                currentTier={userProfile?.subscriptionTier || null}
+                onSelectTier={handleSelectTier}
+                // Pass TIER_DATA if SubscriptionModal doesn't define it itself
+                // TIER_DATA={TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}))}
+            />
+            <Toaster />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
