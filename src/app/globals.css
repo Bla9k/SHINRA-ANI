@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -83,6 +84,11 @@ body {
   /* Default glassmorphism */
   .glass {
     @apply bg-card/60 backdrop-blur-lg border border-border/50 shadow-lg transition-all duration-300;
+  }
+
+  /* Deeper/more opaque glassmorphism for MangaDex-like UI elements */
+  .glass-deep {
+    @apply bg-card/80 backdrop-blur-md border border-border/60 shadow-xl transition-all duration-300;
   }
 
    /* Base transition for smooth theme switching */
@@ -202,5 +208,37 @@ body {
     }
     .animate-slideFadeOut {
       animation: slideFadeOut 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
+    }
+
+    /* Neon Glow Effects */
+    .neon-glow {
+      box-shadow: 0 0 5px theme('colors.primary / 70%'),
+                  0 0 10px theme('colors.primary / 50%'),
+                  0 0 15px theme('colors.primary / 30%');
+      border-color: theme('colors.primary / 70%');
+    }
+    .neon-glow-hover:hover {
+      box-shadow: 0 0 7px theme('colors.primary / 80%'),
+                  0 0 15px theme('colors.primary / 60%'),
+                  0 0 20px theme('colors.primary / 40%');
+      border-color: theme('colors.primary / 80%');
+    }
+     .neon-glow-subtle-hover:hover {
+      box-shadow: 0 0 5px theme('colors.primary / 50%'),
+                  0 0 10px theme('colors.primary / 30%');
+      border-color: theme('colors.primary / 50%');
+    }
+     .neon-glow-focus:focus-visible { /* For input focus */
+      box-shadow: 0 0 5px theme('colors.primary / 60%'),
+                  0 0 10px theme('colors.primary / 40%');
+      border-color: theme('colors.primary / 70%') !important; /* Ensure border changes */
+      outline: none; /* Remove default outline */
+    }
+
+    /* For active tab states or similar */
+    .data-\[state\=active\]\:.neon-glow[data-state="active"] {
+        box-shadow: 0 0 6px theme('colors.primary / 70%'),
+                    0 0 12px theme('colors.primary / 50%');
+        color: theme('colors.primary'); /* Optional: change text color too */
     }
 }
