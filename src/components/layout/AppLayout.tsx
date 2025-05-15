@@ -22,6 +22,7 @@ interface AppLayoutProps {
 }
 
 // Raw tier data, moved here for direct use in AppLayout
+// Ensure all icons used here are imported from lucide-react
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
@@ -55,7 +56,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Create 1 community', included: true },
             { text: 'Reduced ads (conceptual)', included: true },
         ],
-        buttonText: 'Ignite Your Experience',
+        buttonText: 'Ignite Experience',
         isPopular: true,
         tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
@@ -63,7 +64,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'hellfire',
         name: 'Hellfire Tier',
-        slogan: 'Shinra-style blazing speed and fury.',
+        slogan: 'Shinra-style blazing speed.', // Updated slogan
         icon: Zap, // Now correctly referenced
         features: [
             { text: 'All Ignition features', included: true },
@@ -75,8 +76,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-free experience (conceptual)', included: true },
         ],
         buttonText: 'Unleash Hellfire',
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
+        tierColorClass: 'text-accent', // Fiery accent
+        iconGlowClass: 'fiery-glow-icon', // Fiery glow
     },
     {
         id: 'burstdrive',
@@ -92,8 +93,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Increased indie upload limits', included: true },
         ],
         buttonText: 'Go Burst Drive',
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
+        tierColorClass: 'text-accent', // Fiery accent
+        iconGlowClass: 'fiery-glow-icon', // Fiery glow
     },
 ];
 
@@ -141,14 +142,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
         } catch (error) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
         }
-
-        if (appLaunchCount > 0 && (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount - 1) % 5 === 0))) {
+        // Show modal on 1st, 6th, 11th, etc. launch (i.e., (count-1) % 5 === 0)
+        // For testing, show every 1st launch (count === 1) or every 5 thereafter.
+        // For production, (count-1) % 31 === 0 might be better.
+        if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0)) {
           console.log(`App launch count: ${appLaunchCount}. Showing subscription modal.`);
           setShowSubscriptionModal(true);
         }
       }
     }
   }, [user, userProfile, authLoading]);
+
 
   const handleAnimationComplete = useCallback(() => {
     setIsBooting(false);
@@ -193,7 +197,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       setInitialSearchTerm('');
       setOpenWithFilters(false);
     }
-    // Animation for the AI toggle button can be handled within BottomNavigationBar if needed
   }, [isAiSearchActive, isSearchOpen]);
 
   const handleOpenAiSearch = useCallback((term: string) => {
@@ -257,12 +260,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <TopBar
               onSearchIconClick={() => handleSearchToggle()}
               onSearchSubmit={handleOpenSearchWithTerm}
-              onAiToggle={handleAiToggleInAppLayout}
-              isAiSearchActive={isAiSearchActive}
-              onOpenAiSearch={handleOpenAiSearch}
-              onOpenAdvancedSearch={handleOpenAdvancedSearch}
             />
-            <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin"> {/* Ensure pb-20 for BottomNav clearance */}
               <main className="transition-smooth">
                 {children}
               </main>
@@ -270,15 +269,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             <BottomNavigationBar
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
-                onAiToggle={handleAiToggleInAppLayout} // Pass AI toggle handler
-                isAiActive={isAiSearchActive} // Pass AI active state
+                // Nami AI toggle is now part of SearchPopup, not directly on BottomNav
             />
             <SearchPopup
               isOpen={isSearchOpen}
               onClose={handleCloseSearch}
               isAiActive={isAiSearchActive}
               initialSearchTerm={initialSearchTerm}
-              onAiToggle={handleAiToggleInAppLayout} // Pass AI toggle handler to search popup
+              onAiToggle={handleAiToggleInAppLayout}
               openWithFilters={openWithFilters}
             />
             <SubscriptionModal
@@ -286,8 +284,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onClose={() => setShowSubscriptionModal(false)}
                 currentTier={userProfile?.subscriptionTier || null}
                 onSelectTier={handleSelectTier}
-                // Pass TIER_DATA if SubscriptionModal doesn't define it itself
-                // TIER_DATA={TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}))}
+                TIER_DATA={TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}))}
             />
             <Toaster />
           </motion.div>
