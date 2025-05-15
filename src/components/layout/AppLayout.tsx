@@ -1,15 +1,15 @@
-// src/components/layout/AppLayout.tsx
+
 'use client';
 
 import React, { useState, type ReactNode, useCallback, useEffect } from 'react';
-import { usePathname } from 'next/navigation'; // Import usePathname
-import { motion, AnimatePresence } from 'framer-motion'; // Import framer-motion
-import SearchPopup from '@/components/search/SearchPopup';
-import { cn } from '@/lib/utils';
-import { Toaster } from '@/components/ui/toaster';
+import { usePathname } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import TopBar from './TopBar';
 import BottomNavigationBar from './BottomNavigationBar';
-import Footer from './Footer'; // Import Footer
+import SearchPopup from '@/components/search/SearchPopup';
+import { Toaster } from '@/components/ui/toaster';
+import { cn } from '@/lib/utils';
+import { useAnimation } from '@/context/AnimationContext'; // Import useAnimation
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -21,24 +21,29 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isAiSearchActive, setIsAiSearchActive] = useState(false);
   const [initialSearchTerm, setInitialSearchTerm] = useState('');
   const [openWithFilters, setOpenWithFilters] = useState(false);
-  const pathname = usePathname(); // Get the current pathname
+  const pathname = usePathname();
+  const { playAnimation } = useAnimation(); // Get animation context
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // --- Search Handlers ---
   const handleSearchToggle = useCallback((term: string = '') => {
     setInitialSearchTerm(term);
     setIsSearchOpen((prev) => !prev);
-    setIsAiSearchActive(false); // Default to standard search when opening
+    // If opening and AI mode was active, keep it, otherwise default to standard.
+    if (!isSearchOpen && isAiSearchActive) {
+       // no change to isAiSearchActive
+    } else {
+       setIsAiSearchActive(false);
+    }
     setOpenWithFilters(false);
-  }, []);
+  }, [isSearchOpen, isAiSearchActive]);
 
   const handleOpenSearchWithTerm = useCallback((term: string = '') => {
     setInitialSearchTerm(term);
     setIsSearchOpen(true);
-    setIsAiSearchActive(false);
+    setIsAiSearchActive(false); // Standard search
     setOpenWithFilters(false);
   }, []);
 
@@ -49,12 +54,22 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, []);
 
   const handleAiToggle = useCallback(() => {
-    setIsAiSearchActive(prev => !prev);
-    if (!isSearchOpen && !isAiSearchActive) {
+    const newAiState = !isAiSearchActive;
+    setIsAiSearchActive(newAiState);
+    // If popup isn't open and AI is toggled ON, open it.
+    if (!isSearchOpen && newAiState) {
       setIsSearchOpen(true);
+      setInitialSearchTerm(''); // Clear term if opening fresh with AI
+      setOpenWithFilters(false);
+    } else if (isSearchOpen && !newAiState) {
+      // If popup is open and AI is toggled OFF, ensure filters are NOT shown by default
+      // (unless user manually opens them)
       setOpenWithFilters(false);
     }
-  }, [isSearchOpen, isAiSearchActive]);
+    // Animate the AI toggle button (example)
+    playAnimation('.ai-toggle-button', { scale: [1, 1.1, 1], duration: 300 });
+  }, [isAiSearchActive, isSearchOpen, playAnimation]);
+
 
   const handleOpenAiSearch = useCallback((term: string) => {
     setInitialSearchTerm(term);
@@ -65,70 +80,60 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleOpenAdvancedSearch = useCallback((term: string) => {
     setInitialSearchTerm(term);
-    setIsAiSearchActive(false);
+    setIsAiSearchActive(false); // Ensure AI is off for advanced
     setOpenWithFilters(true);
     setIsSearchOpen(true);
   }, []);
 
-  // Animation variants for page transitions
+
   const pageVariants = {
-    initial: {
-      opacity: 0,
-      y: 5, // Slight upward movement
-    },
-    in: {
-      opacity: 1,
-      y: 0,
-    },
-    out: {
-      opacity: 0,
-      y: -5, // Slight downward movement
-    },
+    initial: { opacity: 0, y: 8 }, // Slightly increased initial Y offset
+    in: { opacity: 1, y: 0 },
+    out: { opacity: 0, y: -8 }, // Slightly increased exit Y offset
   };
 
   const pageTransition = {
-    type: "tween", // Smoother transition
-    ease: "anticipate", // Easing function for a slight bounce/anticipation
-    duration: 0.4 // Faster duration
+    type: "spring", // Spring for a more natural feel
+    stiffness: 260,
+    damping: 20,
+    duration: 0.35 // Adjust duration for spring
   };
 
-  // Render placeholders or nothing until mounted to avoid hydration errors
   if (!mounted) {
-    return null; // Or a minimal loading skeleton if preferred
+    return null;
   }
 
   return (
-    <div className="flex flex-col min-h-screen h-screen overflow-hidden relative">
-      {/* Pass search handlers to TopBar */}
+    <div className="flex flex-col min-h-screen h-screen overflow-hidden relative bg-background text-foreground">
       <TopBar
-        onSearchIconClick={handleSearchToggle}
+        onSearchIconClick={() => handleSearchToggle()} // Simplified for mobile icon click
         onSearchSubmit={handleOpenSearchWithTerm}
         onAiToggle={handleAiToggle}
         isAiSearchActive={isAiSearchActive}
         onOpenAiSearch={handleOpenAiSearch}
         onOpenAdvancedSearch={handleOpenAdvancedSearch}
       />
-
-      {/* Main content area with page transitions */}
-      <div className="flex-1 overflow-y-auto pb-16 scrollbar-thin"> {/* Main content area scroll */}
+      <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin"> {/* Increased pb for BottomNav */}
         <AnimatePresence mode="wait">
           <motion.main
-            key={pathname} // Use pathname as key to trigger animation on route change
+            key={pathname}
             initial="initial"
             animate="in"
             exit="out"
             variants={pageVariants}
             transition={pageTransition}
-            className="transition-smooth" // Keep existing smooth transition class if needed
+            className="transition-smooth" // Keep this for potential CSS transitions
           >
             {children}
           </motion.main>
         </AnimatePresence>
-        {/* Add Footer inside the scrollable area */}
-        <Footer />
       </div>
 
-      <BottomNavigationBar />
+      <BottomNavigationBar
+          onSearchIconClick={handleSearchToggle}
+          onAiToggle={handleAiToggle}
+          isAiSearchActive={isAiSearchActive}
+       />
 
       <SearchPopup
         isOpen={isSearchOpen}
@@ -138,8 +143,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
         onAiToggle={handleAiToggle}
         openWithFilters={openWithFilters}
       />
-
-      {/* Global Toaster */}
       <Toaster />
     </div>
   );

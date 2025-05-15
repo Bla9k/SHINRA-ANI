@@ -4,66 +4,70 @@
 @tailwind utilities;
 
 body {
-  font-family: var(--font-poppins), sans-serif; /* Use Poppins font */
+  font-family: var(--font-poppins), sans-serif;
 }
 
-/* Define base and dark theme variables */
+/* Refined Dark Theme (Nothing UI Inspired) */
 @layer base {
   :root {
-    /* Default Dark Theme (Vanilla) */
-    --background: 240 10% 3.9%; /* #0A0A0A */
-    --foreground: 0 0% 98%; /* #FAFAFA */
-    --card: 240 10% 10%; /* #1A1A1A */
-    --card-foreground: 0 0% 98%; /* #FAFAFA */
-    --popover: 240 10% 3.9%; /* #0A0A0A */
-    --popover-foreground: 0 0% 98%; /* #FAFAFA */
-    --primary: 221 83% 53%; /* Electric Blue #1D4ED8 */
-    --primary-foreground: 0 0% 98%; /* #FAFAFA */
-    --secondary: 240 4% 16%; /* Darker Gray #292929 */
-    --secondary-foreground: 0 0% 98%; /* #FAFAFA */
-    --muted: 240 4% 16%; /* Darker Gray #292929 */
-    --muted-foreground: 240 5% 65%; /* Lighter Gray #A1A1AA */
-    --accent: 221 83% 53%; /* Electric Blue #1D4ED8 */
-    --accent-foreground: 0 0% 98%; /* #FAFAFA */
-    --destructive: 0 72% 51%; /* Red */
-    --destructive-foreground: 0 0% 98%; /* #FAFAFA */
-    --border: 240 4% 20%; /* Slightly lighter border #333333 */
-    --input: 240 4% 20%; /* #333333 */
-    --ring: 221 83% 53%; /* Electric Blue #1D4ED8 */
-    --chart-1: 221 83% 53%; /* Electric Blue */
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
-  }
+    /* Clean Dark Theme */
+    --background: 240 10% 2.5%; /* Even darker: #060607 */
+    --foreground: 0 0% 90%;     /* Softer white: #E6E6E6 */
 
-  .dark {
-     /* Re-apply variables for consistency */
-    --background: 240 10% 3.9%;;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 10%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 4% 16%;
-    --muted-foreground: 240 5% 65%;
-    --accent: 221 83% 53%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 20%;
-    --input: 240 4% 20%;
-    --ring: 221 83% 53%;
+    --card: 240 8% 8%;       /* Darker card: #121214 */
+    --card-foreground: 0 0% 90%; /* #E6E6E6 */
+
+    --popover: 240 10% 4%;    /* Consistent with background or slightly lighter: #0A0A0B */
+    --popover-foreground: 0 0% 90%; /* #E6E6E6 */
+
+    --primary: 221 83% 53%; /* Electric Blue: #1D4ED8 - Keep vibrant primary */
+    --primary-foreground: 0 0% 98%; /* #FAFAFA */
+
+    --secondary: 240 6% 12%;   /* Darker gray for secondary elements: #1C1C1E */
+    --secondary-foreground: 0 0% 80%; /* #CCCCCC */
+
+    --muted: 240 5% 20%;      /* Muted elements: #2E2E33 */
+    --muted-foreground: 240 5% 55%; /* Lighter muted text: #85858C */
+
+    --accent: 221 83% 60%;   /* Slightly brighter accent: #3B82F6 */
+    --accent-foreground: 0 0% 98%; /* #FAFAFA */
+
+    --destructive: 0 62.8% 40%; /* Darker, less saturated red: #A32121 */
+    --destructive-foreground: 0 0% 98%; /* #FAFAFA */
+
+    --border: 240 4% 15%;     /* Subtle border: #242426 */
+    --input: 240 4% 10%;      /* Darker input: #171719 */
+    --ring: 221 83% 55%;     /* Ring color matching primary/accent: #2563EB */
+
     --chart-1: 221 83% 53%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
+    --radius: 0.5rem; /* Keep consistent radius */
+  }
+
+  .dark {
+    /* Ensure dark theme variables are applied, this re-application is mostly for explicit clarity */
+    --background: 240 10% 2.5%;
+    --foreground: 0 0% 90%;
+    --card: 240 8% 8%;
+    --card-foreground: 0 0% 90%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 6% 12%;
+    --secondary-foreground: 0 0% 80%;
+    --muted: 240 5% 20%;
+    --muted-foreground: 240 5% 55%;
+    --accent: 221 83% 60%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 4% 15%;
+    --input: 240 4% 10%;
+    --ring: 221 83% 55%;
   }
 }
 
@@ -73,172 +77,135 @@ body {
     @apply border-border;
   }
   html {
-      @apply h-full scroll-smooth; /* Add smooth scrolling */
+      @apply h-full scroll-smooth;
   }
   body {
     @apply bg-background text-foreground;
-    /* Transition for theme change - Apply to body for background */
-    @apply transition-colors duration-500 ease-in-out;
+    @apply transition-colors duration-300 ease-in-out; /* Smooth theme transitions */
   }
 
-  /* Default glassmorphism */
+  /* Enhanced Glassmorphism - Base */
   .glass {
-    @apply bg-card/60 backdrop-blur-lg border border-border/50 shadow-lg transition-all duration-300;
+    @apply bg-card/70 backdrop-blur-md border border-border/30 shadow-lg transition-all duration-300 rounded-lg;
+    /* Softer shadow, slightly more blur */
   }
 
-  /* Deeper/more opaque glassmorphism for MangaDex-like UI elements */
+  /* Deeper/more opaque glassmorphism for prominent UI elements */
   .glass-deep {
-    @apply bg-card/80 backdrop-blur-md border border-border/60 shadow-xl transition-all duration-300;
+    @apply bg-card/85 backdrop-blur-lg border border-border/50 shadow-xl transition-all duration-300 rounded-lg;
+    /* More pronounced shadow, stronger blur */
   }
 
-   /* Base transition for smooth theme switching */
    .transition-smooth {
-      @apply transition-all duration-500 ease-in-out;
+      @apply transition-all duration-300 ease-in-out; /* Default to 300ms */
    }
 
-   /* Ensure active nav items have smooth color transition */
+   /* Active Nav Item styling (for BottomNavigationBar) */
     .active-nav-item {
-       color: hsl(var(--primary)); /* Active color */
-       transition: color 0.3s ease-in-out; /* Smooth transition */
+       color: hsl(var(--primary));
+       /* Optional: Add a subtle bottom border or icon glow for active state */
     }
-    /* Remove background hover effect for nav items */
+    .active-nav-item svg {
+        filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7));
+    }
     .nav-item-base:hover {
-       @apply bg-transparent;
+       @apply bg-transparent; /* Ensure no background on hover for bottom nav */
     }
-    /* Smooth color transition on hover for non-active items */
-     .nav-item-base.text-muted-foreground:hover {
+    .nav-item-base.text-muted-foreground:hover {
         color: hsl(var(--primary));
-        transition: color 0.3s ease-in-out;
-     }
-
+    }
 }
 
-/* Custom Scrollbar Styling */
-/* Basic thin scrollbar */
+/* Custom Scrollbar Styling - Refined */
 .scrollbar-thin {
-  scrollbar-width: thin; /* Firefox */
-  scrollbar-color: hsl(var(--muted)) transparent; /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary) / 0.4) hsl(var(--background) / 0.2); /* Primary accent, subtle track */
 }
-
-/* Webkit (Chrome, Safari, Edge) */
 .scrollbar-thin::-webkit-scrollbar {
-  width: 8px; /* Width of vertical scrollbar */
-  height: 8px; /* Height of horizontal scrollbar */
+  width: 6px;
+  height: 6px;
 }
-
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: transparent; /* Track background */
+  background: hsl(var(--background) / 0.1); /* Very subtle track */
+  border-radius: 3px;
 }
-
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--muted)); /* Scrollbar thumb color */
-  border-radius: 10px; /* Rounded corners */
-  border: 2px solid transparent; /* Creates padding around thumb */
-  background-clip: content-box; /* Makes border transparent */
+  background-color: hsl(var(--primary) / 0.5);
+  border-radius: 3px;
+  border: 1px solid transparent;
+  background-clip: content-box;
 }
-
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--muted-foreground)); /* Thumb color on hover */
+  background-color: hsl(var(--primary) / 0.7);
 }
 
-/* Utility for text shadow */
+/* Text Shadow for better readability on image backgrounds */
 .shadow-text {
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.7);
+  text-shadow: 0px 1px 4px hsl(var(--background) / 0.7); /* Softer, more modern shadow */
 }
 
-/* Animation Utilities */
+/* Animation Utilities - Refined */
 @layer utilities {
-    /* Standard Fade In */
     .animate-fade-in {
         opacity: 0;
-        animation: fadeIn 0.5s ease-out forwards;
+        animation: fadeIn 0.4s ease-out forwards; /* Slightly faster */
     }
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(5px); }
+        from { opacity: 0; transform: translateY(6px); } /* Slightly more movement */
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Subtle Pulse */
     .animate-pulse-subtle {
-        animation: pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
      @keyframes pulse-subtle {
         0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
+        50% { opacity: 0.6; } /* More noticeable pulse */
     }
 
-    /* Standard Pulse */
-    .animate-pulse {
-      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    .animate-pulse { /* Standard pulse for loading skeletons */
+      animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: .5; }
+      50% { opacity: 0.4; } /* Darker pulse for better contrast */
     }
 
-    /* Glitch effect for Hypercharge Button Hover */
-    .animate-glitch-subtle {
-       position: relative;
-       /* animation: glitch-subtle 0.3s linear infinite alternate; */ /* Remove animation by default */
-    }
-    .hover\\:animate-glitch-subtle:hover {
-       animation: glitch-subtle 0.3s linear infinite alternate;
-    }
-    /* Simplified glitch effect using transforms */
-    @keyframes glitch-subtle {
-       0% { transform: translate(0); }
-       25% { transform: translate(-1px, 1px) skewX(-2deg); }
-       50% { transform: translate(1px, -1px) skewX(2deg); }
-       75% { transform: translate(1px, 1px) skewX(-2deg); }
-       100% { transform: translate(0); }
-    }
-
-    /* Keyframes for Framer Motion page transitions (optional if handled in component) */
-    /* These can be used with AnimatePresence */
-    @keyframes slideFadeIn {
-      from { opacity: 0; transform: translateY(5px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    @keyframes slideFadeOut {
-      from { opacity: 1; transform: translateY(0); }
-      to { opacity: 0; transform: translateY(-5px); }
-    }
-    .animate-slideFadeIn {
-      animation: slideFadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
-    }
-    .animate-slideFadeOut {
-      animation: slideFadeOut 0.4s cubic-bezier(0.55, 0.085, 0.68, 0.53) forwards;
-    }
-
-    /* Neon Glow Effects */
-    .neon-glow {
-      box-shadow: 0 0 5px theme('colors.primary / 70%'),
-                  0 0 10px theme('colors.primary / 50%'),
-                  0 0 15px theme('colors.primary / 30%');
-      border-color: theme('colors.primary / 70%');
+    /* Neon Glow Effects - Subtle and refined */
+    .neon-glow { /* For elements that should always glow lightly */
+      box-shadow: 0 0 6px hsl(var(--primary) / 0.5),
+                  0 0 12px hsl(var(--primary) / 0.3);
+      border-color: hsl(var(--primary) / 0.5);
     }
     .neon-glow-hover:hover {
-      box-shadow: 0 0 7px theme('colors.primary / 80%'),
-                  0 0 15px theme('colors.primary / 60%'),
-                  0 0 20px theme('colors.primary / 40%');
-      border-color: theme('colors.primary / 80%');
+      box-shadow: 0 0 8px hsl(var(--primary) / 0.7),
+                  0 0 16px hsl(var(--primary) / 0.4);
+      /* border-color: hsl(var(--primary) / 0.7); */ /* Border can be optional on hover for cleaner look */
     }
-     .neon-glow-subtle-hover:hover {
-      box-shadow: 0 0 5px theme('colors.primary / 50%'),
-                  0 0 10px theme('colors.primary / 30%');
-      border-color: theme('colors.primary / 50%');
+    .neon-glow-focus:focus-visible { /* For input focus */
+      box-shadow: 0 0 7px hsl(var(--primary) / 0.6),
+                  0 0 14px hsl(var(--primary) / 0.4);
+      border-color: hsl(var(--primary) / 0.6) !important;
+      outline: 2px solid transparent; /* Custom outline instead of default */
+      outline-offset: 2px;
     }
-     .neon-glow-focus:focus-visible { /* For input focus */
-      box-shadow: 0 0 5px theme('colors.primary / 60%'),
-                  0 0 10px theme('colors.primary / 40%');
-      border-color: theme('colors.primary / 70%') !important; /* Ensure border changes */
-      outline: none; /* Remove default outline */
+    .neon-glow-icon svg { /* For glowing icons like active AI toggle */
+       filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.8)) drop-shadow(0 0 6px hsl(var(--primary) / 0.6));
     }
 
-    /* For active tab states or similar */
-    .data-\[state\=active\]\:.neon-glow[data-state="active"] {
-        box-shadow: 0 0 6px theme('colors.primary / 70%'),
-                    0 0 12px theme('colors.primary / 50%');
-        color: theme('colors.primary'); /* Optional: change text color too */
+    /* Active tab states for Tabs component */
+    .data-\[state\=active\]\:.neon-glow-tab[data-state="active"] {
+        box-shadow: 0 0 5px hsl(var(--primary) / 0.6),
+                    0 0 10px hsl(var(--primary) / 0.4);
+        color: hsl(var(--primary));
+        background-color: hsl(var(--card)) !important; /* Ensure tab background fits theme */
+    }
+
+    /* Shadow for elements elevated above the UI, like TopBar or BottomNav */
+    .shadow-top-md { /* For BottomNavigationBar */
+      box-shadow: 0 -3px 10px -1px hsl(var(--background) / 0.2), 0 -2px 8px -2px hsl(var(--background) / 0.15);
+    }
+    .shadow-bottom-md { /* For TopBar if it were visible on desktop */
+       box-shadow: 0 3px 10px -1px hsl(var(--background) / 0.2), 0 2px 8px -2px hsl(var(--background) / 0.15);
     }
 }
