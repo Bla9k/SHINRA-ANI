@@ -1,6 +1,4 @@
-
 // src/services/profile.ts
-// REMOVED 'use server'; directive
 
 import { db } from '@/lib/firebase'; // Assuming db is initialized in firebase.ts
 import {
@@ -39,7 +37,7 @@ export interface UserProfileData {
     badges: string[];
     stats: {
         animeWatched: number;
-        episodesWatched: number;,
+        episodesWatched: number; // Corrected: Removed extra comma
         mangaRead: number;
         chaptersRead: number;
         uploads: number; // For indie manga
@@ -98,21 +96,23 @@ export async function createUserProfileDocument(
         if (docSnap.exists()) {
             console.log(`[createUserProfileDocument] Profile already exists for UID: ${uid}. Updating last login.`);
             // Optionally update last login time or other fields if user already exists
-            await updateDoc(userDocRef, {
-                updatedAt: serverTimestamp(),
-                // Ensure email, username, avatarUrl are updated if changed from provider
-                email: initialData.email || docSnap.data().email,
-                username: initialData.username || docSnap.data().username,
-                avatarUrl: initialData.avatarUrl === undefined ? docSnap.data().avatarUrl : initialData.avatarUrl,
-            });
             const existingData = docSnap.data();
+            const updatePayload: Partial<UserProfileData> = {
+                updatedAt: serverTimestamp() as Timestamp,
+                email: initialData.email || existingData.email,
+                username: initialData.username || existingData.username,
+            };
+            if (initialData.avatarUrl !== undefined) { // Only update avatarUrl if provided, even if null
+                updatePayload.avatarUrl = initialData.avatarUrl;
+            }
+
+            await updateDoc(userDocRef, updatePayload);
+
             return {
                 uid,
                 ...defaultUserProfileData, // Apply defaults first
                 ...existingData,        // Then existing data
-                email: initialData.email || existingData.email, // Ensure email from auth is used
-                username: initialData.username || existingData.username || `User-${uid.substring(0,5)}`,
-                avatarUrl: initialData.avatarUrl === undefined ? existingData.avatarUrl : initialData.avatarUrl,
+                ...updatePayload, // Apply latest updates
                 createdAt: (existingData.createdAt as Timestamp)?.toDate() || new Date(),
                 updatedAt: new Date(), // Reflect update time
             } as UserProfileData;
@@ -158,20 +158,36 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
     const docSnap = await getDoc(userDocRef);
     if (docSnap.exists()) {
       const data = docSnap.data();
-      console.log(`[getUserProfileDocument] Profile data found for UID ${uid}:`, data);
+      console.log(`[getUserProfileDocument] Profile data found for UID ${uid}.`);
       // Convert Timestamps to Dates
       const createdAt = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : (data.createdAt || new Date());
       const updatedAt = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : (data.updatedAt || new Date());
 
-      return {
+      // Ensure all fields from UserProfileData are present, falling back to defaults
+      const profile: UserProfileData = {
         uid,
-        ...defaultUserProfileData, // Ensure all default fields are present
-        ...data,                 // Spread fetched data over defaults
+        email: data.email || '',
+        username: data.username || `User-${uid.substring(0,5)}`,
+        avatarUrl: data.avatarUrl === undefined ? null : data.avatarUrl,
+        bannerUrl: data.bannerUrl === undefined ? null : data.bannerUrl,
+        bio: data.bio || '',
+        status: data.status || defaultUserProfileData.status,
+        level: data.level || defaultUserProfileData.level,
+        xp: data.xp || defaultUserProfileData.xp,
+        xpToNextLevel: data.xpToNextLevel || defaultUserProfileData.xpToNextLevel,
+        badges: data.badges || defaultUserProfileData.badges,
+        stats: { ...defaultUserProfileData.stats, ...(data.stats || {}) },
+        watchlistIds: data.watchlistIds || defaultUserProfileData.watchlistIds,
+        readlistIds: data.readlistIds || defaultUserProfileData.readlistIds,
+        favoriteIds: data.favoriteIds || defaultUserProfileData.favoriteIds,
+        genrePreferences: data.genrePreferences || defaultUserProfileData.genrePreferences,
+        joinedCommunities: data.joinedCommunities || defaultUserProfileData.joinedCommunities,
         createdAt,
         updatedAt,
-      } as UserProfileData;
+      };
+      return profile;
     } else {
-      console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}. This might be normal if it's a new user whose profile creation is pending or failed.`);
+      console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}.`);
       return null;
     }
   } catch (error) {
@@ -230,21 +246,23 @@ export async function addItemToList(
  * @param uid User's UID.
  * @param listName The name of the list.
  * @param itemId The MAL ID of the item to remove.
+ * @param itemType The type of the item ('anime' | 'manga') to ensure correct removal.
  */
 export async function removeItemFromList(
     uid: string,
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds',
-    itemId: number
+    itemId: number,
+    itemType: 'anime' | 'manga'
 ): Promise<void> {
     const userDocRef = doc(db, 'users', uid);
     try {
         const userProfile = await getUserProfileDocument(uid);
         if (userProfile && userProfile[listName]) {
-            const updatedList = userProfile[listName].filter(item => item.id !== itemId);
+            const updatedList = userProfile[listName].filter(item => !(item.id === itemId && item.type === itemType));
             await updateDoc(userDocRef, {
                 [listName]: updatedList
             });
-            console.log(`Item ${itemId} removed from ${listName} for user ${uid}`);
+            console.log(`Item ${itemId} (type: ${itemType}) removed from ${listName} for user ${uid}`);
         }
     } catch (error) {
         console.error(`Error removing item from ${listName}:`, error);
@@ -274,10 +292,13 @@ export async function updateItemInList(
                 await updateDoc(userDocRef, { [listName]: list });
                 console.log(`Item ${updatedItem.id} updated in ${listName} for user ${uid}`);
             } else {
-                console.warn(`Item ${updatedItem.id} not found in ${listName} for user ${uid} to update.`);
-                // Optionally, add it if it's not found but an update is attempted
-                // await addItemToList(uid, listName, updatedItem);
+                console.warn(`Item ${updatedItem.id} (type: ${updatedItem.type}) not found in ${listName} for user ${uid} to update. Adding it instead.`);
+                await addItemToList(uid, listName, updatedItem); // Add if not found
             }
+        } else {
+             // If the list doesn't exist, create it with the item
+             console.warn(`List ${listName} does not exist for user ${uid}. Creating list and adding item.`);
+             await updateDoc(userDocRef, { [listName]: [updatedItem] });
         }
     } catch (error) {
         console.error(`Error updating item in ${listName}:`, error);
