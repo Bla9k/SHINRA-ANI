@@ -1,7 +1,5 @@
 
 // src/services/profile.ts
-'use client';
-
 import { db } from '@/lib/firebase';
 import {
     doc,
@@ -47,7 +45,7 @@ export interface UserProfileData {
     favoriteIds: UserListItemData[];
     genrePreferences: Record<string, number>; // Genre ID -> interaction count/score
     joinedCommunities: string[];
-    subscriptionTier: 'spark' | 'ignition' | 'hellfire' | 'burstdrive' | null; // Added subscription tier
+    subscriptionTier: 'spark' | 'ignition' | 'hellfire' | 'burstdrive' | null;
     createdAt: Date | Timestamp;
     updatedAt: Date | Timestamp;
 }
@@ -73,11 +71,11 @@ export const defaultUserProfileData: Omit<UserProfileData, 'uid' | 'email' | 'cr
     favoriteIds: [],
     genrePreferences: {},
     joinedCommunities: [],
-    subscriptionTier: null, // Default to null
+    subscriptionTier: null,
 };
 
-const MAX_RETRIES = 1;
-const RETRY_DELAY_MS = 2000;
+const MAX_RETRIES = 2; // Increased max retries
+const RETRY_DELAY_MS = 2500; // Increased retry delay
 
 async function executeWithRetry<T>(action: () => Promise<T>, operationName: string): Promise<T> {
     let retries = 0;
@@ -88,16 +86,16 @@ async function executeWithRetry<T>(action: () => Promise<T>, operationName: stri
             const firebaseError = error as FirebaseError;
             if (firebaseError.code === 'unavailable' && retries < MAX_RETRIES) {
                 retries++;
-                console.warn(`[${operationName}] Firebase unavailable (attempt ${retries}/${MAX_RETRIES}). Retrying in ${RETRY_DELAY_MS / 1000}s...`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+                console.warn(`[${operationName}] Firebase unavailable (attempt ${retries}/${MAX_RETRIES}). Retrying in ${RETRY_DELAY_MS / 1000}s... Error: ${firebaseError.message}`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * retries)); // Exponential backoff might be too much here, just increasing delay
             } else {
                 console.error(`[${operationName}] Firebase error after ${retries} retries:`, firebaseError.code, firebaseError.message);
                 if (firebaseError.code === 'unavailable') {
-                    throw new Error(`Failed to ${operationName.toLowerCase()}: The app is offline or cannot connect. Please check your internet connection.`);
+                    throw new Error(`Failed to ${operationName.toLowerCase()}: The app is offline or cannot connect. Please check your internet connection and Firebase setup.`);
                 } else if (firebaseError.code === 'permission-denied') {
-                    throw new Error(`Failed to ${operationName.toLowerCase()}: Permission denied. Check Firestore rules.`);
+                    throw new Error(`Failed to ${operationName.toLowerCase()}: Permission denied. Check Firestore rules for the '${operationName.includes("User Profile") ? "users" : "unknown"}' collection.`);
                 }
-                throw new Error(`Failed to ${operationName.toLowerCase()}: ${firebaseError.message}`);
+                throw new Error(`Failed to ${operationName.toLowerCase()}: ${firebaseError.message} (Code: ${firebaseError.code})`);
             }
         }
     }
@@ -111,44 +109,55 @@ export async function createUserProfileDocument(
     return executeWithRetry(async () => {
         const userDocRef = doc(db, 'users', uid);
         console.log(`[createUserProfileDocument] Attempting to create/update profile for UID: ${uid}`);
-        const docSnap = await getDoc(userDocRef);
-        const now = serverTimestamp();
+        const docSnap = await getDoc(userDocRef); // This getDoc can also fail with "unavailable"
+        const now = serverTimestamp(); // Get serverTimestamp once
+
+        let finalProfileData: UserProfileData;
 
         if (docSnap.exists()) {
             console.log(`[createUserProfileDocument] Profile for UID: ${uid} already exists. Ensuring core details are up-to-date.`);
             const existingData = docSnap.data() as UserProfileData;
             const updatePayload: Partial<UserProfileData> = {
                 updatedAt: now as Timestamp, // Firestore server timestamp
-                email: initialData.email || existingData.email || '',
-                username: initialData.username || existingData.username || `User-${uid.substring(0, 5)}`,
-                avatarUrl: initialData.avatarUrl !== undefined ? initialData.avatarUrl : (existingData.avatarUrl !== undefined ? existingData.avatarUrl : null),
-                // Ensure subscriptionTier is not accidentally overwritten if already set
-                subscriptionTier: existingData.subscriptionTier || null,
+                email: initialData.email || existingData.email || '', // Prioritize new data from auth provider
+                // Only update username from auth provider if current Firestore username is default or empty
+                username: initialData.username && (existingData.username === `User-${uid.substring(0,5)}` || !existingData.username)
+                    ? initialData.username
+                    : existingData.username || initialData.username || `User-${uid.substring(0,5)}`,
+                // Only update avatar from auth provider if current Firestore avatar is null or empty
+                avatarUrl: initialData.avatarUrl !== undefined && (existingData.avatarUrl === null || existingData.avatarUrl === '')
+                    ? initialData.avatarUrl
+                    : existingData.avatarUrl !== undefined ? existingData.avatarUrl : null,
+                subscriptionTier: existingData.subscriptionTier || null, // Preserve existing tier
             };
             await updateDoc(userDocRef, updatePayload as any); // Use any for serverTimestamp compatibility
-            const updatedData = { ...existingData, ...updatePayload, uid };
-            updatedData.createdAt = (updatedData.createdAt instanceof Timestamp ? updatedData.createdAt.toDate() : new Date(updatedData.createdAt as any)) || new Date();
-            updatedData.updatedAt = new Date(); // Use current date for immediate feedback
-            return updatedData;
+            finalProfileData = {
+                ...existingData, // Start with existing data
+                ...updatePayload, // Override with updates
+                uid,
+                createdAt: (existingData.createdAt instanceof Timestamp ? existingData.createdAt.toDate() : new Date(existingData.createdAt as any)) || new Date(), // Ensure createdAt is a Date
+                updatedAt: new Date(), // For immediate client-side use
+            };
         } else {
             console.log(`[createUserProfileDocument] No profile found for UID: ${uid}. Creating new profile.`);
-            const newProfileData: UserProfileData = {
+            const newProfileData = { // Explicitly type to ensure all fields from default are considered
                 uid,
                 email: initialData.email || '',
                 username: initialData.username || initialData.email?.split('@')[0] || `User-${uid.substring(0, 5)}`,
                 avatarUrl: initialData.avatarUrl === undefined ? null : initialData.avatarUrl,
-                ...defaultUserProfileData, // This will set subscriptionTier to null
+                ...defaultUserProfileData, // Spread defaults
                 createdAt: now as Timestamp, // Firestore server timestamp
                 updatedAt: now as Timestamp, // Firestore server timestamp
             };
-            await setDoc(userDocRef, newProfileData);
+            await setDoc(userDocRef, newProfileData as any); // Use any for serverTimestamp compatibility
             console.log(`[createUserProfileDocument] New profile created for UID: ${uid}`);
-            return {
+            finalProfileData = {
                 ...newProfileData,
                 createdAt: new Date(), // For client-side immediate use
                 updatedAt: new Date(), // For client-side immediate use
             };
         }
+        return finalProfileData;
     }, "Create/Update User Profile");
 }
 
@@ -164,15 +173,16 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
         if (docSnap.exists()) {
             const data = docSnap.data();
             console.log(`[getUserProfileDocument] Profile data found for UID ${uid}.`);
-            const createdAt = (data.createdAt instanceof Timestamp ? data.createdAt.toDate() : data.createdAt) || new Date();
-            const updatedAt = (data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : data.updatedAt) || new Date();
+            // Convert Firestore Timestamps to JS Date objects for client-side consistency
+            const createdAtDate = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date());
+            const updatedAtDate = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : new Date());
 
             const profile: UserProfileData = {
                 uid,
                 email: data.email || '',
                 username: data.username || `User-${uid.substring(0,5)}`,
-                avatarUrl: data.avatarUrl === undefined ? null : data.avatarUrl,
-                bannerUrl: data.bannerUrl === undefined ? null : data.bannerUrl,
+                avatarUrl: data.avatarUrl === undefined ? null : data.avatarUrl, // Handle undefined
+                bannerUrl: data.bannerUrl === undefined ? null : data.bannerUrl, // Handle undefined
                 bio: data.bio || '',
                 status: data.status || defaultUserProfileData.status,
                 level: data.level || defaultUserProfileData.level,
@@ -185,14 +195,14 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
                 favoriteIds: data.favoriteIds || defaultUserProfileData.favoriteIds,
                 genrePreferences: data.genrePreferences || defaultUserProfileData.genrePreferences,
                 joinedCommunities: data.joinedCommunities || defaultUserProfileData.joinedCommunities,
-                subscriptionTier: data.subscriptionTier || null, // Ensure subscriptionTier is loaded
-                createdAt,
-                updatedAt,
+                subscriptionTier: data.subscriptionTier || null,
+                createdAt: createdAtDate,
+                updatedAt: updatedAtDate,
             };
             return profile;
         } else {
-            console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}.`);
-            return null;
+            console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}. Returning null.`);
+            return null; // Explicitly return null if not found, to trigger creation logic
         }
     }, "Get User Profile");
 }
@@ -209,7 +219,6 @@ export async function updateUserProfileDocument(uid: string, data: Partial<UserP
     }, "Update User Profile");
 }
 
-// New function to update subscription tier
 export async function updateUserSubscriptionTier(uid: string, tier: 'spark' | 'ignition' | 'hellfire' | 'burstdrive'): Promise<void> {
     if (!uid) {
         console.error("[updateUserSubscriptionTier] UID is undefined or null.");
@@ -226,29 +235,28 @@ export async function updateUserSubscriptionTier(uid: string, tier: 'spark' | 'i
     }, "Update User Subscription Tier");
 }
 
-// ... (addItemToList, removeItemFromList, updateItemInList, getUserList remain the same)
 export async function addItemToList(
     uid: string,
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds',
     item: UserListItemData
 ): Promise<void> {
-    const userDocRef = doc(db, 'users', uid);
-    try {
-        await updateDoc(userDocRef, {
-            [listName]: arrayUnion(item), // arrayUnion is not available in Firebase Lite
-            updatedAt: serverTimestamp()
-        });
-        console.log(`Item ${item.id} added to ${listName} for user ${uid}`);
-    } catch (error) {
-        const firebaseError = error as FirebaseError;
-        console.error(`Error adding item to ${listName}:`, firebaseError.code, firebaseError.message);
-        if (firebaseError.code === 'unavailable') {
-            throw new Error(`Failed to add item: App offline or cannot connect.`);
-        } else if (firebaseError.code === 'permission-denied') {
-            throw new Error(`Failed to add item: Permission denied.`);
+    return executeWithRetry(async () => {
+        const userDocRef = doc(db, 'users', uid);
+        // Firestore Lite does not support arrayUnion. Fetch, modify, then set.
+        const userProfile = await getUserProfileDocument(uid);
+        const currentList = userProfile?.[listName] || [];
+        // Avoid duplicates
+        if (!currentList.some(existingItem => existingItem.id === item.id && existingItem.type === item.type)) {
+            const updatedList = [...currentList, item];
+            await updateDoc(userDocRef, {
+                [listName]: updatedList,
+                updatedAt: serverTimestamp()
+            });
+            console.log(`Item ${item.id} added to ${listName} for user ${uid}`);
+        } else {
+            console.log(`Item ${item.id} already in ${listName} for user ${uid}`);
         }
-        throw new Error(`Failed to add item to ${listName}: ${firebaseError.message}`);
-    }
+    }, `Add item to ${listName}`);
 }
 
 export async function removeItemFromList(
@@ -257,27 +265,18 @@ export async function removeItemFromList(
     itemId: number,
     itemType: 'anime' | 'manga'
 ): Promise<void> {
-    const userDocRef = doc(db, 'users', uid);
-    try {
+    return executeWithRetry(async () => {
+        const userDocRef = doc(db, 'users', uid);
         const userProfile = await getUserProfileDocument(uid);
         if (userProfile && userProfile[listName]) {
             const updatedList = userProfile[listName].filter(item => !(item.id === itemId && item.type === itemType));
             await updateDoc(userDocRef, {
-                [listName]: updatedList, // arrayRemove is not available in Firebase Lite
+                [listName]: updatedList,
                 updatedAt: serverTimestamp()
             });
             console.log(`Item ${itemId} (type: ${itemType}) removed from ${listName} for user ${uid}`);
         }
-    } catch (error) {
-        const firebaseError = error as FirebaseError;
-        console.error(`Error removing item from ${listName}:`, firebaseError.code, firebaseError.message);
-         if (firebaseError.code === 'unavailable') {
-            throw new Error(`Failed to remove item: App offline or cannot connect.`);
-        } else if (firebaseError.code === 'permission-denied') {
-            throw new Error(`Failed to remove item: Permission denied.`);
-        }
-        throw new Error(`Failed to remove item from ${listName}: ${firebaseError.message}`);
-    }
+    }, `Remove item from ${listName}`);
 }
 
 export async function updateItemInList(
@@ -285,25 +284,25 @@ export async function updateItemInList(
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds',
     updatedItem: UserListItemData
 ): Promise<void> {
-    const userDocRef = doc(db, 'users', uid);
-    try {
+     return executeWithRetry(async () => {
+        const userDocRef = doc(db, 'users', uid);
         const userProfile = await getUserProfileDocument(uid);
         if (userProfile && userProfile[listName]) {
-            const list = userProfile[listName];
+            let list = userProfile[listName];
             const itemIndex = list.findIndex(item => item.id === updatedItem.id && item.type === updatedItem.type);
             if (itemIndex > -1) {
                 list[itemIndex] = updatedItem;
-                await updateDoc(userDocRef, {
-                    [listName]: list,
-                    updatedAt: serverTimestamp()
-                });
-                console.log(`Item ${updatedItem.id} updated in ${listName} for user ${uid}`);
             } else {
+                // If item not found for update, add it instead.
                 console.warn(`Item ${updatedItem.id} (type: ${updatedItem.type}) not found in ${listName} for user ${uid} to update. Adding it.`);
-                // To add, we need to use arrayUnion or reconstruct the array if arrayUnion is not available/desired
-                // For simplicity here, assuming it should exist or we could call addItemToList
-                await addItemToList(uid, listName, updatedItem); // Or handle differently
+                list = [...list, updatedItem];
             }
+            await updateDoc(userDocRef, {
+                [listName]: list,
+                updatedAt: serverTimestamp()
+            });
+            console.log(`Item ${updatedItem.id} processed in ${listName} for user ${uid}`);
+
         } else {
              console.warn(`List ${listName} does not exist for user ${uid}. Creating list and adding item.`);
              await updateDoc(userDocRef, {
@@ -311,28 +310,15 @@ export async function updateItemInList(
                 updatedAt: serverTimestamp()
             });
         }
-    } catch (error) {
-        const firebaseError = error as FirebaseError;
-        console.error(`Error updating item in ${listName}:`, firebaseError.code, firebaseError.message);
-        if (firebaseError.code === 'unavailable') {
-            throw new Error(`Failed to update item: App offline or cannot connect.`);
-        } else if (firebaseError.code === 'permission-denied') {
-            throw new Error(`Failed to update item: Permission denied.`);
-        }
-        throw new Error(`Failed to update item in ${listName}: ${firebaseError.message}`);
-    }
+    }, `Update item in ${listName}`);
 }
 
 export async function getUserList(
     uid: string,
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds'
 ): Promise<UserListItemData[]> {
-    try {
+    return executeWithRetry(async () => {
         const userProfile = await getUserProfileDocument(uid);
-        return userProfile && userProfile[listName] ? userProfile[listName] : [];
-    } catch (error) {
-        const firebaseError = error as FirebaseError;
-        console.error(`Error fetching ${listName} for user ${uid}:`, firebaseError.message);
-        return [];
-    }
+        return userProfile?.[listName] || [];
+    }, `Get user ${listName}`);
 }
