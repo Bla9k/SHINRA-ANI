@@ -1,3 +1,4 @@
+
 // src/components/subscription/SubscriptionModal.tsx
 'use client';
 
@@ -8,7 +9,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter, // Added DialogFooter
+    DialogFooter,
     DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { updateUserSubscriptionTier, UserProfileData } from '@/services/profile';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import anime from 'animejs';
+import anime from 'animejs'; // Import animejs
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const TierCardTitle = TierCardTitleOriginal;
@@ -42,101 +43,40 @@ interface Tier {
     iconGlowClass?: string;
 }
 
-// This data is also in AppLayout.tsx, consider moving to a shared config if it grows.
-const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
-    {
-        id: 'spark',
-        name: 'Spark Tier',
-        slogan: 'You’re just lighting the fuse.',
-        icon: Sparkles,
-        features: [
-            { text: 'Basic browsing of anime & manga', included: true },
-            { text: 'Limited search results', included: true },
-            { text: 'Read/Watch 3 indie items/day', included: true },
-            { text: 'Join up to 2 communities', included: true },
-            { text: 'Standard Nami AI search', included: true },
-            { text: 'Ad-supported (conceptual)', included: true },
-        ],
-        buttonText: 'Start with Spark',
-        tierColorClass: 'text-primary',
-        iconGlowClass: 'neon-glow-icon',
-    },
-    {
-        id: 'ignition',
-        name: 'Ignition Tier',
-        slogan: 'First burst of power.',
-        icon: Flame,
-        features: [
-            { text: 'All Spark features', included: true },
-            { text: 'Unlimited search results', included: true },
-            { text: 'Read/Watch 10 indie items/day', included: true },
-            { text: 'Join up to 10 communities', included: true },
-            { text: 'Post in communities', included: true },
-            { text: 'Basic profile customization', included: true },
-            { text: 'Create 1 community', included: true },
-            { text: 'Reduced ads (conceptual)', included: true },
-        ],
-        buttonText: 'Ignite Experience',
-        isPopular: true,
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
-    },
-    {
-        id: 'hellfire',
-        name: 'Hellfire Tier',
-        slogan: 'Shinra-style blazing speed.',
-        icon: Zap,
-        features: [
-            { text: 'All Ignition features', included: true },
-            { text: 'Unlimited indie reading/watching', included: true },
-            { text: 'Join unlimited communities', included: true },
-            { text: 'Advanced Nami AI features', included: true },
-            { text: 'Full profile customization', included: true },
-            { text: 'Create up to 3 communities', included: true },
-            { text: 'Ad-free experience (conceptual)', included: true },
-        ],
-        buttonText: 'Unleash Hellfire',
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
-    },
-    {
-        id: 'burstdrive',
-        name: 'Burst Drive Tier',
-        slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket,
-        features: [
-            { text: 'All Hellfire features', included: true },
-            { text: 'Exclusive profile badges & themes', included: true },
-            { text: 'Early access to new features', included: true },
-            { text: 'Priority Nami AI requests', included: true },
-            { text: 'Create unlimited communities', included: true },
-            { text: 'Increased indie upload limits', included: true },
-        ],
-        buttonText: 'Go Burst Drive',
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
-    },
-];
-
-
 interface SubscriptionModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentTier: UserProfileData['subscriptionTier'] | null;
     onSelectTier: (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => Promise<void>;
-    TIER_DATA: Tier[]; // Receive TIER_DATA as a prop
+    TIER_DATA: Tier[];
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, currentTier, onSelectTier, TIER_DATA }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [animatingTierId, setAnimatingTierId] = useState<string | null>(null);
+    const [isAnimeJsLoaded, setIsAnimeJsLoaded] = useState(false); // State for anime.js load status
     const { user } = useAuth();
     const { toast } = useToast();
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
 
     useEffect(() => {
         cardRefs.current = cardRefs.current.slice(0, TIER_DATA.length);
-     }, [TIER_DATA.length]);
+    }, [TIER_DATA.length]);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.anime) {
+            setIsAnimeJsLoaded(true);
+        } else {
+            // Poll for anime.js if it's not immediately available (e.g., due to lazyOnload)
+            const intervalId = setInterval(() => {
+                if (typeof window !== 'undefined' && window.anime) {
+                    setIsAnimeJsLoaded(true);
+                    clearInterval(intervalId);
+                }
+            }, 100);
+            return () => clearInterval(intervalId);
+        }
+    }, []);
 
 
     const handleTierSelection = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>, cardIndex: number) => {
@@ -148,13 +88,42 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             toast({ title: "Invalid Tier", description: "An invalid tier was selected.", variant: "destructive" });
             return;
         }
+        if (!isAnimeJsLoaded) {
+            toast({ title: "Animation Library Not Ready", description: "Please wait a moment for animations to load.", variant: "default" });
+            // Proceed without animation or wait longer? For now, we just show a message and rely on button disable.
+            // Alternatively, directly call onSelectTier if animation isn't critical.
+            // For now, the button is disabled if !isAnimeJsLoaded, so this path might not be hit often.
+            // If it is hit, means there's a race condition.
+            // As a fallback, call onSelectTier directly
+            setIsLoading(true);
+            try {
+                await onSelectTier(tierId);
+            } catch (error: any) {
+                console.error("SubscriptionModal: Error selecting tier (anime.js not loaded path):", error);
+            } finally {
+                setIsLoading(false);
+                setAnimatingTierId(null);
+            }
+            return;
+        }
+
 
         setAnimatingTierId(tierId);
         setIsLoading(true);
 
         const cardElement = cardRefs.current[cardIndex];
         if (cardElement && typeof anime === 'function') {
-            anime.remove(cardElement);
+            anime.remove(cardElement); // Remove any previous animations on this target
+
+            // Get computed styles for reliable color values
+            const computedStyle = getComputedStyle(document.documentElement);
+            const primaryColor = computedStyle.getPropertyValue('--primary').trim(); // e.g., "15 100% 55%"
+            const accentColor = computedStyle.getPropertyValue('--accent').trim(); // e.g., "15 100% 55%" (same as primary in this case)
+            const borderColor = computedStyle.getPropertyValue('--border').trim();
+
+            const currentTierDetails = TIER_DATA[cardIndex];
+            const initialBorderColor = currentTierDetails.isCurrent ? `hsl(${primaryColor})` : (currentTierDetails.isPopular ? `hsl(${accentColor})` : `hsl(${borderColor})`);
+
             anime({
                 targets: cardElement,
                 scale: [
@@ -162,17 +131,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                     { value: 1.03, duration: 150, easing: 'easeOutQuad' },
                     { value: 1, duration: 200, easing: 'easeInQuad' }
                 ],
-                borderColor: [
-                    { value: 'hsl(var(--primary))', duration: 150, easing: 'easeOutQuad' },
-                    { value: TIER_DATA[cardIndex].isCurrent ? 'hsl(var(--primary))' : (TIER_DATA[cardIndex].isPopular ? 'hsl(var(--accent))' : 'hsl(var(--border))'), duration: 200, easing: 'easeInQuad', delay: 50 }
+                borderColor: [ // Animate border color
+                    { value: `hsl(${primaryColor})`, duration: 150, easing: 'easeOutQuad' }, // Flash to primary
+                    { value: initialBorderColor, duration: 200, easing: 'easeInQuad', delay: 50 } // Return to original or new current
                 ],
-                boxShadow: [
-                    { value: '0 0 10px hsl(var(--primary) / 0.3), 0 0 20px hsl(var(--primary) / 0.2)', duration: 150, easing: 'easeOutQuad'},
-                    { value: '0 0 0px transparent', duration: 200, easing: 'easeInQuad', delay: 50}
+                boxShadow: [ // Animate box shadow for glow effect
+                     { value: `0 0 10px hsl(${primaryColor} / 0.5), 0 0 20px hsl(${primaryColor} / 0.3)`, duration: 150, easing: 'easeOutQuad'}, // Glow with primary
+                     { value: '0 0 0px transparent', duration: 200, easing: 'easeInQuad', delay: 50} // Fade out glow
                 ],
-                easing: 'linear',
+                easing: 'linear', // Overall easing for the timeline
                 complete: () => {
-                    if(cardElement) { // Check if cardElement is still valid
+                    // Reset inline styles set by anime.js if needed, or rely on classes
+                    if(cardElement) {
                         cardElement.style.borderColor = '';
                         cardElement.style.boxShadow = '';
                     }
@@ -180,15 +150,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             });
         }
         
+        // Artificial delay to let animation play a bit before actual async operation
         await new Promise(resolve => setTimeout(resolve, 250)); 
 
         try {
             await onSelectTier(tierId);
+            // Success toast and modal close are handled in AppLayout's onSelectTier
         } catch (error: any) {
             console.error("SubscriptionModal: Error selecting tier forwarded from AppLayout:", error);
+            // Error toast is also handled in AppLayout
         } finally {
             setIsLoading(false);
-            setAnimatingTierId(null);
+            setAnimatingTierId(null); // Reset animation state regardless of success/failure
         }
     };
 
@@ -202,7 +175,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="flex flex-col h-full overflow-hidden"
+                    className="flex flex-col h-full overflow-hidden" // Added overflow-hidden
                 >
                     <DialogHeader className="p-6 pb-4 border-b border-border/30 flex-shrink-0 bg-card/80 backdrop-blur-md z-10 sticky top-0">
                         <DialogTitle className="text-2xl font-bold text-accent text-center fiery-glow-text">Choose Your Power Level</DialogTitle>
@@ -211,60 +184,60 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 min-h-0">
-                        <div className="p-6">
-                            <div className="grid grid-cols-4 gap-4">
-                                {TIER_DATA.map((tier, index) => (
-                                    <Card
-                                        key={tier.id || `tier-${index}`} // Add fallback key if id is null
-                                        ref={el => cardRefs.current[index] = el}
-                                        className={cn(
-                                            "glass flex flex-col transition-all duration-300 transform-gpu h-full",
-                                            tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
-                                            tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                            animatingTierId === tier.id && "scale-105 ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl" 
-                                        )}
-                                    >
-                                        <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
-                                            <tier.icon className={cn("w-8 h-8 sm:w-10 sm:h-10 mb-2", tier.tierColorClass, tier.iconGlowClass)} />
-                                            <TierCardTitle className={cn("text-base sm:text-lg font-semibold", tier.id === currentTier ? "text-primary" : tier.isPopular ? "text-accent" : "text-foreground")}>{tier.name}</TierCardTitle>
-                                            <TierCardDescription className="text-xs text-muted-foreground h-8 line-clamp-2">{tier.slogan}</TierCardDescription>
-                                        </TierCardHeader>
-                                        <CardContent className="p-3 sm:p-4 flex-grow">
-                                            <ul className="space-y-1.5 sm:space-y-2 text-xs">
-                                                {tier.features.map((feature, featureIndex) => (
-                                                    <li key={featureIndex} className="flex items-start gap-1.5 sm:gap-2">
-                                                        {feature.included ? (
-                                                            <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 mt-0.5 flex-shrink-0" />
-                                                        ) : (
-                                                            <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
-                                                        )}
-                                                        <span className={cn("text-foreground/90",!feature.included ? "text-muted-foreground/60 line-through" : "")}>{feature.text}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </CardContent>
-                                        <DialogFooter className="p-3 sm:p-4 border-t border-border/30 mt-auto flex-shrink-0"> {/* Footer per card */}
-                                            <Button
-                                                className={cn(
-                                                    "w-full text-xs sm:text-sm",
-                                                    animatingTierId === tier.id ? "bg-primary/80 hover:bg-primary/70" :
-                                                    tier.id === currentTier
-                                                        ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                                                        : "bg-accent/80 hover:bg-accent text-accent-foreground fiery-glow-hover"
-                                                )}
-                                                onClick={() => tier.id && handleTierSelection(tier.id as Exclude<UserProfileData['subscriptionTier'], null>, index)}
-                                                disabled={isLoading || tier.id === currentTier || !tier.id}
-                                            >
-                                                {isLoading && animatingTierId === tier.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                                {tier.id === currentTier ? 'Current Tier' : tier.buttonText}
-                                            </Button>
-                                        </DialogFooter>
-                                    </Card>
-                                ))}
-                            </div>
+                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6 min-h-0"> {/* Added min-h-0 */}
+                        <div className="grid grid-cols-4 gap-4"> {/* Always 4 columns */}
+                            {TIER_DATA.map((tier, index) => (
+                                <Card
+                                    key={tier.id || `tier-${index}`}
+                                    ref={el => cardRefs.current[index] = el}
+                                    className={cn(
+                                        "glass flex flex-col transition-all duration-300 transform-gpu h-full rounded-lg", // Added rounded-lg
+                                        tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
+                                        tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
+                                        // Conditional animation class if needed, or rely on anime.js
+                                        animatingTierId === tier.id && "scale-105 ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl"
+                                    )}
+                                >
+                                    <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
+                                        <tier.icon className={cn("w-8 h-8 sm:w-10 sm:h-10 mb-2", tier.tierColorClass, tier.iconGlowClass)} />
+                                        <TierCardTitle className={cn("text-base sm:text-lg font-semibold", tier.id === currentTier ? "text-primary" : tier.isPopular ? "text-accent" : "text-foreground")}>{tier.name}</TierCardTitle>
+                                        <TierCardDescription className="text-xs text-muted-foreground h-8 line-clamp-2">{tier.slogan}</TierCardDescription>
+                                    </TierCardHeader>
+                                    <CardContent className="p-3 sm:p-4 flex-grow">
+                                        <ul className="space-y-1.5 sm:space-y-2 text-xs">
+                                            {tier.features.map((feature, featureIndex) => (
+                                                <li key={featureIndex} className="flex items-start gap-1.5 sm:gap-2">
+                                                    {feature.included ? (
+                                                        <CheckCircle2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-green-400 mt-0.5 flex-shrink-0" />
+                                                    ) : (
+                                                        <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+                                                    )}
+                                                    <span className={cn("text-foreground/90",!feature.included ? "text-muted-foreground/60 line-through" : "")}>{feature.text}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </CardContent>
+                                    <DialogFooter className="p-3 sm:p-4 border-t border-border/30 mt-auto flex-shrink-0"> {/* Footer per card */}
+                                        <Button
+                                            className={cn(
+                                                "w-full text-xs sm:text-sm",
+                                                animatingTierId === tier.id ? "bg-primary/80 hover:bg-primary/70" : // Style for animating button
+                                                tier.id === currentTier
+                                                    ? "bg-primary hover:bg-primary/90 text-primary-foreground" // Current tier button style
+                                                    : "bg-accent/80 hover:bg-accent text-accent-foreground fiery-glow-hover" // Default button style
+                                            )}
+                                            onClick={() => tier.id && handleTierSelection(tier.id as Exclude<UserProfileData['subscriptionTier'], null>, index)}
+                                            disabled={isLoading || !isAnimeJsLoaded || tier.id === currentTier || !tier.id}
+                                        >
+                                            {(isLoading && animatingTierId === tier.id) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            {tier.id === currentTier ? 'Current Tier' : tier.buttonText}
+                                        </Button>
+                                    </DialogFooter>
+                                </Card>
+                            ))}
                         </div>
-                    </ScrollArea>
+                    </div>
+                    {/* Removed the overall DialogFooter to use the 'X' from DialogContent */}
                 </motion.div>
             </DialogContent>
         </Dialog>
