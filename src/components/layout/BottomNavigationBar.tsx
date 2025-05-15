@@ -1,3 +1,4 @@
+
 // src/components/layout/BottomNavigationBar.tsx
 'use client';
 
@@ -20,10 +21,10 @@ import {
   ChevronUp,
   Palette,
   Flame,
-  ShieldCheck, // For premium features/tiers
+  ShieldCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card'; // Import Card
+import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -36,14 +37,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // For checking user profile
+import { useAuth } from '@/hooks/useAuth';
 
 interface NavSubItem {
   label: string;
   icon: React.ElementType;
   href?: string;
   onClick?: () => void;
-  premium?: boolean; // Flag for premium features
+  premium?: boolean;
 }
 
 interface NavSection {
@@ -64,7 +65,7 @@ interface BottomNavigationBarProps {
   handleLogout: () => void;
 }
 
-const DOUBLE_CLICK_THRESHOLD = 300; // ms
+const DOUBLE_CLICK_THRESHOLD = 300;
 
 export default function BottomNavigationBar({
   className,
@@ -78,7 +79,7 @@ export default function BottomNavigationBar({
   const { playAnimation } = useAnimation();
   const { theme, setTheme } = useTheme();
   const { toast } = useToast();
-  const { user, userProfile } = useAuth(); // Get userProfile
+  const { user, userProfile } = useAuth();
 
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -90,37 +91,22 @@ export default function BottomNavigationBar({
 
   const navSections: NavSection[] = [
     {
-      id: 'home',
-      label: 'Home',
-      icon: Home,
-      mainHref: '/',
+      id: 'home', label: 'Home', icon: Home, mainHref: '/',
       subItems: [
         { label: 'Anime', icon: Tv, href: '/anime' },
         { label: 'Manga', icon: BookText, href: '/manga' },
       ],
     },
+    { id: 'search', label: 'Search', icon: SearchIcon, isDirectAction: true, directAction: onSearchIconClick },
     {
-      id: 'search',
-      label: 'Search',
-      icon: SearchIcon,
-      isDirectAction: true,
-      directAction: onSearchIconClick,
-    },
-    {
-      id: 'community',
-      label: 'Community',
-      icon: Users,
-      mainHref: '/community',
+      id: 'community', label: 'Community', icon: Users, mainHref: '/community',
       subItems: [
         { label: 'Explore Hubs', icon: Users, href: '/community' },
-        { label: 'Create Community', icon: PlusCircle, onClick: onOpenCreateCommunityModal, premium: true }, // Example: Mark as premium
+        { label: 'Create Community', icon: PlusCircle, onClick: onOpenCreateCommunityModal },
       ],
     },
     {
-      id: 'profile',
-      label: 'Profile',
-      icon: UserIcon,
-      mainHref: '/profile',
+      id: 'profile', label: 'Profile', icon: UserIcon, mainHref: '/profile',
       subItems: [
         { label: 'View Profile', icon: UserIcon, href: '/profile' },
         { label: 'Settings', icon: SettingsIcon, href: '/settings' },
@@ -128,33 +114,26 @@ export default function BottomNavigationBar({
       ],
     },
     {
-      id: 'customize',
-      label: 'Customize',
-      icon: Palette,
+      id: 'customize', label: 'Customize', icon: Palette,
       subItems: [
-        { label: 'Light Theme', icon: Sun, onClick: () => setTheme('light') },
-        { label: 'Dark Theme', icon: Moon, onClick: () => setTheme('dark') },
+        { label: 'Light Theme', icon: Sun, onClick: () => { setTheme('light'); closePanel(); } },
+        { label: 'Dark Theme', icon: Moon, onClick: () => { setTheme('dark'); closePanel(); } },
         {
-          label: 'Shinra Fire Theme',
-          icon: Flame,
+          label: 'Shinra Fire Theme', icon: Flame,
           onClick: () => {
-            // Removed subscription check for beta
             setTheme('shinra-fire');
-            toast({ title: "Shinra Fire Activated!", description: "Enjoy the inferno!", variant: "default" });
-          },
+            toast({ title: "Shinra Fire Activated!", description: "Feel the burn!", variant: "default" });
+            closePanel();
+          }
         },
         { label: 'Subscription Tiers', icon: Star, onClick: onOpenSubscriptionModal },
         {
-          label: 'Community Theme',
-          icon: Palette,
+          label: 'Community Theme', icon: Palette,
           onClick: () => {
             if (pathname.startsWith('/community/') && !pathname.includes('/settings/theme')) {
               const communityId = pathname.split('/')[2];
-              if (communityId) {
-                router.push(`/community/${communityId}/settings/theme`);
-              } else {
-                toast({ title: "Error", description: "Could not determine community ID.", variant: "destructive"});
-              }
+              if (communityId) router.push(`/community/${communityId}/settings/theme`);
+              else toast({ title: "Error", description: "Could not determine community ID.", variant: "destructive"});
             } else if (pathname.startsWith('/community/') && pathname.includes('/settings/theme')) {
                 toast({ title: "Already Here", description: "You are already on the theme settings page.", variant: "default"});
             } else {
@@ -183,8 +162,13 @@ export default function BottomNavigationBar({
 
     if (targetElement && playAnimation) {
       const svgIcon = targetElement.querySelector('svg');
-      if (svgIcon) {
-        playAnimation(svgIcon, { scale: [1, 0.8, 1.1, 1], duration: 300, easing: 'easeInOutQuad' });
+      if (svgIcon && typeof anime === 'function') { // Check if anime is loaded
+        anime({
+          targets: svgIcon,
+          scale: [1, 0.8, 1.1, 1],
+          duration: 300,
+          easing: 'easeInOutQuad'
+        });
       }
     }
 
@@ -213,27 +197,16 @@ export default function BottomNavigationBar({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        panelRef.current &&
-        !panelRef.current.contains(event.target as Node) &&
-        navBarRef.current &&
-        !navBarRef.current.contains(event.target as Node)
-      ) {
+      if (panelRef.current && !panelRef.current.contains(event.target as Node) &&
+          navBarRef.current && !navBarRef.current.contains(event.target as Node)) {
         closePanel();
       }
     };
-
-    if (isPanelOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-
+    if (isPanelOpen) document.addEventListener('mousedown', handleClickOutside);
+    else document.removeEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
     };
   }, [isPanelOpen, closePanel]);
 
@@ -243,23 +216,25 @@ export default function BottomNavigationBar({
     ({ section }, ref) => {
     const isLinkActive = section.mainHref ? (pathname === section.mainHref || (section.mainHref !== '/' && pathname.startsWith(section.mainHref))) : false;
     const isSectionExpanded = expandedSectionId === section.id && isPanelOpen;
+    const effectiveIsActive = (section.isDirectAction ? false : isLinkActive) || isSectionExpanded;
 
-    const commonClasses = cn(
-      'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm relative focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md',
-      'nav-item-base', // Base class for consistent hover
-      (isLinkActive && !section.isDirectAction && !isSectionExpanded)
+    const isShinraFire = theme === 'shinra-fire';
+    const isSpecialButtonTarget = section.id !== 'search';
+
+    const navItemClasses = cn(
+      'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm relative focus:outline-none rounded-md nav-item-base',
+      effectiveIsActive
         ? 'active-nav-item text-primary'
-        : isSectionExpanded
-        ? 'text-primary'
         : 'text-muted-foreground',
-      '[&_svg]:transition-transform [&_svg]:duration-200 [&_svg]:ease-in-out',
-      '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out',
-      theme === 'shinra-fire' && 'sf-bansho-button' // Apply Bansho glow to all nav items in Shinra Fire theme
+      // Apply Shinra Fire specific button class if theme is active and it's not the search button
+      isShinraFire && isSpecialButtonTarget && 'sf-bansho-button',
+      // Apply general hover effect ONLY if NOT Shinra Fire AND item is NOT active/expanded
+      !isShinraFire && !effectiveIsActive && 'hover:text-primary neon-glow-hover'
     );
 
     const iconAndLabel = (
       <>
-        <section.icon className={cn("w-5 h-5 mb-0.5", (isLinkActive && !section.isDirectAction) || isSectionExpanded ? 'neon-glow-icon' : '')} />
+        <section.icon className={cn("w-5 h-5 mb-0.5", effectiveIsActive ? (isShinraFire && isSpecialButtonTarget ? '' : 'neon-glow-icon') : '')} />
         <span className="truncate max-w-full text-xs sm:text-sm">{section.label}</span>
       </>
     );
@@ -269,26 +244,26 @@ export default function BottomNavigationBar({
         <Tooltip>
           <TooltipTrigger asChild>
             {section.mainHref && !section.isDirectAction ? (
-              <Link href={section.mainHref} legacyBehavior passHref>
-                <a
-                  ref={ref as React.RefObject<HTMLAnchorElement>}
-                  className={commonClasses}
-                  onClick={(e) => {
-                    e.preventDefault(); // Prevent default Link navigation
-                    handleMainIconClickInternal(section, e.currentTarget as HTMLElement);
-                  }}
-                  aria-current={isLinkActive ? 'page' : undefined}
-                >
-                  {iconAndLabel}
-                </a>
+              <Link
+                href={section.mainHref}
+                ref={ref as React.RefObject<HTMLAnchorElement>}
+                className={navItemClasses}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleMainIconClickInternal(section, e.currentTarget as HTMLElement);
+                }}
+                aria-current={isLinkActive ? 'page' : undefined}
+                aria-label={section.label}
+              >
+                {iconAndLabel}
               </Link>
             ) : (
               <Button
                 ref={ref as React.RefObject<HTMLButtonElement>}
-                variant="ghost"
-                className={commonClasses}
+                variant="ghost" // Use ghost for a cleaner look, rely on custom classes for styling
+                className={navItemClasses} // Apply all computed classes
                 onClick={(e) => handleMainIconClickInternal(section, e.currentTarget as HTMLElement)}
-                aria-pressed={isSectionExpanded}
+                aria-pressed={section.isDirectAction ? undefined : isSectionExpanded}
                 aria-label={section.label}
               >
                 {iconAndLabel}
@@ -314,7 +289,7 @@ export default function BottomNavigationBar({
             animate={{ opacity: 1, y: 0, height: "var(--bottom-nav-panel-max-height, 16rem)" }}
             exit={{ opacity: 0, y: "100%", height: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md"
+            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md" // Ensure panel is above nav bar
             style={{ maxHeight: 'var(--bottom-nav-panel-max-height, 16rem)' }}
           >
             <div className="p-2">
@@ -341,7 +316,7 @@ export default function BottomNavigationBar({
                                   <a
                                     className={cn(
                                         "flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors",
-                                        theme === 'shinra-fire' && 'sf-bansho-button', // Apply Bansho glow
+                                        theme === 'shinra-fire' && 'sf-bansho-button',
                                         isPremium && "opacity-50 cursor-not-allowed"
                                     )}
                                     onClick={() => {
@@ -363,7 +338,7 @@ export default function BottomNavigationBar({
                                   variant="ghost"
                                   className={cn(
                                     "flex items-center gap-3 w-full justify-start px-3 py-2.5 text-sm text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors",
-                                    theme === 'shinra-fire' && 'sf-bansho-button', // Apply Bansho glow
+                                    theme === 'shinra-fire' && 'sf-bansho-button',
                                     isPremium && "opacity-50 cursor-not-allowed"
                                   )}
                                   onClick={() => {
@@ -371,9 +346,9 @@ export default function BottomNavigationBar({
                                         onOpenSubscriptionModal();
                                         toast({ title: "Premium Feature", description: "Upgrade your tier to access this feature.", variant: "default" });
                                     } else if (item.onClick) {
-                                        item.onClick();
+                                        item.onClick(); // This already calls closePanel() within its definition for theme switches
                                     }
-                                    closePanel();
+                                    // closePanel(); // No longer needed here for theme switches, handled by onClick itself
                                   }}
                                   disabled={isPremium}
                                 >
@@ -408,7 +383,6 @@ export default function BottomNavigationBar({
       >
         <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-1 relative">
           {navSections.map((section) => (
-            // @ts-ignore itemRef type mismatch can be ignored with forwardRef
             <NavItem key={section.id} section={section} />
           ))}
         </div>
