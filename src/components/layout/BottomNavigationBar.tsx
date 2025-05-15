@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation'; // Added useRouter
+import { usePathname, useRouter } from 'next/navigation';
 import {
   Home,
   Search as SearchIcon,
@@ -19,8 +19,8 @@ import {
   Moon,
   Star,
   ChevronUp,
-  Award,
-  Flame, // For Shinra Fire theme example
+  Palette, // Added Palette for theme customization
+  Flame,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -35,6 +35,7 @@ import { useAnimation } from '@/context/AnimationContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface NavSubItem {
   label: string;
@@ -50,7 +51,7 @@ interface NavSection {
   subItems?: NavSubItem[];
   isDirectAction?: boolean;
   directAction?: () => void;
-  mainHref?: string; // For double-click navigation
+  mainHref?: string;
 }
 
 interface BottomNavigationBarProps {
@@ -61,7 +62,7 @@ interface BottomNavigationBarProps {
   handleLogout: () => void;
 }
 
-const DOUBLE_CLICK_THRESHOLD = 300; // milliseconds
+const DOUBLE_CLICK_THRESHOLD = 300;
 
 export default function BottomNavigationBar({
   className,
@@ -71,9 +72,10 @@ export default function BottomNavigationBar({
   handleLogout,
 }: BottomNavigationBarProps) {
   const pathname = usePathname();
-  const router = useRouter(); // Initialize router
+  const router = useRouter();
   const { playAnimation } = useAnimation();
   const { theme, setTheme } = useTheme();
+  const { toast } = useToast(); // Initialize useToast
 
   const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -87,7 +89,7 @@ export default function BottomNavigationBar({
       id: 'home',
       label: 'Home',
       icon: Home,
-      mainHref: '/', // Double-click navigates to home
+      mainHref: '/',
       subItems: [
         { label: 'Anime', icon: Tv, href: '/anime' },
         { label: 'Manga', icon: BookText, href: '/manga' },
@@ -104,18 +106,17 @@ export default function BottomNavigationBar({
       id: 'community',
       label: 'Community',
       icon: Users,
-      mainHref: '/community', // Double-click navigates to community hub
+      mainHref: '/community',
       subItems: [
         { label: 'Explore Hubs', icon: Users, href: '/community' },
-        { label: 'Create Hub', icon: PlusCircle, onClick: onOpenCreateCommunityModal },
-        // { label: 'My Hubs', icon: Home, href: '/community/my-hubs' }, // Example
+        { label: 'Create Community', icon: PlusCircle, onClick: onOpenCreateCommunityModal },
       ],
     },
     {
       id: 'profile',
       label: 'Profile',
       icon: UserIcon,
-      mainHref: '/profile', // Double-click navigates to profile
+      mainHref: '/profile',
       subItems: [
         { label: 'View Profile', icon: UserIcon, href: '/profile' },
         { label: 'Settings', icon: SettingsIcon, href: '/settings' },
@@ -125,19 +126,41 @@ export default function BottomNavigationBar({
     {
       id: 'customize',
       label: 'Customize',
-      icon: SettingsIcon, // Consider a different icon if Settings is already used in Profile
+      icon: Palette, // Changed icon to Palette
       subItems: [
         { label: 'Light Theme', icon: Sun, onClick: () => setTheme('light') },
-        { label: 'Dark Theme', icon: Moon, onClick: () => setTheme('dark') },
-        { label: 'Fiery Theme', icon: Flame, onClick: () => setTheme('shinra-fire') },
-        { label: 'Subscription', icon: Award, onClick: onOpenSubscriptionModal },
+        { label: 'Dark Theme (Default)', icon: Moon, onClick: () => setTheme('dark') },
+        { label: 'Shinra Fire Theme', icon: Flame, onClick: () => setTheme('shinra-fire') },
+        { label: 'Subscription Tiers', icon: Star, onClick: onOpenSubscriptionModal },
+        {
+          label: 'Community Theme',
+          icon: Palette,
+          onClick: () => {
+            if (pathname.startsWith('/community/') && !pathname.includes('/settings/theme')) {
+              const pathSegments = pathname.split('/');
+              // Ensure communityId is present and not an empty string
+              if (pathSegments.length > 2 && pathSegments[2]) {
+                const communityId = pathSegments[2];
+                router.push(`/community/${communityId}/settings/theme`);
+              } else {
+                toast({ title: "Error", description: "Could not determine the community ID from the current page.", variant: "destructive"});
+              }
+            } else if (pathname.startsWith('/community/') && pathname.includes('/settings/theme')) {
+                toast({ title: "Already Here", description: "You are already on the theme settings page.", variant: "default"});
+            }
+            else {
+                 toast({ title: "Navigate to a Community", description: "Please go to a specific community page to edit its theme.", variant: "default"});
+            }
+            closePanel();
+          },
+        }
       ],
     },
   ];
 
   const closePanel = useCallback(() => {
     setIsPanelOpen(false);
-    setTimeout(() => setExpandedSectionId(null), 300); // Delay clearing section ID for animation
+    setTimeout(() => setExpandedSectionId(null), 300);
   }, []);
 
   const handleMainIconClickInternal = (section: NavSection, targetElement: HTMLElement | null) => {
@@ -163,13 +186,10 @@ export default function BottomNavigationBar({
     }
 
     if (section.mainHref && (now - lastClickTime < DOUBLE_CLICK_THRESHOLD)) {
-        // Double click
-        console.log(`Double-clicked ${section.label}, navigating to ${section.mainHref}`);
         router.push(section.mainHref);
         closePanel();
-        lastClickTimestampRef.current[section.id] = 0; // Reset timestamp to prevent triple click issues
+        lastClickTimestampRef.current[section.id] = 0;
     } else {
-        // Single click
         lastClickTimestampRef.current[section.id] = now;
         clickTimeoutRef.current = setTimeout(() => {
             if (expandedSectionId === section.id && isPanelOpen) {
@@ -180,8 +200,7 @@ export default function BottomNavigationBar({
             }
         }, DOUBLE_CLICK_THRESHOLD);
     }
-};
-
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -203,7 +222,7 @@ export default function BottomNavigationBar({
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      if (clickTimeoutRef.current) { // Clear timeout on unmount
+      if (clickTimeoutRef.current) {
         clearTimeout(clickTimeoutRef.current);
       }
     };
@@ -221,11 +240,11 @@ export default function BottomNavigationBar({
             animate={{ opacity: 1, y: 0, height: "var(--bottom-nav-panel-max-height, 16rem)" }}
             exit={{ opacity: 0, y: "100%", height: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md" // Ensure panel is above main content but below modal popups (z-40)
+            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md"
             style={{ maxHeight: 'var(--bottom-nav-panel-max-height, 16rem)' }}
           >
             <div className="p-2">
-              <Card className="glass-deep shadow-xl border-primary/30 overflow-hidden max-h-[calc(var(--bottom-nav-panel-max-height)-1rem)] flex flex-col">
+              <Card className="glass-deep shadow-xl border-primary/30 overflow-hidden max-h-[calc(var(--bottom-nav-panel-max-height,_16rem)_-_1rem)] flex flex-col">
                 <div className="p-3 flex items-center justify-between border-b border-border/50 flex-shrink-0">
                   <h3 className="text-sm font-semibold text-primary">
                     {activeSectionDetails.label}
@@ -242,7 +261,7 @@ export default function BottomNavigationBar({
                         <Tooltip>
                           <TooltipTrigger asChild>
                             {item.href ? (
-                              <Link href={item.href} passHref legacyBehavior>
+                              <Link href={item.href} legacyBehavior passHref>
                                 <a
                                   className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
                                   onClick={closePanel}
@@ -282,24 +301,25 @@ export default function BottomNavigationBar({
       <nav
         ref={navBarRef}
         className={cn(
-          'fixed bottom-0 left-0 right-0 z-50 h-16 border-t transition-smooth', // Ensure nav bar itself is high z-index
+          'fixed bottom-0 left-0 right-0 z-50 h-16 border-t transition-smooth',
           'bg-background/90 border-border/70 glass-deep shadow-top-md',
           className
         )}
       >
         <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-1 relative">
           {navSections.map((section) => {
-            const itemRef = React.createRef<HTMLButtonElement>(); // For button type
-            const isLinkActive = section.subItems?.some(sub => sub.href && pathname === sub.href || (sub.href && sub.href !== '/' && pathname.startsWith(sub.href)))
-              || (section.id === 'home' && section.mainHref && (pathname === section.mainHref || section.subItems?.some(sub => sub.href && pathname.startsWith(sub.href) && sub.href !== '/')));
+            const isLinkActive = section.mainHref ? (pathname === section.mainHref || (section.mainHref !== '/' && pathname.startsWith(section.mainHref))) : false;
             const isSectionExpanded = expandedSectionId === section.id && isPanelOpen;
+            const itemRef = React.createRef<HTMLAnchorElement>(); // For link type
 
             const commonClasses = cn(
-              'nav-item-base flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative',
-              'hover:bg-transparent',
-              (isLinkActive && !section.isDirectAction) || isSectionExpanded
-                ? 'active-nav-item text-primary'
-                : 'text-muted-foreground hover:text-primary',
+              'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative',
+              'hover:bg-transparent', // Remove Button's default hover
+              (isLinkActive && !section.isDirectAction && !isSectionExpanded)
+                ? 'active-nav-item text-primary' // Active link color
+                : isSectionExpanded
+                ? 'text-primary' // Expanded section color
+                : 'text-muted-foreground hover:text-primary', // Default and hover
               '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out',
               '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out'
             );
@@ -315,16 +335,16 @@ export default function BottomNavigationBar({
               <TooltipProvider key={section.id} delayDuration={100}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                     <Button
-                        ref={itemRef}
-                        variant="ghost"
-                        className={cn(commonClasses)}
-                        onClick={(e) => handleMainIconClickInternal(section, e.currentTarget)}
-                        aria-pressed={isSectionExpanded}
-                        aria-label={section.label}
-                      >
-                        {iconAndLabel}
-                      </Button>
+                    <button
+                      type="button"
+                      className={commonClasses}
+                      onClick={(e) => handleMainIconClickInternal(section, e.currentTarget)}
+                      aria-pressed={isSectionExpanded}
+                      aria-label={section.label}
+                      ref={itemRef as React.RefObject<HTMLButtonElement>} // Cast for button type
+                    >
+                      {iconAndLabel}
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="hidden sm:block bg-popover text-popover-foreground glass-deep text-xs">
                     <p>{section.label}</p>
@@ -338,3 +358,4 @@ export default function BottomNavigationBar({
     </>
   );
 }
+
