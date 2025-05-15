@@ -21,6 +21,7 @@ import { updateUserSubscriptionTier, UserProfileData } from '@/services/profile'
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import anime from 'animejs';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 
 const TierCardTitle = TierCardTitleOriginal;
 
@@ -43,7 +44,7 @@ interface Tier {
 }
 
 // This data is also defined in AppLayout.tsx for the toast message.
-// Consider moving to a shared config if it grows or is used in more places.
+// Ideally, this would be in a shared config file.
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
@@ -150,30 +151,27 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             return;
         }
 
-        setAnimatingTierId(tierId); // For CSS-based animation
+        setAnimatingTierId(tierId);
         setIsLoading(true);
 
         const cardElement = cardRefs.current[cardIndex];
-        if (cardElement && typeof anime === 'function') { // Check if anime is defined
-            anime.timeline({
+        if (cardElement && typeof anime === 'function') {
+            anime.remove(cardElement); // Remove previous animations on this target
+            anime({
                 targets: cardElement,
-                easing: 'easeOutExpo',
-                duration: 300
-            })
-            .add({
-                scale: [1, 1.05],
-                borderColor: ['hsl(var(--border))', 'hsl(var(--primary))'],
-                boxShadow: [
-                    '0 0 0px hsl(var(--primary) / 0)',
-                    '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)'
+                scale: [
+                    { value: 1.05, duration: 200, easing: 'easeOutQuad' },
+                    { value: 1, duration: 300, easing: 'easeInQuad' }
                 ],
-            })
-            .add({
-                scale: 1,
-                borderColor: 'hsl(var(--border))', // Revert to original or popular border
-                boxShadow: '0 0 0px transparent',
-                delay: 100,
-                duration: 400
+                borderColor: [
+                    { value: 'hsl(var(--primary))', duration: 200, easing: 'easeOutQuad' },
+                    { value: tier.id === currentTier || (tier.isPopular && tier.id !== currentTier) ? 'hsl(var(--accent))' : 'hsl(var(--border))', duration: 300, easing: 'easeInQuad', delay: 100 }
+                ],
+                boxShadow: [
+                    { value: '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)', duration: 200, easing: 'easeOutQuad'},
+                    { value: '0 0 0px transparent', duration: 300, easing: 'easeInQuad', delay: 100}
+                ],
+                easing: 'linear',
             });
         }
         
@@ -208,60 +206,62 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6 min-h-0"> 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"> 
-                            {TIER_DATA.map((tier, index) => (
-                                <Card
-                                    key={tier.id}
-                                    ref={el => cardRefs.current[index] = el}
-                                    className={cn(
-                                        "glass flex flex-col transition-all duration-300 transform-gpu h-full", 
-                                        tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
-                                        tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                        animatingTierId === tier.id && "scale-105 ring-2 ring-primary/70 shadow-2xl" 
-                                    )}
-                                >
-                                    <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
-                                        <tier.icon className={cn("w-10 h-10 mb-2", tier.tierColorClass, tier.iconGlowClass)} />
-                                        <TierCardTitle className={cn("text-lg font-semibold", tier.id === currentTier ? "text-primary" : tier.isPopular ? "text-accent" : "text-foreground")}>{tier.name}</TierCardTitle>
-                                        <TierCardDescription className="text-xs text-muted-foreground h-8 line-clamp-2">{tier.slogan}</TierCardDescription>
-                                    </TierCardHeader>
-                                    <CardContent className="p-4 flex-grow"> 
-                                        <ul className="space-y-2 text-xs">
-                                            {tier.features.map((feature, featureIndex) => (
-                                                <li key={featureIndex} className="flex items-start gap-2">
-                                                    {feature.included ? (
-                                                        <CheckCircle2 className="w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0" />
-                                                    ) : (
-                                                        <XCircle className="w-3.5 h-3.5 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
-                                                    )}
-                                                    <span className={cn("text-foreground/90",!feature.included ? "text-muted-foreground/60 line-through" : "")}>{feature.text}</span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </CardContent>
-                                    <DialogFooter className="p-4 border-t border-border/30 mt-auto flex-shrink-0"> 
-                                        <Button
-                                            className={cn(
-                                                "w-full",
-                                                animatingTierId === tier.id ? "bg-primary/80 hover:bg-primary/70" : // Style for animating button
-                                                tier.id === currentTier
-                                                    ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                                                    : "bg-accent/80 hover:bg-accent text-accent-foreground fiery-glow-hover"
-                                            )}
-                                            onClick={() => handleTierSelection(tier.id as Exclude<UserProfileData['subscriptionTier'], null>, index)}
-                                            disabled={isLoading || tier.id === currentTier}
-                                        >
-                                            {isLoading && animatingTierId === tier.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                                            {tier.id === currentTier ? 'Current Tier' : tier.buttonText}
-                                        </Button>
-                                    </DialogFooter>
-                                </Card>
-                            ))}
+                    <ScrollArea className="flex-1 min-h-0"> {/* ScrollArea for the tier cards section */}
+                        <div className="p-6"> {/* Padding moved to the direct child of ScrollArea */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"> 
+                                {TIER_DATA.map((tier, index) => (
+                                    <Card
+                                        key={tier.id}
+                                        ref={el => cardRefs.current[index] = el}
+                                        className={cn(
+                                            "glass flex flex-col transition-all duration-300 transform-gpu h-full", 
+                                            tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
+                                            tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
+                                            animatingTierId === tier.id && "scale-105 ring-2 ring-primary/70 shadow-2xl"
+                                        )}
+                                    >
+                                        <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
+                                            <tier.icon className={cn("w-10 h-10 mb-2", tier.tierColorClass, tier.iconGlowClass)} />
+                                            <TierCardTitle className={cn("text-lg font-semibold", tier.id === currentTier ? "text-primary" : tier.isPopular ? "text-accent" : "text-foreground")}>{tier.name}</TierCardTitle>
+                                            <TierCardDescription className="text-xs text-muted-foreground h-8 line-clamp-2">{tier.slogan}</TierCardDescription>
+                                        </TierCardHeader>
+                                        <CardContent className="p-4 flex-grow"> 
+                                            <ul className="space-y-2 text-xs">
+                                                {tier.features.map((feature, featureIndex) => (
+                                                    <li key={featureIndex} className="flex items-start gap-2">
+                                                        {feature.included ? (
+                                                            <CheckCircle2 className="w-3.5 h-3.5 text-green-400 mt-0.5 flex-shrink-0" />
+                                                        ) : (
+                                                            <XCircle className="w-3.5 h-3.5 text-muted-foreground/50 mt-0.5 flex-shrink-0" />
+                                                        )}
+                                                        <span className={cn("text-foreground/90",!feature.included ? "text-muted-foreground/60 line-through" : "")}>{feature.text}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </CardContent>
+                                        <DialogFooter className="p-4 border-t border-border/30 mt-auto flex-shrink-0"> 
+                                            <Button
+                                                className={cn(
+                                                    "w-full",
+                                                    animatingTierId === tier.id ? "bg-primary/80 hover:bg-primary/70" : 
+                                                    tier.id === currentTier
+                                                        ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                                                        : "bg-accent/80 hover:bg-accent text-accent-foreground fiery-glow-hover"
+                                                )}
+                                                onClick={() => handleTierSelection(tier.id as Exclude<UserProfileData['subscriptionTier'], null>, index)}
+                                                disabled={isLoading || tier.id === currentTier}
+                                            >
+                                                {isLoading && animatingTierId === tier.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                                {tier.id === currentTier ? 'Current Tier' : tier.buttonText}
+                                            </Button>
+                                        </DialogFooter>
+                                    </Card>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    </ScrollArea>
                     
-                    <DialogFooter className="p-4 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-md z-10"> 
+                    <DialogFooter className="p-4 border-t border-border/30 flex-shrink-0 bg-card/80 backdrop-blur-md z-10"> 
                          <DialogClose asChild>
                             <Button variant="outline" className="w-full sm:w-auto text-muted-foreground hover:text-foreground glass neon-glow-hover" onClick={onClose} disabled={isLoading}>Close</Button>
                         </DialogClose>
@@ -274,3 +274,5 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
 export default SubscriptionModal;
 
+
+    
