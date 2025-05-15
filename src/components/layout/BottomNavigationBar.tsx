@@ -2,7 +2,7 @@
 // src/components/layout/BottomNavigationBar.tsx
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react'; // Import React and useRef
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -36,13 +36,13 @@ interface NavItemProps {
 const NavItem = ({ href, icon: Icon, label, onClick, isActive, isToggleButton }: NavItemProps) => {
   const pathname = usePathname();
   const { playAnimation } = useAnimation();
-  const itemRef = React.useRef<HTMLAnchorElement | HTMLButtonElement>(null);
+  const itemRef = useRef<HTMLButtonElement | HTMLAnchorElement>(null);
 
   const isLinkActive = href ? (pathname === href || (href !== '/' && pathname.startsWith(href))) : false;
   const effectiveIsActive = isToggleButton ? isActive : isLinkActive;
 
   const handleInteraction = (e: React.MouseEvent<HTMLButtonElement | HTMLAnchorElement>) => {
-    if (onClick && !href) { // Only call prop onClick if it's a button-like NavItem
+    if (onClick && !href) {
       onClick();
     }
     if (itemRef.current) {
@@ -55,14 +55,16 @@ const NavItem = ({ href, icon: Icon, label, onClick, isActive, isToggleButton }:
         });
       }
     }
+    // For actual links, Next.js Link component handles navigation.
+    // If it's a button, the onClick prop handles the action.
   };
 
   const commonClasses = cn(
     'nav-item-base flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative z-10',
-    'hover:bg-transparent',
+    'hover:bg-transparent', // Keep hover transparent as active state uses text color
     effectiveIsActive
-      ? 'active-nav-item text-primary'
-      : 'text-muted-foreground hover:text-primary',
+      ? 'active-nav-item text-primary' // Active state directly applies text color
+      : 'text-muted-foreground hover:text-primary', // Hover state for inactive items
     '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out',
     '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out'
   );
@@ -79,11 +81,11 @@ const NavItem = ({ href, icon: Icon, label, onClick, isActive, isToggleButton }:
       <Tooltip>
         <TooltipTrigger asChild>
           {href ? (
-            <Link href={href} asChild>
+            <Link href={href} legacyBehavior passHref>
               <a
                 ref={itemRef as React.RefObject<HTMLAnchorElement>}
                 className={commonClasses}
-                onClick={handleInteraction} // Animation + NextLink handles navigation
+                onClick={handleInteraction}
                 aria-current={isLinkActive ? 'page' : undefined}
                 aria-label={label}
               >
@@ -95,7 +97,7 @@ const NavItem = ({ href, icon: Icon, label, onClick, isActive, isToggleButton }:
               ref={itemRef as React.RefObject<HTMLButtonElement>}
               variant="ghost"
               className={cn(commonClasses, isToggleButton && effectiveIsActive && 'neon-glow-icon')}
-              onClick={handleInteraction} // Animation + calls onClick prop
+              onClick={handleInteraction}
               aria-pressed={isToggleButton ? effectiveIsActive : undefined}
               aria-label={label}
             >
@@ -115,6 +117,7 @@ interface BottomNavigationBarProps {
   className?: string;
   onSearchIconClick: () => void;
   onOpenSubscriptionModal: () => void;
+  // Removed onAiToggle and isAiSearchActive as these are managed within SearchPopup
 }
 
 export default function BottomNavigationBar({
@@ -148,7 +151,7 @@ export default function BottomNavigationBar({
             icon={item.icon}
             label={item.label}
             onClick={item.onClick}
-            isActive={item.isActive}
+            isActive={item.isActive} // For toggle buttons if any
             isToggleButton={item.isToggleButton}
           />
         ))}
