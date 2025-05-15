@@ -11,11 +11,11 @@ import { Label } from '@/components/ui/label';
 import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X, LayoutGrid, List } from 'lucide-react';
 import { getAnimes, Anime, AnimeResponse } from '@/services/anime';
 import { useDebounce } from '@/hooks/use-debounce';
-import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Use shared ItemCard
-import type { DisplayItem } from '@/app/page'; // Import DisplayItem type from homepage
+import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
+import type { DisplayItem } from '@/app/page';
 import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils'; // Added missing import
+import { cn } from '@/lib/utils';
 
 // Jikan genres for anime
 const genres = [
@@ -47,7 +47,6 @@ const ANY_GENRE_VALUE = "any-genre";
 const ANY_STATUS_VALUE = "any-status";
 const DEFAULT_SORT = "popularity";
 
-// Helper to map Anime service type to DisplayItem
 const mapAnimeToDisplayItem = (anime: Anime): DisplayItem | null => {
     if (!anime || typeof anime.mal_id !== 'number') return null;
     return {
@@ -87,7 +86,7 @@ export default function AnimePage() {
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(initialStatus);
   const [selectedSort, setSelectedSort] = useState<string>(initialSort);
   const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialYear || !!initialStatus || !!searchTerm);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid view
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const debouncedYear = useDebounce(selectedYear, 500);
 
@@ -110,20 +109,20 @@ export default function AnimePage() {
           const statusParam = selectedStatus === ANY_STATUS_VALUE ? undefined : selectedStatus;
           const searchParam = debouncedSearchTerm.trim() || undefined;
 
-          console.log(`Fetching anime page ${page} - Filters: Genre=${genreParam}, Year=${validYear}, Status=${statusParam}, Sort=${selectedSort}, Search=${searchParam}`);
+          console.log(`[AnimePage] Fetching anime page ${page} - Filters: Genre=${genreParam}, Year=${validYear}, Status=${statusParam}, Sort=${selectedSort}, Search=${searchParam}`);
           const response: AnimeResponse = await getAnimes(
               genreParam, validYear, undefined, searchParam, statusParam, page, selectedSort
           );
 
-          const newAnime = response.animes
+          const newAnime = (response.animes || [])
                             .map(mapAnimeToDisplayItem)
                             .filter((item): item is DisplayItem => item !== null);
 
           setAnimeList(prev => (page === 1 || filtersOrSearchChanged) ? newAnime : [...prev, ...newAnime]);
-          setHasNextPage(response.hasNextPage);
+          setHasNextPage(response.hasNextPage ?? false); // Ensure hasNextPage is boolean
           setCurrentPage(page);
       } catch (err: any) {
-          console.error("Failed to fetch anime:", err);
+          console.error("[AnimePage] Failed to fetch anime:", err);
           setError(err.message || "Couldn't load anime list. Please try again later.");
           if (page === 1 || filtersOrSearchChanged) setAnimeList([]);
           setHasNextPage(false);
@@ -133,7 +132,7 @@ export default function AnimePage() {
   }, [selectedGenre, debouncedYear, selectedStatus, selectedSort, debouncedSearchTerm]);
 
   useEffect(() => {
-      const params = new URLSearchParams(searchParams.toString()); // Preserve existing params
+      const params = new URLSearchParams(searchParams.toString());
       if (debouncedSearchTerm) params.set('q', debouncedSearchTerm); else params.delete('q');
       if (selectedGenre && selectedGenre !== ANY_GENRE_VALUE) params.set('genre', selectedGenre); else params.delete('genre');
       if (debouncedYear) params.set('year', debouncedYear); else params.delete('year');
@@ -167,9 +166,9 @@ export default function AnimePage() {
                     <Filter size={18} /><span className="sr-only">Toggle Filters</span>
                 </Button></TooltipTrigger><TooltipContent><p>Toggle Filters</p></TooltipContent></Tooltip></TooltipProvider>
                 <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className="h-10 w-10 glass-deep neon-glow-hover flex-shrink-0 border-primary/30">
+                <Button variant="outline" size="icon" onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')} className="h-10 w-10 glass-deep neon-glow-hover flex-shrink-0 border-primary/30">
                     {viewMode === 'grid' ? <List size={18} /> : <LayoutGrid size={18} />} <span className="sr-only">Toggle View Mode</span>
-                </Button></TooltipTrigger><TooltipContent><p>Toggle View Mode</p></TooltipContent></Tooltip></TooltipProvider>
+                </Button></TooltipTrigger><TooltipContent><p>{viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}</p></TooltipContent></Tooltip></TooltipProvider>
            </div>
         </div>
 
@@ -209,10 +208,10 @@ export default function AnimePage() {
             "gap-3 md:gap-4",
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
-           {loading && animeList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} className={viewMode === 'list' ? 'h-28' : ''} />)
-             : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} className={viewMode === 'list' ? 'w-full h-28 flex-row' : ''} /> : null ))
+           {loading && animeList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} viewMode={viewMode} />)
+             : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null ))
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No anime found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
-             {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} className={viewMode === 'list' ? 'h-28' : ''} />)}
+             {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
          </div>
         {hasNextPage && !loading && !error && animeList.length > 0 && (
              <div className="flex justify-center mt-8">

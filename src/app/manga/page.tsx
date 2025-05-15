@@ -11,8 +11,8 @@ import { Label } from '@/components/ui/label';
 import { BookText, Layers, Library, AlertCircle, Loader2, Star, Filter, X, LayoutGrid, List } from 'lucide-react';
 import { getMangas, Manga, MangaResponse } from '@/services/manga';
 import { useDebounce } from '@/hooks/use-debounce';
-import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Use shared ItemCard
-import type { DisplayItem } from '@/app/page'; // Import DisplayItem type from homepage
+import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
+import type { DisplayItem } from '@/app/page';
 import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -28,7 +28,7 @@ const genres = [
     { id: "40", name: "Psychological" }, { id: "29", name: "Space" }, { id: "38", name: "Military" }
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-const demographics = [ // Added for filter, though Jikan might not directly filter by it
+const demographics = [
     { id: "15", name: "Kids" }, { id: "25", name: "Shoujo" }, { id: "27", name: "Shounen" },
     { id: "42", name: "Seinen" }, { id: "43", name: "Josei" }
 ].sort((a, b) => a.name.localeCompare(b.name));
@@ -49,7 +49,6 @@ const sortOptions = [
 const ANY_VALUE = "any";
 const DEFAULT_SORT = "popularity";
 
-// Helper to map Manga service type to DisplayItem
 const mapMangaToDisplayItem = (manga: Manga): DisplayItem | null => {
     if (!manga || typeof manga.mal_id !== 'number') return null;
     return {
@@ -89,7 +88,7 @@ export default function MangaPage() {
   const [selectedSort, setSelectedSort] = useState<string>(initialSort);
   const [selectedDemographic, setSelectedDemographic] = useState<string | undefined>(initialDemographic);
   const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialStatus || !!searchTerm || !!initialDemographic);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // Default to grid view
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const hasActiveFilters = useMemo(() => {
     return !!selectedGenre || !!selectedStatus || !!debouncedSearchTerm || !!selectedDemographic;
@@ -107,26 +106,26 @@ export default function MangaPage() {
         const genreParam = selectedGenre === ANY_VALUE ? undefined : selectedGenre;
         const statusParam = selectedStatus === ANY_VALUE ? undefined : selectedStatus;
         const searchParam = debouncedSearchTerm.trim() || undefined;
-        // Jikan does not support demographic filtering on main /manga endpoint, so selectedDemographic is for UI consistency
-        console.log(`Fetching manga page ${page} - Filters: Genre=${genreParam}, Status=${statusParam}, Sort=${selectedSort}, Search=${searchParam}`);
+
+        console.log(`[MangaPage] Fetching manga page ${page} - Filters: Genre=${genreParam}, Status=${statusParam}, Sort=${selectedSort}, Search=${searchParam}`);
         const response: MangaResponse = await getMangas(
             genreParam, statusParam, searchParam, undefined, page, selectedSort
         );
-        const newManga = response.mangas
+        const newManga = (response.mangas || [])
                             .map(mapMangaToDisplayItem)
                             .filter((item): item is DisplayItem => item !== null);
         setMangaList(prev => (page === 1 || filtersOrSearchChanged) ? newManga : [...prev, ...newManga]);
-        setHasNextPage(response.hasNextPage);
+        setHasNextPage(response.hasNextPage ?? false);
         setCurrentPage(page);
       } catch (err: any) {
-        console.error("Failed to fetch manga:", err);
+        console.error("[MangaPage] Failed to fetch manga:", err);
         setError(err.message || "Couldn't load manga list. Please try again later.");
         if (page === 1 || filtersOrSearchChanged) setMangaList([]);
         setHasNextPage(false);
       } finally {
         setLoading(false); setLoadingMore(false);
       }
-  }, [selectedGenre, selectedStatus, selectedSort, debouncedSearchTerm]); // Excluded selectedDemographic from deps as it's not used in fetch
+  }, [selectedGenre, selectedStatus, selectedSort, debouncedSearchTerm]);
 
   useEffect(() => {
       const params = new URLSearchParams(searchParams.toString());
@@ -163,9 +162,9 @@ export default function MangaPage() {
                     <Filter size={18} /><span className="sr-only">Toggle Filters</span>
                 </Button></TooltipTrigger><TooltipContent><p>Toggle Filters</p></TooltipContent></Tooltip></TooltipProvider>
                 <TooltipProvider><Tooltip><TooltipTrigger asChild>
-                <Button variant="outline" size="icon" onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')} className="h-10 w-10 glass-deep neon-glow-hover flex-shrink-0 border-primary/30">
+                <Button variant="outline" size="icon" onClick={() => setViewMode(prev => prev === 'grid' ? 'list' : 'grid')} className="h-10 w-10 glass-deep neon-glow-hover flex-shrink-0 border-primary/30">
                     {viewMode === 'grid' ? <List size={18} /> : <LayoutGrid size={18} />} <span className="sr-only">Toggle View Mode</span>
-                </Button></TooltipTrigger><TooltipContent><p>Toggle View Mode</p></TooltipContent></Tooltip></TooltipProvider>
+                </Button></TooltipTrigger><TooltipContent><p>{viewMode === 'grid' ? 'Switch to List View' : 'Switch to Grid View'}</p></TooltipContent></Tooltip></TooltipProvider>
            </div>
         </div>
         {showFilters && (
@@ -205,10 +204,10 @@ export default function MangaPage() {
             "gap-3 md:gap-4",
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
-           {loading && mangaList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} className={viewMode === 'list' ? 'h-28' : ''} />)
-             : mangaList.length > 0 ? mangaList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} className={viewMode === 'list' ? 'w-full h-28 flex-row' : ''} /> : null ))
+           {loading && mangaList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} viewMode={viewMode} />)
+             : mangaList.length > 0 ? mangaList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null ))
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No manga found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
-             {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} className={viewMode === 'list' ? 'h-28' : ''} />)}
+             {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
          </div>
         {hasNextPage && !loading && !error && mangaList.length > 0 && (
              <div className="flex justify-center mt-8">
