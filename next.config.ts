@@ -59,6 +59,18 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'www.gstatic.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'img.youtube.com', // Added YouTube image host
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co', // Added placeholder image host
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
   // Add webpack configuration to handle server-only modules
@@ -68,15 +80,15 @@ const nextConfig: NextConfig = {
     if (!isServer) {
       config.externals = [
         ...(config.externals || []),
-        'async_hooks',
+        // 'async_hooks', // Removed as it was causing issues, OpenTelemetry might need it on server
         // 'jsdom', // Removed jsdom - usage confined to API routes now
-        'child_process', // Keep other Node built-ins external
-        'http',
-        'https',
-        'zlib',
-        'fs',
-        'net',
-        'tls',
+        // 'child_process', // Keep other Node built-ins external
+        // 'http',
+        // 'https',
+        // 'zlib',
+        // 'fs',
+        // 'net',
+        // 'tls',
       ];
     }
 
