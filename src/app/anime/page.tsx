@@ -8,6 +8,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card'; // Added Card import
 import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X, LayoutGrid, List } from 'lucide-react';
 import { getAnimes, Anime, AnimeResponse } from '@/services/anime';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -16,6 +17,7 @@ import type { DisplayItem } from '@/app/page';
 import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 // Jikan genres for anime
 const genres = [
@@ -204,7 +206,10 @@ export default function AnimePage() {
 
       <section>
         {error && !loadingMore && <Alert variant="destructive" className="mb-6 glass-deep"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-        <div className={cn(
+        <motion.div
+          layout
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className={cn(
             "gap-3 md:gap-4",
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
@@ -212,7 +217,7 @@ export default function AnimePage() {
              : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null ))
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No anime found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
              {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
-         </div>
+         </motion.div>
         {hasNextPage && !loading && !error && animeList.length > 0 && (
              <div className="flex justify-center mt-8">
                   <Button onClick={loadMoreAnime} disabled={loadingMore} variant="outline" className="neon-glow-hover glass-deep px-6 py-3 text-base">
