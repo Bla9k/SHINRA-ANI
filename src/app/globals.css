@@ -142,21 +142,20 @@ body {
     .active-nav-item {
        color: hsl(var(--primary)); /* Uses the current theme's primary color */
     }
-    /* Icon glow for active nav items */
-    html[data-theme="dark"] .active-nav-item svg,
-    html[data-theme="light"] .active-nav-item svg {
-        filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.8)) drop-shadow(0 0 8px hsl(var(--primary) / 0.5));
-    }
-    html[data-theme="shinra-fire"] .active-nav-item svg { /* More intense for Shinra Fire */
+    /* Icon glow for active nav items - ONLY for Shinra Fire */
+    html[data-theme="shinra-fire"] .active-nav-item svg.neon-glow-icon-shinra {
         filter: drop-shadow(0 0 5px hsl(var(--primary) / 1)) drop-shadow(0 0 10px hsl(var(--primary) / 0.7));
     }
+    /* Ensure other themes don't have this strong active icon glow unless specifically desired */
+    html[data-theme="dark"] .active-nav-item svg,
+    html[data-theme="light"] .active-nav-item svg {
+        /* No strong glow, or a very subtle theme-appropriate one if needed */
+        filter: none; /* Example: explicitly no glow */
+    }
+
 
     .nav-item-base:hover {
-       @apply bg-transparent; /* Ensure ghost button style on hover */
-    }
-    /* Text color change on hover for non-active items */
-    .nav-item-base.text-muted-foreground:hover {
-        color: hsl(var(--primary)); /* Uses theme's primary */
+       /* Base hover styling is handled by conditional classes in the component */
     }
 }
 
@@ -185,9 +184,11 @@ body {
     .neon-glow { box-shadow: 0 0 5px hsl(var(--primary) / 0.4), 0 0 10px hsl(var(--primary) / 0.2); border-color: hsl(var(--primary) / 0.4) !important; }
     .neon-glow-hover:hover { box-shadow: 0 0 7px hsl(var(--primary) / 0.6), 0 0 14px hsl(var(--primary) / 0.3); }
     .neon-glow-focus:focus-visible { box-shadow: 0 0 7px hsl(var(--ring) / 0.7), 0 0 14px hsl(var(--ring) / 0.5); border-color: hsl(var(--ring) / 0.7) !important; outline: 2px solid transparent; outline-offset: 2px; }
-    
+
     /* Specific glow for icons using primary - this is fine as primary changes per theme */
-    .neon-glow-icon svg { filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7)) drop-shadow(0 0 6px hsl(var(--primary) / 0.5)); }
+    /* This general icon glow is removed, specific glows are applied conditionally */
+    /* .neon-glow-icon svg { filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7)) drop-shadow(0 0 6px hsl(var(--primary) / 0.5)); } */
+
 
     /* Specific Tab Glows */
     .data-\[state=active\]\:.neon-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--primary) / 0.6), 0 0 10px hsl(var(--primary) / 0.4); color: hsl(var(--primary)); background-color: hsl(var(--card)) !important; }
@@ -205,6 +206,8 @@ body {
     html[data-theme="shinra-fire"] .sf-border-glow {
       box-shadow: 0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary)/0.7), 0 0 24px hsl(var(--accent)/0.5);
     }
+
+    /* Radiating Aura for Shinra Fire Theme */
     html[data-theme="shinra-fire"] .sf-radiating-aura-target:hover,
     html[data-theme="shinra-fire"] .sf-radiating-aura-target:focus-within {
       animation: sf-radiate 1.5s infinite ease-out;
@@ -214,8 +217,10 @@ body {
       50% { box-shadow: 0 0 10px hsl(var(--primary)/0.7), 0 0 20px hsl(var(--primary)/0.5), 0 0 30px hsl(var(--accent)/0.3), 0 0 40px hsl(var(--accent)/0.1); }
     }
 
+    /* Intense Glitch for Shinra Fire Theme */
     html[data-theme="shinra-fire"] .sf-glitch-intense {
       position: relative;
+      --glitch-intensity: 2px; /* Control intensity with a variable */
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::before,
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::after {
@@ -226,9 +231,8 @@ body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: hsl(var(--background));
+      background: hsl(var(--background)); /* Match theme background */
       clip-path: inset(50% 0 0 0);
-      --glitch-intensity: 2px; 
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::before {
       color: hsl(var(--primary));
@@ -242,23 +246,30 @@ body {
     }
     @keyframes sf-glitch-anim-1 {
       0%, 100% { transform: translate(var(--glitch-intensity), calc(var(--glitch-intensity) * -0.5)); clip-path: inset(20% 0 60% 0); }
-      10%, 30%, 50%, 70%, 90% { transform: translate(calc(-1px * var(--glitch-intensity, 2)), calc(1px * var(--glitch-intensity, 2))); }
-      20%, 40%, 60%, 80% { transform: translate(calc(1px * var(--glitch-intensity, 2)), calc(-1px * var(--glitch-intensity, 2))); clip-path: inset(40% 0 30% 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(calc(-1px * var(--glitch-intensity))), calc(1px * var(--glitch-intensity))); }
+      20%, 40%, 60%, 80% { transform: translate(calc(1px * var(--glitch-intensity))), calc(-1px * var(--glitch-intensity))); clip-path: inset(40% 0 30% 0); }
     }
     @keyframes sf-glitch-anim-2 {
-      0%, 100% { transform: translate(calc(-1px * var(--glitch-intensity, 1.5)), var(--glitch-intensity)); clip-path: inset(70% 0 10% 0); }
-      15%, 35%, 55%, 75%, 95% { transform: translate(calc(1px * var(--glitch-intensity, 1.5)), calc(-1px * var(--glitch-intensity, 1.5))); }
-      25%, 45%, 65%, 85% { transform: translate(calc(-1px * var(--glitch-intensity, 1.5)), calc(1px * var(--glitch-intensity, 1.5))); clip-path: inset(10% 0 80% 0); }
+      0%, 100% { transform: translate(calc(-1px * var(--glitch-intensity))), var(--glitch-intensity)); clip-path: inset(70% 0 10% 0); }
+      15%, 35%, 55%, 75%, 95% { transform: translate(calc(1px * var(--glitch-intensity))), calc(-1px * var(--glitch-intensity))); }
+      25%, 45%, 65%, 85% { transform: translate(calc(-1px * var(--glitch-intensity))), calc(1px * var(--glitch-intensity))); clip-path: inset(10% 0 80% 0); }
     }
 
+    /* Bansho Man Glow for Buttons in Shinra Fire Theme */
     html[data-theme="shinra-fire"] .sf-bansho-button {
         position: relative;
+        /* Ensure other button styles don't conflict too much */
+        background-color: hsl(var(--primary)/0.1); /* Subtle base for the button */
+        border: 1px solid hsl(var(--primary)/0.3);
+        color: hsl(var(--primary-foreground));
     }
     html[data-theme="shinra-fire"] .sf-bansho-button:focus-visible,
     html[data-theme="shinra-fire"] .sf-bansho-button:active,
     html[data-theme="shinra-fire"] .sf-bansho-button:hover {
       animation: sf-bansho-burst 0.5s ease-out forwards;
-      z-index: 1;
+      z-index: 1; /* Ensure glow is not clipped by siblings */
+      background-color: hsl(var(--primary)/0.2); /* Slightly more pronounced bg on interact */
+      border-color: hsl(var(--primary)/0.7);
     }
     @keyframes sf-bansho-burst {
       0% {
@@ -275,3 +286,4 @@ body {
       }
     }
 }
+
