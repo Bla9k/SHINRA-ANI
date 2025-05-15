@@ -42,6 +42,8 @@ interface Tier {
     iconGlowClass?: string;
 }
 
+// This data is also defined in AppLayout.tsx for the toast message.
+// Consider moving to a shared config if it grows or is used in more places.
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
@@ -148,31 +150,34 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             return;
         }
 
-        setAnimatingTierId(tierId);
+        setAnimatingTierId(tierId); // For CSS-based animation
         setIsLoading(true);
 
         const cardElement = cardRefs.current[cardIndex];
-        if (cardElement && typeof anime !== 'undefined') {
+        if (cardElement && typeof anime === 'function') { // Check if anime is defined
             anime.timeline({
                 targets: cardElement,
                 easing: 'easeOutExpo',
+                duration: 300
             })
             .add({
-                scale: 1.05,
-                borderColor: 'hsl(var(--primary))',
-                boxShadow: '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)',
-                duration: 300,
+                scale: [1, 1.05],
+                borderColor: ['hsl(var(--border))', 'hsl(var(--primary))'],
+                boxShadow: [
+                    '0 0 0px hsl(var(--primary) / 0)',
+                    '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)'
+                ],
             })
             .add({
                 scale: 1,
-                borderColor: tierId === currentTier || (TIER_DATA.find(t=>t.id === tierId)?.isPopular && tierId !== currentTier) ? 'hsl(var(--accent))' : 'hsl(var(--border))',
-                boxShadow: tierId === currentTier ? '0 0 8px hsl(var(--primary) / 0.4)' : (TIER_DATA.find(t=>t.id === tierId)?.isPopular ? '0 0 8px hsl(var(--accent) / 0.4)' : '0 0 0px transparent'),
-                duration: 400,
+                borderColor: 'hsl(var(--border))', // Revert to original or popular border
+                boxShadow: '0 0 0px transparent',
                 delay: 100,
+                duration: 400
             });
         }
         
-        await new Promise(resolve => setTimeout(resolve, 700)); // Wait for animation
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for animation to be visible
 
         try {
             await onSelectTier(tierId);
@@ -187,7 +192,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isLoading) onClose(); }}>
             <DialogContent
-                className="glass-deep sm:max-w-4xl max-h-[90vh] flex flex-col p-0 shadow-2xl border-accent/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 overflow-hidden" // Added overflow-hidden
+                className="glass-deep sm:max-w-4xl max-h-[90vh] flex flex-col p-0 shadow-2xl border-accent/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 overflow-hidden"
             >
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -203,7 +208,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6"> 
+                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6 min-h-0"> 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"> 
                             {TIER_DATA.map((tier, index) => (
                                 <Card
@@ -211,9 +216,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                     ref={el => cardRefs.current[index] = el}
                                     className={cn(
                                         "glass flex flex-col transition-all duration-300 transform-gpu h-full", 
-                                        tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70 fiery-glow-hover",
+                                        tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
                                         tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                        animatingTierId === tier.id && "scale-105" 
+                                        animatingTierId === tier.id && "scale-105 ring-2 ring-primary/70 shadow-2xl" 
                                     )}
                                 >
                                     <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
@@ -239,6 +244,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                         <Button
                                             className={cn(
                                                 "w-full",
+                                                animatingTierId === tier.id ? "bg-primary/80 hover:bg-primary/70" : // Style for animating button
                                                 tier.id === currentTier
                                                     ? "bg-primary hover:bg-primary/90 text-primary-foreground"
                                                     : "bg-accent/80 hover:bg-accent text-accent-foreground fiery-glow-hover"
@@ -255,7 +261,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </div>
                     </div>
                     
-                    <DialogFooter className="p-4 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-md"> 
+                    <DialogFooter className="p-4 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-md z-10"> 
                          <DialogClose asChild>
                             <Button variant="outline" className="w-full sm:w-auto text-muted-foreground hover:text-foreground glass neon-glow-hover" onClick={onClose} disabled={isLoading}>Close</Button>
                         </DialogClose>
@@ -268,4 +274,3 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
 export default SubscriptionModal;
 
-    
