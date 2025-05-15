@@ -19,7 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth'; // Import useAuth
-import { getUserProfileDocument, updateUserProfileDocument, UserProfileData, UserListItemData, defaultUserProfileData } from '@/services/profile'; // Import profile services
+import { getUserProfileDocument, updateUserProfileDocument, UserProfileData, UserListItemData, defaultUserProfileData, createUserProfileDocument } from '@/services/profile.ts'; // Import profile services with .ts extension
 import { Alert, AlertTitle, AlertDescription as AlertDescriptionUI } from "@/components/ui/alert"; // Renamed to avoid conflict
 
 
@@ -212,68 +212,66 @@ export default function ProfilePage() {
       avatarPreview: null, bannerPreview: null,
   });
 
-  const fetchUserProfile = useCallback(async (uid: string) => {
+  const fetchAndSetUserProfile = useCallback(async (uid: string, email?: string, displayName?: string, photoURL?: string) => {
     setLoadingProfile(true);
     setProfileError(null);
     console.log("Fetching user profile for UID:", uid);
     try {
-      const fetchedProfile = await getUserProfileDocument(uid);
+      let fetchedProfile = await getUserProfileDocument(uid);
       if (fetchedProfile) {
-        setUserProfile(fetchedProfile);
-        setEditData({
-            username: fetchedProfile.username || '',
-            bio: fetchedProfile.bio || '',
-            status: fetchedProfile.status || '',
-            avatarFile: null,
-            bannerFile: null,
-            avatarPreview: fetchedProfile.avatarUrl,
-            bannerPreview: fetchedProfile.bannerUrl,
-        });
         console.log("Profile data fetched:", fetchedProfile);
       } else {
         console.warn("No profile document found for UID:", uid, "Creating a new one.");
-        // If profile doesn't exist, create a default one (should have been handled on signup/login)
-        // This is a fallback.
-        const newProfile = {
-            ...defaultUserProfileData,
-            uid: uid,
-            email: user?.email || '',
-            username: user?.displayName || user?.email?.split('@')[0] || 'New User',
-            createdAt: new Date(),
+        const newProfileInitialData: Partial<UserProfileData> = {
+            email: email || '',
+            username: displayName || email?.split('@')[0] || `User${uid.substring(0,5)}`,
+            avatarUrl: photoURL || null,
         };
-        // await createUserProfileDocument(uid, newProfile); // This function is in profile.ts
-        setUserProfile(newProfile); // Set the new profile to state
-         setEditData({
-            username: newProfile.username, bio: newProfile.bio, status: newProfile.status,
-            avatarFile: null, bannerFile: null,
-            avatarPreview: newProfile.avatarUrl, bannerPreview: newProfile.bannerUrl,
-        });
-        setProfileError("Profile was not found, a new one was initiated. Please save any changes.");
-        setIsEditing(true); // Force edit mode for a new profile
+        fetchedProfile = await createUserProfileDocument(uid, newProfileInitialData);
+        if (fetchedProfile) {
+            console.log("New profile created and fetched:", fetchedProfile);
+            setProfileError("New profile created. Please review and save any initial changes.");
+            setIsEditing(true); // Force edit mode for a new profile
+        } else {
+            throw new Error("Failed to create new profile document.");
+        }
       }
+
+      setUserProfile(fetchedProfile);
+      setEditData({
+          username: fetchedProfile.username || '',
+          bio: fetchedProfile.bio || '',
+          status: fetchedProfile.status || '',
+          avatarFile: null,
+          bannerFile: null,
+          avatarPreview: fetchedProfile.avatarUrl,
+          bannerPreview: fetchedProfile.bannerUrl,
+      });
+
     } catch (error: any) {
-      console.error("Failed to fetch user profile:", error);
-      setProfileError(error.message || "Could not load profile information. Please try again later.");
-      toast({ title: "Error", description: "Failed to load profile.", variant: "destructive" });
+      console.error("Failed to fetch or create user profile:", error);
+      setProfileError(error.message || "Could not load or initialize profile. Please try again later.");
+      toast({ title: "Profile Error", description: "Failed to load or initialize profile.", variant: "destructive" });
     } finally {
       setLoadingProfile(false);
     }
-  }, [toast, user]);
+  }, [toast]); // Removed `user` from dependencies as it might cause loop with createUserProfileDocument
 
   useEffect(() => {
-    if (user && !authLoading) {
-      fetchUserProfile(user.uid);
+    if (user && !authLoading && !userProfile) { // Fetch only if user exists, auth not loading, and profile not yet loaded
+      fetchAndSetUserProfile(user.uid, user.email ?? undefined, user.displayName ?? undefined, user.photoURL ?? undefined);
     } else if (!authLoading && !user) {
-      // Handle case where user is not logged in (e.g., redirect or show message)
       setLoadingProfile(false);
       setProfileError("Please log in to view your profile.");
-      setUserProfile(null); // Ensure profile is cleared if user logs out
+      setUserProfile(null);
+      setIsEditing(false);
     }
-  }, [user, authLoading, fetchUserProfile]);
+    // This effect should run when user or authLoading changes, to initiate fetch or clear profile.
+  }, [user, authLoading, fetchAndSetUserProfile, userProfile]);
 
 
   const handleEditToggle = () => {
-      if (isEditing && userProfile) {
+      if (isEditing && userProfile) { // Reset editData to current profile if cancelling edit
           setEditData({
              username: userProfile.username || '', bio: userProfile.bio || '', status: userProfile.status || '',
              avatarFile: null, bannerFile: null,
@@ -306,22 +304,24 @@ export default function ProfilePage() {
          toast({ title: "Error", description: "User not logged in or profile data missing.", variant: "destructive" });
          return;
      }
-     setLoadingProfile(true);
+     setLoadingProfile(true); // Use loadingProfile to indicate save operation
      console.log("Saving profile changes for UID:", user.uid, "Data:", editData);
 
      try {
-         let newAvatarUrl = editData.avatarPreview;
+         let newAvatarUrl = userProfile.avatarUrl; // Keep existing if no new file
          if (editData.avatarFile) {
              // TODO: Implement actual file upload to Firebase Storage
              // newAvatarUrl = await uploadFileToStorage(editData.avatarFile, `avatars/${user.uid}`);
              await new Promise(resolve => setTimeout(resolve, 500)); // Simulate
+             newAvatarUrl = editData.avatarPreview; // Use preview for simulation
              console.log("Simulated avatar upload complete.");
          }
 
-         let newBannerUrl = editData.bannerPreview;
+         let newBannerUrl = userProfile.bannerUrl; // Keep existing if no new file
          if (editData.bannerFile) {
              // newBannerUrl = await uploadFileToStorage(editData.bannerFile, `banners/${user.uid}`);
              await new Promise(resolve => setTimeout(resolve, 500)); // Simulate
+             newBannerUrl = editData.bannerPreview; // Use preview for simulation
              console.log("Simulated banner upload complete.");
          }
 
@@ -331,13 +331,14 @@ export default function ProfilePage() {
              status: editData.status,
              avatarUrl: newAvatarUrl,
              bannerUrl: newBannerUrl,
-             updatedAt: new Date(), // Add/update timestamp
+             // updatedAt will be handled by service
          };
 
          await updateUserProfileDocument(user.uid, updatedProfileData);
          console.log("Firestore profile update complete.");
 
-         setUserProfile(prev => prev ? { ...prev, ...updatedProfileData } : null);
+         // Refetch profile to get server-generated timestamps and ensure consistency
+         await fetchAndSetUserProfile(user.uid);
          setIsEditing(false);
          toast({ title: "Profile Updated", description: "Your profile has been successfully updated.", variant: "default" });
      } catch (error: any) {
@@ -347,6 +348,15 @@ export default function ProfilePage() {
          setLoadingProfile(false);
      }
  };
+
+ const handleCreateNewProfile = async () => {
+    if (!user) {
+        toast({ title: "Error", description: "You must be logged in to create a profile.", variant: "destructive" });
+        return;
+    }
+    await fetchAndSetUserProfile(user.uid, user.email ?? undefined, user.displayName ?? undefined, user.photoURL ?? undefined);
+ };
+
 
   const renderList = (items: UserListItemData[] | undefined, emptyMessage: string) => {
     if (!items || items.length === 0) {
@@ -405,13 +415,23 @@ export default function ProfilePage() {
             <AlertDescriptionUI>{profileError}</AlertDescriptionUI>
         </Alert>
         {!user && <Link href="/login" className="mt-4"><Button variant="outline">Go to Login</Button></Link>}
-        {user && <Button onClick={() => fetchUserProfile(user.uid)} variant="outline" className="mt-4">Retry Fetching Profile</Button>}
+        {user && (
+             <Button onClick={handleCreateNewProfile} variant="outline" className="mt-4" disabled={loadingProfile}>
+                 {loadingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                 Initialize My Profile
+             </Button>
+        )}
       </div>
     );
   }
 
   if (!userProfile) { // Should be caught by above, but as a fallback
-      return <div className="container mx-auto px-4 py-8 text-center"><p>Loading profile or user not logged in...</p></div>;
+      return (
+        <div className="container mx-auto px-4 py-8 text-center">
+            <p>Loading profile or user not logged in...</p>
+             {!user && !authLoading && <Link href="/login" className="mt-4"><Button variant="outline">Go to Login</Button></Link>}
+        </div>
+      );
   }
 
 
@@ -422,7 +442,7 @@ export default function ProfilePage() {
       <Card className="mb-8 glass overflow-hidden border-primary/20 shadow-xl">
         <div className="relative h-36 md:h-48 bg-gradient-to-br from-primary/80 via-purple-600/70 to-pink-600/70">
           {editData.bannerPreview ? (
-             <Image src={editData.bannerPreview} alt={`${editData.username}'s banner`} fill objectFit="cover" className="opacity-70" data-ai-hint="user banner abstract"/>
+             <Image src={editData.bannerPreview} alt={`${editData.username || userProfile.username}'s banner`} fill objectFit="cover" className="opacity-70" data-ai-hint="user banner abstract"/>
           ) : ( <div className="absolute inset-0 bg-gradient-to-br from-primary/80 via-purple-600/70 to-pink-600/70"></div> )}
           {isEditing && (
               <div className="absolute bottom-2 right-2 z-20">
@@ -434,7 +454,7 @@ export default function ProfilePage() {
           <div className="absolute bottom-[-50px] left-4 md:left-6 flex items-end gap-4 z-10">
              <div className="relative group">
                 <Avatar className="h-24 w-24 md:h-32 md:w-32 border-4 border-background shadow-xl transition-transform hover:scale-105">
-                   {editData.avatarPreview ? ( <AvatarImage src={editData.avatarPreview} alt={editData.username} /> ) : ( <AvatarFallback className="text-2xl md:text-3xl">{(editData.username || userProfile.username || 'U').slice(0, 2).toUpperCase()}</AvatarFallback> )}
+                   {editData.avatarPreview || userProfile.avatarUrl ? ( <AvatarImage src={editData.avatarPreview || userProfile.avatarUrl!} alt={editData.username || userProfile.username!} /> ) : ( <AvatarFallback className="text-2xl md:text-3xl">{(editData.username || userProfile.username || 'U').slice(0, 2).toUpperCase()}</AvatarFallback> )}
                 </Avatar>
                 {isEditing && (
                      <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 rounded-full transition-opacity duration-300 cursor-pointer">
@@ -505,3 +525,5 @@ if (typeof window !== 'undefined') {
      document.head.appendChild(styleSheet);
   }
 }
+
+    
