@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, History, UsersRound, ArrowRight } from 'lucide-react'; // Added ArrowRight
+import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, ArrowRight } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -39,19 +39,17 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
 const renderHorizontalSection = (
     title: string,
     icon: React.ElementType,
-    items: Manga[] | null | undefined, // Expects Manga for related/recommendations
+    items: Manga[] | null | undefined,
     isLoading: boolean,
     emptyMessage: string = "Nothing to show here right now.",
-    itemComponent: React.FC<{ item: any }> = ItemCard, // Use 'any' for now as ItemCard expects DisplayItem
+    itemComponent: React.FC<{ item: any }> = ItemCard,
     skeletonComponent: React.FC = SkeletonItemCard
 ) => {
     const validItems = Array.isArray(items) ? items : [];
-
-    // Map Manga to DisplayItem structure if ItemCard expects that
     const displayItems = validItems.map(item => ({
         ...item,
         id: item.mal_id,
-        type: 'manga' as const, // Explicitly type
+        type: 'manga' as const,
         imageUrl: item.images?.jpg?.large_image_url || item.images?.jpg?.image_url || null,
     }));
 
@@ -119,7 +117,6 @@ export default function MangaDetailPage() {
         console.error(`Error fetching manga details for ID ${id}:`, err);
         setError(err.message || 'Failed to load manga details.');
       } finally {
-         // Ensure loading states are false even if there's an early exit/error
          setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false);
       }
     }
@@ -133,15 +130,14 @@ export default function MangaDetailPage() {
          <Alert variant="destructive" className="max-w-md glass"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
       </div>
   );
-  if (!manga) return ( // Handles case where manga is null after loading finishes (e.g. error during fetch but not caught by `error` state)
+  if (!manga) return (
       <div className="container mx-auto px-4 py-8 text-center flex items-center justify-center min-h-[60vh]">
           <Alert variant="destructive" className="max-w-md glass"><AlertCircle className="h-4 w-4" /><AlertTitle>Manga Not Found</AlertTitle><AlertDescription>The requested manga could not be loaded.</AlertDescription></Alert>
       </div>
   );
 
-  // Extract alternative titles for display
   const alternativeTitles = {
-    english: (manga as any).title_english, // Jikan might place these at top level
+    english: (manga as any).title_english,
     japanese: (manga as any).title_japanese,
     synonyms: (manga as any).title_synonyms || [],
   };
@@ -234,7 +230,7 @@ export default function MangaDetailPage() {
                     <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2"><Link2 size={22}/> Related Manga</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {(manga as any).relations.map((relation: any) => (
-                            relation.entry.filter((e: any) => e.type === 'manga').map((relatedManga: any) => ( // Filter for manga type
+                            relation.entry.filter((e: any) => e.type === 'manga').map((relatedManga: any) => (
                                 <Link key={relatedManga.mal_id} href={`/manga/${relatedManga.mal_id}`} passHref legacyBehavior>
                                     <a className="block group">
                                         <Card className="glass neon-glow-hover h-full">
@@ -281,12 +277,12 @@ function MangaDetailSkeleton() {
                       <div className="flex flex-wrap gap-2 mb-4"><Skeleton className="h-6 w-16 rounded-full" /><Skeleton className="h-6 w-20 rounded-full" /></div>
                        <Card className="glass p-3 mb-4 border-primary/10"><div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
                               <Skeleton className="h-5 w-14" /><Skeleton className="h-5 w-20" /><Skeleton className="h-5 w-20" /><Skeleton className="h-5 w-24" /><Skeleton className="h-5 w-16" /></div></Card>
-                       <Skeleton className="h-4 w-24 mb-2" /> {/* Authors heading */}
+                       <Skeleton className="h-4 w-24 mb-2" />
                        <div className="flex flex-wrap gap-2 mb-4"><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-28" /></div>
                       <Separator className="my-4 bg-border/50" />
                       <CardContent className="p-0 flex-grow">
                           <div className="space-y-2 mb-6"><Skeleton className="h-7 w-32 mb-2" /><div className="h-24 pr-3 space-y-2"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /></div></div>
-                          <Skeleton className="h-4 w-24 mb-2" /> {/* Alt titles heading */}
+                          <Skeleton className="h-4 w-24 mb-2" />
                           <Skeleton className="h-3 w-full mb-1" /><Skeleton className="h-3 w-3/4" />
                       </CardContent>
                   </div>

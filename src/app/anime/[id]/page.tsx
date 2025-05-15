@@ -5,46 +5,32 @@ import React, { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
-import { getAnimeDetails, Anime, getAnimeRecommendations } from '@/services/anime'; // Use Jikan for metadata
+import { getAnimeDetails, Anime, getAnimeRecommendations } from '@/services/anime';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search } from 'lucide-react'; // Added Search
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { AspectRatio } from '@/components/ui/aspect-ratio'; // For trailer
+import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Use shared ItemCard
+import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
 import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
-// Import the specific episode fetchers we want to use
+import { useToast } from '@/hooks/use-toast';
 import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge';
 import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave';
-import LongPressButtonWrapper, { type AlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
 
 // --- Interfaces ---
-// Interface for the unified episode structure used in the component state
 interface Episode {
-  id: string; // Unique ID for the episode (e.g., "title-ep-1")
+  id: string;
   number: number;
   title: string;
-  link: string; // Link to the watch page (internal)
-  providerLink: string; // Link to the episode page on the source provider
-  source: string; // The source provider (e.g., 'AnimeSuge', 'AniWave')
+  link: string;
+  providerLink: string;
+  source: string;
 }
-
-// Alternative site options for anime
-const animeWatchOptions: AlternativeOption[] = [
-    { name: "Crunchyroll", urlTemplate: "https://www.crunchyroll.com/search?q={title}" },
-    { name: "HiAnime", urlTemplate: "https://hianime.to/search?keyword={title}" }, // Popular Zoro alternative
-    { name: "AniWave", urlTemplate: "https://aniwave.to/filter?keyword={title}" },
-    { name: "AnimeSuge", urlTemplate: "https://animesuge.to/filter?keyword={title}" },
-    { name: "9Anime (via Google)", urlTemplate: "https://www.google.com/search?q=site%3A9animetv.to+{title}" },
-    // Add more as needed
-];
-
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -63,14 +49,14 @@ const ScoreDisplay = ({ score }: { score: number | null }) => {
     );
 };
 
-// Helper to render a horizontal scrollable section - Adjusted to use unified DisplayItem
+// Helper to render a horizontal scrollable section
 const renderHorizontalSection = (
     title: string,
     icon: React.ElementType,
-    items: Anime[], // Assuming Manga type exists if used
+    items: Anime[],
     isLoading: boolean,
     emptyMessage: string = "Nothing to show here right now.",
-    itemComponent: React.FC<{ item: any }> = ItemCard, // Use 'any' for now
+    itemComponent: React.FC<{ item: any }> = ItemCard,
     skeletonComponent: React.FC = SkeletonItemCard
 ) => {
     const validItems = Array.isArray(items) ? items : [];
@@ -103,25 +89,23 @@ export default function AnimeDetailPage() {
   const params = useParams();
   const malId = params.id ? parseInt(params.id as string, 10) : NaN;
   const { toast } = useToast();
-  const episodesSectionRef = useRef<HTMLDivElement>(null); // Ref for scrolling
-
+  const episodesSectionRef = useRef<HTMLDivElement>(null);
 
   const [anime, setAnime] = useState<Anime | null>(null);
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
   const [namiRecommendations, setNamiRecommendations] = useState<Anime[]>([]);
-  const [episodes, setEpisodes] = useState<Episode[]>([]); // State for unified episodes
-  const [activeSource, setActiveSource] = useState<string | null>(null); // Track which source provided episodes
+  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [activeSource, setActiveSource] = useState<string | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [loadingRecs, setLoadingRecs] = useState(true);
   const [loadingNamiRecs, setLoadingNamiRecs] = useState(true);
-  const [loadingEpisodes, setLoadingEpisodes] = useState(true); // Loading state for episodes
+  const [loadingEpisodes, setLoadingEpisodes] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
   const [namiError, setNamiError] = useState<string | null>(null);
-  const [episodeError, setEpisodeError] = useState<string | null>(null); // Error state for episodes
+  const [episodeError, setEpisodeError] = useState<string | null>(null);
 
-  // --- Fetch Main Details, Recommendations ---
   useEffect(() => {
     if (isNaN(malId)) {
       setError('Invalid Anime ID.');
@@ -135,7 +119,6 @@ export default function AnimeDetailPage() {
       setAnime(null); setRecommendations([]); setNamiRecommendations([]); setEpisodes([]); setActiveSource(null);
 
       try {
-        // Fetch main details from Jikan
         console.log(`Fetching main anime details for MAL ID: ${malId}`);
         const fetchedAnime = await getAnimeDetails(malId);
         if (!fetchedAnime) {
@@ -145,10 +128,8 @@ export default function AnimeDetailPage() {
         setLoading(false);
         console.log(`Successfully fetched details for: ${fetchedAnime.title}`);
 
-        // Fetch Jikan recommendations concurrently
         getAnimeRecommendations(malId).then(recs => setRecommendations(recs)).catch(err => console.error("Jikan Recs failed:", err)).finally(() => setLoadingRecs(false));
 
-        // Fetch Nami AI recommendations concurrently
         const namiInput = { mood: "Similar to this", watchHistory: [fetchedAnime.title], profileActivity: `Interested in anime like ${fetchedAnime.title}, genres: ${fetchedAnime.genres.map(g => g.name).join(', ')}.` };
         getMoodBasedRecommendations(namiInput).then(namiRecs => setNamiRecommendations(namiRecs.animeRecommendations || [])).catch(err => { console.error("Nami Recs failed:", err); setNamiError("Nami couldn't find recommendations."); }).finally(() => setLoadingNamiRecs(false));
 
@@ -164,7 +145,6 @@ export default function AnimeDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [malId]);
 
-   // --- Fetch Episodes Effect (Depends on `anime` state) ---
    useEffect(() => {
        if (!anime || !anime.title) {
            if (!loading) setLoadingEpisodes(false);
@@ -208,7 +188,8 @@ export default function AnimeDetailPage() {
                        providerErrors.push({ name: provider.name, error: "No episodes found on provider page." });
                    }
                } catch (providerError: any) {
-                   providerErrors.push({ name: provider.name, error: providerError.message });
+                   console.error(`[AnimeDetailPage] Error from provider ${provider.name}:`, providerError);
+                   providerErrors.push({ name: provider.name, error: providerError.message || "Unknown error from provider" });
                }
            }
 
@@ -311,15 +292,13 @@ export default function AnimeDetailPage() {
                            )}
                         </Card>
                         <div className="flex flex-col gap-3 mt-4">
-                            <LongPressButtonWrapper
-                                onPrimaryAction={() => episodesSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                                alternativeOptions={animeWatchOptions}
-                                itemTitle={anime.title}
+                            <Button
+                                size="lg"
+                                className="w-full neon-glow-hover"
+                                onClick={() => episodesSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
                             >
-                                <Button size="lg" className="w-full neon-glow-hover">
-                                    <PlayCircle size={18} className="mr-2"/> Watch Episodes
-                                </Button>
-                            </LongPressButtonWrapper>
+                                <PlayCircle size={18} className="mr-2"/> Watch Episodes
+                            </Button>
                             <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                 <Link href={animePaheSearchUrl} target="_blank" rel="noopener noreferrer">
                                     <Search size={14} className="mr-2" /> Watch on AnimePahe
@@ -397,7 +376,7 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-            <div ref={episodesSectionRef}> {/* Add ref here */}
+            <div ref={episodesSectionRef}>
                 <section className="mb-12">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-2xl font-semibold flex items-center gap-2"><Film size={24}/> Episodes</h3>
@@ -505,10 +484,10 @@ function AnimeDetailSkeleton() {
                           <Skeleton className="h-full w-full" />
                       </Card>
                        <div className="flex flex-col gap-3 mt-4">
-                           <Skeleton className="h-10 w-full rounded-md" /> {/* Watch Episodes Button */}
-                           <Skeleton className="h-9 w-full rounded-md" /> {/* AnimePahe Button */}
-                           <Skeleton className="h-9 w-full rounded-md" /> {/* MAL Button */}
-                           <Skeleton className="h-9 w-full rounded-md" /> {/* Trailer Button */}
+                           <Skeleton className="h-10 w-full rounded-md" />
+                           <Skeleton className="h-9 w-full rounded-md" />
+                           <Skeleton className="h-9 w-full rounded-md" />
+                           <Skeleton className="h-9 w-full rounded-md" />
                        </div>
                   </div>
                   <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col">
