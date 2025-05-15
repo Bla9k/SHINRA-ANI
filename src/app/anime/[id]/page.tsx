@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2 } from 'lucide-react'; // Import icons
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search } from 'lucide-react'; // Added Search
 import { Separator } from '@/components/ui/separator';
 import { AspectRatio } from '@/components/ui/aspect-ratio'; // For trailer
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,7 +22,7 @@ import { useToast } from '@/hooks/use-toast'; // Import useToast
 // Import the specific episode fetchers we want to use
 import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge';
 import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave';
-// Add other layers if needed
+import LongPressButtonWrapper, { type AlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
 
 // --- Interfaces ---
 // Interface for the unified episode structure used in the component state
@@ -33,6 +34,17 @@ interface Episode {
   providerLink: string; // Link to the episode page on the source provider
   source: string; // The source provider (e.g., 'AnimeSuge', 'AniWave')
 }
+
+// Alternative site options for anime
+const animeWatchOptions: AlternativeOption[] = [
+    { name: "Crunchyroll", urlTemplate: "https://www.crunchyroll.com/search?q={title}" },
+    { name: "HiAnime", urlTemplate: "https://hianime.to/search?keyword={title}" }, // Popular Zoro alternative
+    { name: "AniWave", urlTemplate: "https://aniwave.to/filter?keyword={title}" },
+    { name: "AnimeSuge", urlTemplate: "https://animesuge.to/filter?keyword={title}" },
+    { name: "9Anime (via Google)", urlTemplate: "https://www.google.com/search?q=site%3A9animetv.to+{title}" },
+    // Add more as needed
+];
+
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -91,6 +103,8 @@ export default function AnimeDetailPage() {
   const params = useParams();
   const malId = params.id ? parseInt(params.id as string, 10) : NaN;
   const { toast } = useToast();
+  const episodesSectionRef = useRef<HTMLDivElement>(null); // Ref for scrolling
+
 
   const [anime, setAnime] = useState<Anime | null>(null);
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
@@ -138,26 +152,22 @@ export default function AnimeDetailPage() {
         const namiInput = { mood: "Similar to this", watchHistory: [fetchedAnime.title], profileActivity: `Interested in anime like ${fetchedAnime.title}, genres: ${fetchedAnime.genres.map(g => g.name).join(', ')}.` };
         getMoodBasedRecommendations(namiInput).then(namiRecs => setNamiRecommendations(namiRecs.animeRecommendations || [])).catch(err => { console.error("Nami Recs failed:", err); setNamiError("Nami couldn't find recommendations."); }).finally(() => setLoadingNamiRecs(false));
 
-        // --- Trigger Episode Fetching (will happen after anime title is set) ---
-        // This is now handled in a separate useEffect triggered by `anime` state change
-
       } catch (err: any) {
         console.error(`[AnimeDetailPage] Error fetching core data for MAL ID ${malId}:`, err);
         setError(err.message || 'Failed to load anime data.');
         setAnime(null); setRecommendations([]); setNamiRecommendations([]); setEpisodes([]); setActiveSource(null);
         setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false); setLoadingEpisodes(false);
       }
-    } // End of fetchCoreData function
+    }
 
     fetchCoreData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [malId]); // Depend only on malId for core data
+  }, [malId]);
 
    // --- Fetch Episodes Effect (Depends on `anime` state) ---
    useEffect(() => {
        if (!anime || !anime.title) {
-           // Don't fetch episodes if anime data isn't loaded yet
-           if (!loading) setLoadingEpisodes(false); // Set loading false if main loading is done but no anime title
+           if (!loading) setLoadingEpisodes(false);
            return;
        }
 
@@ -169,86 +179,69 @@ export default function AnimeDetailPage() {
            const animeTitle = anime.title;
            console.log(`[AnimeDetailPage] Attempting to fetch episodes for title: "${animeTitle}"`);
 
-           // Define providers to try in order
            const providers = [
                 { name: 'AnimeSuge', searchFn: fetchFromAnimeSuge, fetchFn: fetchEpisodesFromAnimeSuge },
                 { name: 'AniWave', searchFn: fetchFromAniWave, fetchFn: fetchEpisodesFromAniWave },
-                // Add other layers here (e.g., AnimeDao)
            ];
 
            let foundEpisodes: any[] | null = null;
            let sourceUsed: string | null = null;
-           let providerErrors: { name: string, error: string }[] = []; // Store errors from each provider
+           let providerErrors: { name: string, error: string }[] = [];
 
            for (const provider of providers) {
                console.log(`[AnimeDetailPage] Trying provider: ${provider.name} for "${animeTitle}"`);
                try {
-                   // Step 1: Search the provider to get the anime's page link on that provider
                    const searchResult = await provider.searchFn(animeTitle);
                    if (!searchResult || !searchResult.link) {
-                       const errorMsg = `Provider ${provider.name} did not find a match for "${animeTitle}".`;
-                       console.warn(`[AnimeDetailPage] ${errorMsg}`);
                        providerErrors.push({ name: provider.name, error: "Anime not found on provider." });
-                       continue; // Try next provider
+                       continue;
                    }
                    console.log(`[AnimeDetailPage] Found link on ${provider.name}: ${searchResult.link}`);
-
-                   // Step 2: Fetch episodes using the link found
-                   const providerEpisodes = await provider.fetchFn(searchResult); // Pass the search result (which includes the link)
+                   const providerEpisodes = await provider.fetchFn(searchResult);
 
                    if (providerEpisodes && providerEpisodes.length > 0) {
                         foundEpisodes = providerEpisodes;
                         sourceUsed = provider.name;
                         console.log(`[AnimeDetailPage] Successfully fetched ${foundEpisodes.length} episodes from ${provider.name}.`);
-                        break; // Stop trying providers once episodes are found
+                        break;
                    } else {
-                        const errorMsg = `Provider ${provider.name} returned no episodes for "${animeTitle}" (Link: ${searchResult.link}).`;
-                       console.warn(`[AnimeDetailPage] ${errorMsg}`);
                        providerErrors.push({ name: provider.name, error: "No episodes found on provider page." });
                    }
                } catch (providerError: any) {
-                   const errorMsg = `Error fetching from provider ${provider.name}: ${providerError.message}`;
-                   console.error(`[AnimeDetailPage] ${errorMsg}`);
                    providerErrors.push({ name: provider.name, error: providerError.message });
                }
-           } // End of provider loop
+           }
 
            if (foundEpisodes && sourceUsed) {
-               // Map provider episodes to our internal Episode structure
                const mappedEpisodes = foundEpisodes.map((ep): Episode | null => {
                    if (!ep || ep.number == null || !ep.link) return null;
-                   // Generate a stable unique ID if the provider doesn't give one
                    const episodeId = ep.id || `${animeTitle.replace(/\s+/g, '-')}-ep-${ep.number}`;
                    return {
                        id: episodeId,
                        number: ep.number,
                        title: ep.title || `Episode ${ep.number}`,
-                       // Link to our internal watch page, passing necessary info
                        link: `/anime/watch/${malId}/${episodeId}?source=${encodeURIComponent(sourceUsed)}&providerLink=${encodeURIComponent(ep.link)}`,
-                       providerLink: ep.link, // Store the original provider link
-                       source: sourceUsed, // Store the source
+                       providerLink: ep.link,
+                       source: sourceUsed,
                    };
-               }).filter((ep): ep is Episode => ep !== null); // Filter out any null mappings
+               }).filter((ep): ep is Episode => ep !== null);
 
                setEpisodes(mappedEpisodes);
                setActiveSource(sourceUsed);
                setEpisodeError(null);
                console.log(`[AnimeDetailPage] Mapped ${mappedEpisodes.length} episodes from ${sourceUsed}.`);
            } else {
-               // Log detailed errors if ALL providers failed
                console.error(`[AnimeDetailPage] Failed to fetch episodes from ANY provider for "${animeTitle}". Errors:`, providerErrors);
                setEpisodeError("Could not load episode information from available sources.");
                setEpisodes([]);
                setActiveSource(null);
            }
-
            setLoadingEpisodes(false);
        };
 
        fetchAllEpisodes();
-
    // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, [anime]); // Run when anime data (including title) is available/changes
+   }, [anime]);
 
 
   if (loading && !anime) {
@@ -268,8 +261,6 @@ export default function AnimeDetailPage() {
   }
 
   if (!anime) {
-     // Handle case where loading is finished but anime is still null (e.g., initial error during fetch)
-     // You could show a specific error message here or the skeleton again
      return (
        <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
          <Alert variant="destructive" className="max-w-md glass">
@@ -281,17 +272,17 @@ export default function AnimeDetailPage() {
      );
    }
 
+  const animePaheSearchUrl = `https://animepahe.ru/search?q=${encodeURIComponent(anime.title)}`;
 
-  return ( // Fixed: Correct placement of return statement
+  return (
     <div className="container mx-auto px-4 py-8">
-        {/* Background Image Section */}
         <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
              {anime.imageUrl && (
                  <Image
                      src={anime.imageUrl}
                      alt={`${anime.title} backdrop`}
                      fill
-                     className="object-cover object-top opacity-15 blur-md scale-110"
+                     className="object-cover object-top opacity-10 blur-md scale-110"
                      aria-hidden="true"
                      priority
                  />
@@ -300,10 +291,8 @@ export default function AnimeDetailPage() {
         </div>
 
         <div className="relative mt-16 md:mt-32">
-            {/* Main Details Card */}
             <Card className="overflow-visible glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mb-12">
                 <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
-                    {/* Left Column: Cover Image & Actions */}
                     <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10">
                         <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow border-2 border-primary/50 w-48 md:w-full mx-auto">
                            {anime.imageUrl ? (
@@ -321,9 +310,21 @@ export default function AnimeDetailPage() {
                                </div>
                            )}
                         </Card>
-                        {/* Actions Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
-                           {/* Watch button is now handled in the Episodes section below */}
+                            <LongPressButtonWrapper
+                                onPrimaryAction={() => episodesSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                                alternativeOptions={animeWatchOptions}
+                                itemTitle={anime.title}
+                            >
+                                <Button size="lg" className="w-full neon-glow-hover">
+                                    <PlayCircle size={18} className="mr-2"/> Watch Episodes
+                                </Button>
+                            </LongPressButtonWrapper>
+                            <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
+                                <Link href={animePaheSearchUrl} target="_blank" rel="noopener noreferrer">
+                                    <Search size={14} className="mr-2" /> Watch on AnimePahe
+                                </Link>
+                            </Button>
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={anime.url} target="_blank" rel="noopener noreferrer">
@@ -341,21 +342,15 @@ export default function AnimeDetailPage() {
                         </div>
                     </div>
 
-                    {/* Right Column: Details */}
                     <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col">
                         <CardHeader className="p-0 mb-3">
                            <CardTitle className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary">{anime.title}</CardTitle>
-                           {/* Optional: Add original title or other names here */}
                         </CardHeader>
-
-                        {/* Genres */}
                         <div className="flex flex-wrap gap-2 mb-4">
                            {anime.genres?.map(g => (
                              <Badge key={g.mal_id} variant="secondary" className="neon-glow-hover text-xs cursor-default backdrop-blur-sm bg-secondary/60">{g.name}</Badge>
                            ))}
                         </div>
-
-                         {/* Key Info Row */}
                          <Card className="glass p-3 mb-4 border-primary/10">
                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
                               <div className="flex items-center gap-2" title="Score">
@@ -372,27 +367,22 @@ export default function AnimeDetailPage() {
                                </div>
                            </div>
                          </Card>
-
                         <Separator className="my-4 bg-border/50" />
-
-                         {/* Synopsis */}
                         <CardContent className="p-0 flex-grow">
                             <div className="space-y-2">
                                <h3 className="text-xl font-semibold mb-2">Synopsis</h3>
-                               <ScrollArea className="h-24 pr-3"> {/* Limit synopsis height */}
+                               <ScrollArea className="h-24 pr-3">
                                    <CardDescription className="text-base leading-relaxed prose prose-invert prose-sm max-w-none">
                                        {anime.synopsis || 'No synopsis available.'}
                                    </CardDescription>
                                 </ScrollArea>
                             </div>
-
-                             {/* Trailer */}
                             {anime.trailer?.embed_url && (
                                <div className="mt-6 space-y-3">
                                   <h3 className="text-xl font-semibold flex items-center gap-2"><Youtube size={22} className="text-red-600"/> Trailer</h3>
                                    <AspectRatio ratio={16 / 9} className="rounded-lg overflow-hidden border border-border/50 glass shadow-md">
                                         <iframe
-                                            src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")} // Disable autoplay by default
+                                            src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")}
                                             title={`${anime.title} Trailer`}
                                             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen
@@ -407,86 +397,82 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-             {/* Episodes Section - Using Scraper Data */}
-            <section className="mb-12">
-                 <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-2xl font-semibold flex items-center gap-2"><Film size={24}/> Episodes</h3>
-                    {activeSource && <Badge variant="outline" className="text-xs">Source: {activeSource}</Badge>}
-                 </div>
-                 <Card className="glass p-6 border-border/50">
-                     {loadingEpisodes ? (
-                         <div className="flex flex-col items-center justify-center text-center h-40">
-                             <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
-                             <p className="text-muted-foreground">Loading episodes...</p>
-                         </div>
-                     ) : episodeError ? (
-                         <Alert variant="destructive" className="glass">
-                             <AlertCircle className="h-4 w-4" />
-                             <AlertTitle>Could Not Load Episodes</AlertTitle>
-                             <AlertDescription>{episodeError}</AlertDescription>
-                         </Alert>
-                     ) : episodes.length === 0 ? (
-                         <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-40">
-                             <ListEnd size={40} className="mb-3 opacity-50"/>
-                             <p className="font-medium">No Episodes Found</p>
-                             <p className="text-sm">Could not find episode information from available sources.</p>
-                         </div>
-                     ) : (
-                          <ScrollArea className="h-64 pr-4"> {/* Scrollable Episode List */}
-                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                  {episodes.map(episode => (
-                                      // Link uses internal watch route with MAL ID and unique episode ID
-                                      // Query params pass source and original link for the watch page API call
-                                      <Link
-                                           key={episode.id} // Use generated unique episode ID
-                                           href={episode.link} // Use the pre-constructed internal link
-                                           passHref
-                                           legacyBehavior>
-                                           <a className="block"> {/* Anchor tag wrapper */}
-                                              <Card className="cursor-pointer hover:border-primary transition-colors duration-200 glass border-border/50">
-                                                  <CardContent className="p-4">
-                                                      <p className="font-semibold text-primary truncate">Ep {episode.number}</p>
-                                                      {/* Show title if different from default */}
-                                                      {episode.title && !episode.title.toLowerCase().includes(`episode ${episode.number}`) && (
-                                                          <p className="text-xs text-muted-foreground truncate mt-1">{episode.title}</p>
-                                                      )}
-                                                  </CardContent>
-                                              </Card>
-                                          </a>
-                                      </Link>
-                                  ))}
-                              </div>
-                          </ScrollArea>
-                     )}
-                 </Card>
-            </section>
+            <div ref={episodesSectionRef}> {/* Add ref here */}
+                <section className="mb-12">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-2xl font-semibold flex items-center gap-2"><Film size={24}/> Episodes</h3>
+                        {activeSource && <Badge variant="outline" className="text-xs">Source: {activeSource}</Badge>}
+                    </div>
+                    <Card className="glass p-6 border-border/50">
+                        {loadingEpisodes ? (
+                            <div className="flex flex-col items-center justify-center text-center h-40">
+                                <Loader2 className="h-8 w-8 animate-spin text-primary mb-3" />
+                                <p className="text-muted-foreground">Loading episodes...</p>
+                            </div>
+                        ) : episodeError ? (
+                            <Alert variant="destructive" className="glass">
+                                <AlertCircle className="h-4 w-4" />
+                                <AlertTitle>Could Not Load Episodes</AlertTitle>
+                                <AlertDescription>{episodeError}</AlertDescription>
+                            </Alert>
+                        ) : episodes.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-40">
+                                <ListEnd size={40} className="mb-3 opacity-50"/>
+                                <p className="font-medium">No Episodes Found</p>
+                                <p className="text-sm">Could not find episode information from available sources.</p>
+                            </div>
+                        ) : (
+                            <ScrollArea className="h-64 pr-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {episodes.map(episode => (
+                                        <Link
+                                            key={episode.id}
+                                            href={episode.link}
+                                            passHref
+                                            legacyBehavior>
+                                            <a className="block">
+                                                <Card className="cursor-pointer hover:border-primary transition-colors duration-200 glass border-border/50">
+                                                    <CardContent className="p-4">
+                                                        <p className="font-semibold text-primary truncate">Ep {episode.number}</p>
+                                                        {episode.title && !episode.title.toLowerCase().includes(`episode ${episode.number}`) && (
+                                                            <p className="text-xs text-muted-foreground truncate mt-1">{episode.title}</p>
+                                                        )}
+                                                    </CardContent>
+                                                </Card>
+                                            </a>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                        )}
+                    </Card>
+                </section>
+            </div>
 
-             {/* Nami AI Recommendations Section */}
             {(loadingNamiRecs || namiRecommendations.length > 0 || namiError) && (
                  <section className="mb-12">
                     <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
                         <ThumbsUp size={20} className="text-primary"/> Nami's Picks For You
                     </h3>
                     {namiError && !loadingNamiRecs && (
-                         <Alert variant="destructive" className="glass mb-4"> {/* Add margin bottom */}
+                         <Alert variant="destructive" className="glass mb-4">
                              <AlertCircle className="h-4 w-4" />
                              <AlertTitle>Nami Error</AlertTitle>
                              <AlertDescription>{namiError}</AlertDescription>
                          </Alert>
                     )}
                      {renderHorizontalSection(
-                         "", // Title already provided above
-                         () => null, // No icon needed here
+                         "",
+                         () => null,
                          namiRecommendations,
                          loadingNamiRecs,
                          "Nami couldn't find any recommendations based on this anime right now.",
-                         ItemCard, // Use ItemCard for consistency
+                         ItemCard,
                          SkeletonItemCard
                      )}
                  </section>
              )}
 
-            {/* Related Anime Section (Jikan Recommendations) */}
              {(loadingRecs || recommendations.length > 0) && (
                  renderHorizontalSection(
                      "Related Anime",
@@ -494,7 +480,7 @@ export default function AnimeDetailPage() {
                      recommendations,
                      loadingRecs,
                      "No related anime found.",
-                     ItemCard, // Use ItemCard for consistency
+                     ItemCard,
                      SkeletonItemCard
                  )
             )}
@@ -504,36 +490,31 @@ export default function AnimeDetailPage() {
   );
 }
 
-// --- Skeleton Component (Updated to include episode skeleton) ---
 function AnimeDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
-      {/* Skeleton Background */}
       <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
-            <Skeleton className="h-full w-full opacity-15 blur-md scale-110" />
+            <Skeleton className="h-full w-full opacity-10 blur-md scale-110" />
            <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/80 to-background" />
        </div>
-
        <div className="relative mt-16 md:mt-32">
-            {/* Main Details Card Skeleton */}
             <Card className="overflow-visible glass border-primary/20 bg-card/60 mb-12">
                <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
-                 {/* Left Column: Cover Image & Actions Skeleton */}
                   <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10">
                       <Card className="overflow-hidden aspect-[2/3] relative border-2 border-primary/50 w-48 md:w-full mx-auto">
                           <Skeleton className="h-full w-full" />
                       </Card>
                        <div className="flex flex-col gap-3 mt-4">
-                           <Skeleton className="h-9 w-full rounded-md" />
-                           <Skeleton className="h-9 w-full rounded-md" />
+                           <Skeleton className="h-10 w-full rounded-md" /> {/* Watch Episodes Button */}
+                           <Skeleton className="h-9 w-full rounded-md" /> {/* AnimePahe Button */}
+                           <Skeleton className="h-9 w-full rounded-md" /> {/* MAL Button */}
+                           <Skeleton className="h-9 w-full rounded-md" /> {/* Trailer Button */}
                        </div>
                   </div>
-
-                  {/* Right Column: Details Skeleton */}
                   <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col">
                       <CardHeader className="p-0 mb-3">
-                          <Skeleton className="h-8 w-3/4 mb-2" /> {/* Title */}
-                          <Skeleton className="h-4 w-1/2" /> {/* Subtitle */}
+                          <Skeleton className="h-8 w-3/4 mb-2" />
+                          <Skeleton className="h-4 w-1/2" />
                       </CardHeader>
                       <div className="flex flex-wrap gap-2 mb-4">
                           <Skeleton className="h-6 w-16 rounded-full" />
@@ -550,23 +531,21 @@ function AnimeDetailSkeleton() {
                       <Separator className="my-4 bg-border/50" />
                       <CardContent className="p-0 flex-grow">
                           <div className="space-y-2 mb-6">
-                            <Skeleton className="h-7 w-32 mb-2" /> {/* Synopsis Title */}
-                            <div className="h-24 pr-3 space-y-2"> {/* Matching ScrollArea height */}
+                            <Skeleton className="h-7 w-32 mb-2" />
+                            <div className="h-24 pr-3 space-y-2">
                                <Skeleton className="h-4 w-full" />
                                <Skeleton className="h-4 w-full" />
                                <Skeleton className="h-4 w-5/6" />
                             </div>
                           </div>
-                           {/* Trailer Skeleton */}
                            <div className="mt-6 space-y-3">
-                               <Skeleton className="h-7 w-28 mb-2" /> {/* Trailer Title */}
+                               <Skeleton className="h-7 w-28 mb-2" />
                                <Skeleton className="aspect-video w-full rounded-lg glass" />
                            </div>
                       </CardContent>
                   </div>
                </div>
             </Card>
-            {/* Episodes Skeleton */}
              <section className="mb-12">
                  <div className="flex justify-between items-center mb-4">
                     <Skeleton className="h-8 w-36" />
@@ -580,8 +559,6 @@ function AnimeDetailSkeleton() {
                      </div>
                  </Card>
              </section>
-
-            {/* Recommendations Skeleton */}
             <section className="mb-12">
                 <Skeleton className="h-8 w-48 mb-4" />
                  <div className="flex space-x-3 md:space-x-4 overflow-x-auto pb-4">
@@ -594,7 +571,6 @@ function AnimeDetailSkeleton() {
                     {Array.from({ length: 5 }).map((_, index) => <SkeletonItemCard key={`rel-skel-${index}`} />)}
                 </div>
             </section>
-
        </div>
     </div>
   );
