@@ -1,3 +1,4 @@
+
 // src/components/subscription/SubscriptionModal.tsx
 'use client';
 
@@ -12,7 +13,7 @@ import {
     DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader as TierCardHeader, CardTitle as TierCardTitleOriginal, CardDescription as TierCardDescription } from '@/components/ui/card'; // Renamed to avoid conflict
+import { Card, CardContent, CardHeader as TierCardHeader, CardTitle as TierCardTitleOriginal, CardDescription as TierCardDescription } from '@/components/ui/card';
 import { Sparkles, Flame, Zap, Rocket, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -21,9 +22,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import anime from 'animejs';
 
-// Re-define CardTitle with a different name if it conflicts
 const TierCardTitle = TierCardTitleOriginal;
-
 
 interface TierFeature {
     text: string;
@@ -43,10 +42,6 @@ interface Tier {
     iconGlowClass?: string;
 }
 
-// TIER_DATA_RAW is now expected to be passed from AppLayout or defined here.
-// For this fix, assuming it's passed or available globally.
-// If not, it should be defined here or imported.
-// Example:
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
@@ -62,7 +57,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-supported (conceptual)', included: true },
         ],
         buttonText: 'Start with Spark',
-        tierColorClass: 'text-primary', // Example color for Spark
+        tierColorClass: 'text-primary',
         iconGlowClass: 'neon-glow-icon',
     },
     {
@@ -82,7 +77,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Ignite Your Experience',
         isPopular: true,
-        tierColorClass: 'text-accent', // Fiery color
+        tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
     },
     {
@@ -100,7 +95,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-free experience (conceptual)', included: true },
         ],
         buttonText: 'Unleash Hellfire',
-        tierColorClass: 'text-accent', // Fiery color
+        tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
     },
     {
@@ -117,7 +112,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Increased indie upload limits', included: true },
         ],
         buttonText: 'Go Burst Drive',
-        tierColorClass: 'text-accent', // Fiery color
+        tierColorClass: 'text-accent',
         iconGlowClass: 'fiery-glow-icon',
     },
 ];
@@ -139,7 +134,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
     useEffect(() => {
         cardRefs.current = cardRefs.current.slice(0, TIER_DATA_RAW.length);
-     }, [TIER_DATA_RAW.length]);
+     }, []);
 
     const TIER_DATA = TIER_DATA_RAW.map(tier => ({ ...tier, isCurrent: tier.id === currentTier }));
 
@@ -157,42 +152,49 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
         setIsLoading(true);
 
         const cardElement = cardRefs.current[cardIndex];
-        if (cardElement) {
-            anime({
+        if (cardElement && typeof anime !== 'undefined') {
+            anime.timeline({
                 targets: cardElement,
-                scale: [1, 1.03, 1],
-                borderColor: ['hsl(var(--border))', 'hsl(var(--primary))', 'hsl(var(--border))'], // Animate border color
-                duration: 700,
-                easing: 'easeInOutQuad',
+                easing: 'easeOutExpo',
+            })
+            .add({
+                scale: 1.05,
+                borderColor: 'hsl(var(--primary))',
+                boxShadow: '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)',
+                duration: 300,
+            })
+            .add({
+                scale: 1,
+                borderColor: tierId === currentTier || (TIER_DATA.find(t=>t.id === tierId)?.isPopular && tierId !== currentTier) ? 'hsl(var(--accent))' : 'hsl(var(--border))',
+                boxShadow: tierId === currentTier ? '0 0 8px hsl(var(--primary) / 0.4)' : (TIER_DATA.find(t=>t.id === tierId)?.isPopular ? '0 0 8px hsl(var(--accent) / 0.4)' : '0 0 0px transparent'),
+                duration: 400,
+                delay: 100,
             });
         }
         
-        // Simulate delay for animation before processing
-        await new Promise(resolve => setTimeout(resolve, 700));
-
+        await new Promise(resolve => setTimeout(resolve, 700)); // Wait for animation
 
         try {
             await onSelectTier(tierId);
-            // Success toast is now handled in AppLayout after profile update
         } catch (error: any) {
-            console.error("SubscriptionModal: Error selecting tier forwarded to AppLayout:", error);
+            console.error("SubscriptionModal: Error selecting tier forwarded from AppLayout:", error);
         } finally {
             setIsLoading(false);
-            setAnimatingTierId(null); // Reset animation state
+            setAnimatingTierId(null);
         }
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isLoading) onClose(); }}>
             <DialogContent
-                className="glass-deep sm:max-w-4xl max-h-[90vh] flex flex-col p-0 shadow-2xl border-accent/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95"
+                className="glass-deep sm:max-w-4xl max-h-[90vh] flex flex-col p-0 shadow-2xl border-accent/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 overflow-hidden" // Added overflow-hidden
             >
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="flex flex-col h-full" // Ensure this div takes full height of DialogContent
+                    className="flex flex-col h-full" 
                 >
                     <DialogHeader className="p-6 pb-4 border-b border-border/30 flex-shrink-0 bg-card/80 backdrop-blur-md z-10">
                         <DialogTitle className="text-2xl font-bold text-accent text-center fiery-glow-text">Choose Your Power Level</DialogTitle>
@@ -201,26 +203,25 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    {/* Scrollable Tier Cards Section */}
-                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6"> 
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"> 
                             {TIER_DATA.map((tier, index) => (
                                 <Card
                                     key={tier.id}
                                     ref={el => cardRefs.current[index] = el}
                                     className={cn(
-                                        "glass flex flex-col transition-all duration-300 transform-gpu h-full", // Added h-full
+                                        "glass flex flex-col transition-all duration-300 transform-gpu h-full", 
                                         tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70 fiery-glow-hover",
                                         tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                        animatingTierId === tier.id && "scale-105 ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl"
+                                        animatingTierId === tier.id && "scale-105" 
                                     )}
                                 >
-                                    <TierCardHeader className="items-center text-center p-4 border-b border-border/30">
+                                    <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
                                         <tier.icon className={cn("w-10 h-10 mb-2", tier.tierColorClass, tier.iconGlowClass)} />
                                         <TierCardTitle className={cn("text-lg font-semibold", tier.id === currentTier ? "text-primary" : tier.isPopular ? "text-accent" : "text-foreground")}>{tier.name}</TierCardTitle>
                                         <TierCardDescription className="text-xs text-muted-foreground h-8 line-clamp-2">{tier.slogan}</TierCardDescription>
                                     </TierCardHeader>
-                                    <CardContent className="p-4 flex-grow">
+                                    <CardContent className="p-4 flex-grow"> 
                                         <ul className="space-y-2 text-xs">
                                             {tier.features.map((feature, featureIndex) => (
                                                 <li key={featureIndex} className="flex items-start gap-2">
@@ -234,7 +235,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                             ))}
                                         </ul>
                                     </CardContent>
-                                    <DialogFooter className="p-4 border-t border-border/30 mt-auto">
+                                    <DialogFooter className="p-4 border-t border-border/30 mt-auto flex-shrink-0"> 
                                         <Button
                                             className={cn(
                                                 "w-full",
@@ -253,7 +254,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                             ))}
                         </div>
                     </div>
-                    <DialogFooter className="p-4 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-md">
+                    
+                    <DialogFooter className="p-4 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-md"> 
                          <DialogClose asChild>
                             <Button variant="outline" className="w-full sm:w-auto text-muted-foreground hover:text-foreground glass neon-glow-hover" onClick={onClose} disabled={isLoading}>Close</Button>
                         </DialogClose>
@@ -266,3 +268,4 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
 export default SubscriptionModal;
 
+    
