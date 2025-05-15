@@ -8,15 +8,15 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
+    // DialogFooter, // Keep commented if not used per user's last request
     DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader as TierCardHeader, CardTitle as TierCardTitleOriginal, CardDescription as TierCardDescription } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Loader2, Sparkles, Flame, Zap, Rocket } from 'lucide-react';
+import { CheckCircle2, XCircle, Loader2, Sparkles, Flame, Zap, Rocket } from 'lucide-react'; // Ensured all icons are imported
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { type UserProfileData } from '@/services/profile';
+import type { UserProfileData } from '@/services/profile';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import anime from 'animejs';
@@ -46,17 +46,18 @@ interface SubscriptionModalProps {
     isOpen: boolean;
     onClose: () => void;
     currentTier: UserProfileData['subscriptionTier'] | null;
-    onSelectTier: (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => Promise<void>;
+    onSelectTier: (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => Promise<void>; // Prop to handle tier selection
     TIER_DATA: Tier[];
 }
 
 const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, currentTier, onSelectTier, TIER_DATA }) => {
     const [isLoading, setIsLoading] = useState(false);
-    const [animatingTierId, setAnimatingTierId] = useState<string | null>(null);
+    // const [animatingTierId, setAnimatingTierId] = useState<string | null>(null); // Keep for button loading state
     const [isAnimeJsLoaded, setIsAnimeJsLoaded] = useState(false);
-    const { user } = useAuth();
+    const { user } = useAuth(); // For checking login status
     const { toast } = useToast();
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
 
     useEffect(() => {
         cardRefs.current = cardRefs.current.slice(0, TIER_DATA.length);
@@ -66,6 +67,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
         if (typeof window !== 'undefined' && window.anime) {
             setIsAnimeJsLoaded(true);
         } else {
+            // Fallback if animejs is loaded later
             const intervalId = setInterval(() => {
                 if (typeof window !== 'undefined' && window.anime) {
                     setIsAnimeJsLoaded(true);
@@ -76,26 +78,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
         }
     }, []);
 
-    const formatHslForAnimeJs = (hslStringWithSpaces: string, fallbackHue: number = 0): string => {
-        if (!hslStringWithSpaces || typeof hslStringWithSpaces !== 'string') {
-            console.warn(`[formatHslForAnimeJs] Invalid input: ${hslStringWithSpaces}, using fallback.`);
-            return `hsl(${fallbackHue}, 0%, 0%)`;
-        }
-        const parts = hslStringWithSpaces.trim().split(/\s+/);
-        if (parts.length >= 3) {
-            const h = parseFloat(parts[0]) || fallbackHue;
-            const sRaw = parts[1];
-            const lRaw = parts[2];
-            const s = sRaw.endsWith('%') ? sRaw : `${parseFloat(sRaw) || 0}%`;
-            const l = lRaw.endsWith('%') ? lRaw : `${parseFloat(lRaw) || 0}%`;
-            return `hsl(${h}, ${s}, ${l})`;
-        }
-        console.warn(`[formatHslForAnimeJs] Could not parse HSL string: ${hslStringWithSpaces}, using fallback.`);
-        return `hsl(${fallbackHue}, 0%, 0%)`;
-    };
 
-
-    const handleTierSelection = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>, cardIndex: number) => {
+    const handleTierSelection = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
         if (!user) {
             toast({ title: "Not Logged In", description: "Please log in to select a tier.", variant: "destructive" });
             return;
@@ -104,83 +88,26 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             toast({ title: "Invalid Tier", description: "An invalid tier was selected.", variant: "destructive" });
             return;
         }
-        if (!isAnimeJsLoaded) {
-            console.warn("Anime.js not loaded, skipping animation.");
-            setIsLoading(true);
-            setAnimatingTierId(tierId);
-            // await onSelectTier(tierId); // Logic remains commented out for animation testing
-            console.log(`Tier ${tierId} selected (Anime.js not loaded). Backend logic skipped for testing.`);
-            await new Promise(resolve => setTimeout(resolve, 500));
-            setIsLoading(false);
-            setAnimatingTierId(null);
-            return;
-        }
 
         setIsLoading(true);
-        setAnimatingTierId(tierId);
+        // setAnimatingTierId(tierId); // Keep for button loading visual
 
-        const cardElement = cardRefs.current[cardIndex];
+        console.log(`[SubscriptionModal] User selected tier: ${tierId}. Bypassing animation and backend for this test.`);
 
-        if (cardElement && typeof anime === 'function') {
-            anime.remove(cardElement);
-
-            const computedStyle = getComputedStyle(document.documentElement);
-            const primaryColorValue = computedStyle.getPropertyValue('--primary').trim();
-            const accentColorValue = computedStyle.getPropertyValue('--accent').trim();
-            const borderColorValue = computedStyle.getPropertyValue('--border').trim();
-
-            console.log("Computed Colors:", { primaryColorValue, accentColorValue, borderColorValue });
-
-            const safePrimaryColor = formatHslForAnimeJs(primaryColorValue, 180);
-            const safeAccentColor = formatHslForAnimeJs(accentColorValue, 15);
-            const safeBorderColor = formatHslForAnimeJs(borderColorValue, 220);
-            
-            const currentTierDetails = TIER_DATA.find(t => t.id === tierId);
-            const initialBorderColor = currentTierDetails
-                ? currentTierDetails.isCurrent
-                    ? safePrimaryColor
-                    : currentTierDetails.isPopular
-                        ? safeAccentColor
-                        : safeBorderColor
-                : safeBorderColor;
-
-            anime({
-                targets: cardElement,
-                scale: [
-                    { value: 1, duration: 0 },
-                    { value: 1.03, duration: 150, easing: 'easeOutQuad' },
-                    { value: 1, duration: 200, easing: 'easeInQuad' }
-                ],
-                borderColor: [
-                    { value: safePrimaryColor, duration: 150, easing: 'easeOutQuad' },
-                    { value: initialBorderColor, duration: 200, easing: 'easeInQuad', delay: 50 }
-                ],
-                boxShadow: [
-                     { value: `0 0 12px ${safePrimaryColor}`, duration: 150, easing: 'easeOutQuad'}, // Slightly larger glow
-                     { value: '0 0 0px transparent', duration: 200, easing: 'easeInQuad', delay: 50}
-                ],
-                easing: 'linear',
-                complete: async () => {
-                    if (cardElement) {
-                        cardElement.style.borderColor = '';
-                        cardElement.style.boxShadow = '';
-                        cardElement.style.transform = '';
-                    }
-                    // Logic for onSelectTier is commented out for animation-only testing
-                    console.log(`Animation complete for tier: ${tierId}. Backend logic skipped for testing.`);
-                    // await onSelectTier(tierId);
-                    setIsLoading(false);
-                    setAnimatingTierId(null);
-                    // onClose(); // Keep modal open for repeated testing
-                }
+        // Directly call onSelectTier and let AppLayout handle toast & close
+        try {
+            await onSelectTier(tierId); // This will be handled in AppLayout
+        } catch (error) {
+            // Error handling for onSelectTier (e.g., if AppLayout's version throws)
+            console.error("Error in onSelectTier callback:", error);
+            toast({
+                title: "Selection Error",
+                description: "Could not process your tier selection.",
+                variant: "destructive",
             });
-        } else {
-            console.warn("Anime.js or card element not available, selecting tier without animation.");
-            // await onSelectTier(tierId); // Logic remains commented out
-            console.log(`Tier ${tierId} selected (No animation element). Backend logic skipped for testing.`);
-            await new Promise(resolve => setTimeout(resolve, 500));
+        } finally {
             setIsLoading(false);
-            setAnimatingTierId(null);
+            // setAnimatingTierId(null);
         }
     };
 
@@ -202,10 +129,17 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         <DialogDescription className="text-center text-muted-foreground">
                             Unlock features and support Shinra-Ani. All tiers are currently free during beta!
                         </DialogDescription>
+                         {/* Explicit Close Button in Header */}
+                        <DialogClose asChild>
+                            <Button variant="ghost" size="icon" className="absolute top-3 right-3 text-muted-foreground hover:text-foreground">
+                                <XCircle className="h-5 w-5" />
+                                <span className="sr-only">Close</span>
+                            </Button>
+                        </DialogClose>
                     </DialogHeader>
 
                     <div className="flex-grow overflow-y-auto scrollbar-thin p-6 min-h-0">
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-4 gap-4"> {/* Always 4 columns */}
                             {TIER_DATA.map((tier, index) => (
                                 <Card
                                     key={tier.id || `tier-${index}`}
@@ -214,7 +148,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                         "glass flex flex-col transition-all duration-300 transform-gpu h-full rounded-lg border",
                                         tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
                                         tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                        animatingTierId === tier.id && "ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl scale-105" // Example selected style
+                                        // Remove animatingTierId specific class for now to simplify
+                                        // animatingTierId === tier.id && "ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl scale-105"
                                     )}
                                 >
                                     <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
@@ -236,7 +171,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                             ))}
                                         </ul>
                                     </CardContent>
-                                    <DialogFooter className="p-3 sm:p-4 border-t border-border/30 mt-auto flex-shrink-0">
+                                    <div className="p-3 sm:p-4 border-t border-border/30 mt-auto flex-shrink-0"> {/* Changed DialogFooter to div */}
                                         <Button
                                             className={cn(
                                                 "w-full text-xs sm:text-sm",
@@ -244,18 +179,18 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                                     ? "bg-primary hover:bg-primary/90 text-primary-foreground"
                                                     : "bg-accent/80 hover:bg-accent text-accent-foreground fiery-glow-hover"
                                             )}
-                                            onClick={() => tier.id && handleTierSelection(tier.id as Exclude<UserProfileData['subscriptionTier'], null>, index)}
+                                            onClick={() => tier.id && handleTierSelection(tier.id as Exclude<UserProfileData['subscriptionTier'], null>)}
                                             disabled={isLoading || !isAnimeJsLoaded || tier.id === currentTier || !tier.id}
                                         >
-                                            {(isLoading && animatingTierId === tier.id) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            {(isLoading && tier.id === null /* Keep spinner logic simple if needed */) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             {tier.id === currentTier ? 'Current Tier' : tier.buttonText}
                                         </Button>
-                                    </DialogFooter>
+                                    </div>
                                 </Card>
                             ))}
                         </div>
                     </div>
-                    {/* Removed the overall DialogFooter with the single close button - Handled by X in header now */}
+                    {/* Removed the overall DialogFooter per previous request */}
                 </motion.div>
             </DialogContent>
         </Dialog>

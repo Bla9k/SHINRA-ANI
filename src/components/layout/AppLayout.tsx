@@ -9,26 +9,26 @@ import SearchPopup from '@/components/search/SearchPopup';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 import { useAnimation } from '@/context/AnimationContext';
-import BootAnimation from './BootAnimation';
-import SubscriptionModal from '@/components/subscription/SubscriptionModal';
+import BootAnimation from './BootAnimation'; // Import BootAnimation
+import SubscriptionModal, { type Tier } from '@/components/subscription/SubscriptionModal'; // Import SubscriptionModal and Tier type
 import { useAuth } from '@/hooks/useAuth';
 import { UserProfileData, updateUserSubscriptionTier } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Sparkles, Flame, Zap, Rocket, Star } from 'lucide-react'; // Added missing icons
+import { Sparkles, Flame, Zap, Rocket, Star } from 'lucide-react'; // Ensured all icons are imported
+
 
 interface AppLayoutProps {
   children: ReactNode;
 }
 
-// Raw tier data, moved here for direct use in AppLayout
-// Ensure all icons used here are imported from lucide-react
+// Moved TIER_DATA_RAW here to be accessible by handleSelectTier
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
         name: 'Spark Tier',
         slogan: 'You’re just lighting the fuse.',
-        icon: Sparkles, // Now correctly referenced
+        icon: Sparkles,
         features: [
             { text: 'Basic browsing of anime & manga', included: true },
             { text: 'Limited search results (e.g., top 10)', included: true },
@@ -38,14 +38,14 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-supported (conceptual)', included: true },
         ],
         buttonText: 'Start with Spark',
-        tierColorClass: 'text-primary', // Example color class
-        iconGlowClass: 'neon-glow-icon',  // Example glow class
+        tierColorClass: 'text-primary',
+        iconGlowClass: 'neon-glow-icon',
     },
     {
         id: 'ignition',
         name: 'Ignition Tier',
         slogan: 'First burst of power.',
-        icon: Flame, // Now correctly referenced
+        icon: Flame,
         features: [
             { text: 'All Spark features', included: true },
             { text: 'Unlimited search results', included: true },
@@ -64,8 +64,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'hellfire',
         name: 'Hellfire Tier',
-        slogan: 'Shinra-style blazing speed.', // Updated slogan
-        icon: Zap, // Now correctly referenced
+        slogan: 'Shinra-style blazing speed.',
+        icon: Zap,
         features: [
             { text: 'All Ignition features', included: true },
             { text: 'Unlimited indie reading/watching', included: true },
@@ -76,14 +76,14 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Ad-free experience (conceptual)', included: true },
         ],
         buttonText: 'Unleash Hellfire',
-        tierColorClass: 'text-accent', // Fiery accent
-        iconGlowClass: 'fiery-glow-icon', // Fiery glow
+        tierColorClass: 'text-accent',
+        iconGlowClass: 'fiery-glow-icon',
     },
     {
         id: 'burstdrive',
         name: 'Burst Drive Tier',
         slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket, // Now correctly referenced
+        icon: Rocket,
         features: [
             { text: 'All Hellfire features', included: true },
             { text: 'Exclusive profile badges & themes', included: true },
@@ -93,28 +93,10 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Increased indie upload limits', included: true },
         ],
         buttonText: 'Go Burst Drive',
-        tierColorClass: 'text-accent', // Fiery accent
-        iconGlowClass: 'fiery-glow-icon', // Fiery glow
+        tierColorClass: 'text-accent',
+        iconGlowClass: 'fiery-glow-icon',
     },
 ];
-
-interface Tier {
-    id: UserProfileData['subscriptionTier'];
-    name: string;
-    slogan: string;
-    icon: React.ElementType;
-    features: TierFeature[];
-    buttonText: string;
-    isCurrent?: boolean;
-    isPopular?: boolean;
-    tierColorClass?: string;
-    iconGlowClass?: string;
-}
-
-interface TierFeature {
-    text: string;
-    included: boolean;
-}
 
 
 export default function AppLayout({ children }: AppLayoutProps) {
@@ -133,7 +115,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const mainContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (user && userProfile && !authLoading) {
+    // Only run modal logic if auth is not loading and we have user/profile info
+    if (!authLoading && user && userProfile) {
       if (userProfile.subscriptionTier === null) {
         let appLaunchCount = 0;
         try {
@@ -141,17 +124,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
           localStorage.setItem('appLaunchCount', appLaunchCount.toString());
         } catch (error) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
+          // Fallback to showing modal on first load if localStorage fails
+          if (!localStorage.getItem('hasSeenSubModalOnce')) {
+            appLaunchCount = 1;
+            localStorage.setItem('hasSeenSubModalOnce', 'true');
+          }
         }
-        // Show modal on 1st, 6th, 11th, etc. launch (i.e., (count-1) % 5 === 0)
-        // For testing, show every 1st launch (count === 1) or every 5 thereafter.
-        // For production, (count-1) % 31 === 0 might be better.
+
         if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0)) {
           console.log(`App launch count: ${appLaunchCount}. Showing subscription modal.`);
           setShowSubscriptionModal(true);
         }
       }
     }
-  }, [user, userProfile, authLoading]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, userProfile, authLoading]); // Rerun when auth state or profile changes
 
 
   const handleAnimationComplete = useCallback(() => {
@@ -169,17 +156,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }, 100);
   }, [playAnimation]);
 
-  const handleSearchToggle = useCallback((term: string = '') => {
-    setInitialSearchTerm(term);
+  const handleSearchToggle = useCallback(() => {
+    setInitialSearchTerm(''); // Clear initial term when just toggling
     setIsSearchOpen((prev) => !prev);
-    setIsAiSearchActive(false); // Default to standard search when toggling
+    // setIsAiSearchActive(false); // Keep AI state as is or reset based on preference
     setOpenWithFilters(false);
   }, []);
 
   const handleOpenSearchWithTerm = useCallback((term: string = '') => {
     setInitialSearchTerm(term);
     setIsSearchOpen(true);
-    setIsAiSearchActive(false);
+    setIsAiSearchActive(false); // Default to standard search when opened via TopBar submit
     setOpenWithFilters(false);
   }, []);
 
@@ -189,15 +176,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setOpenWithFilters(false);
   }, []);
 
-  const handleAiToggleInAppLayout = useCallback(() => {
-    const newAiState = !isAiSearchActive;
-    setIsAiSearchActive(newAiState);
-    if (!isSearchOpen && newAiState) {
-      setIsSearchOpen(true); // Open search if AI is toggled on and search isn't open
-      setInitialSearchTerm('');
-      setOpenWithFilters(false);
-    }
-  }, [isAiSearchActive, isSearchOpen]);
+  const handleAiToggleInPopup = useCallback(() => { // Renamed to avoid confusion
+    setIsAiSearchActive(prev => !prev);
+    // If search isn't open when AI is toggled, it remains closed.
+    // If it is open, it just switches mode.
+  }, []);
+
 
   const handleOpenAiSearch = useCallback((term: string) => {
     setInitialSearchTerm(term);
@@ -219,25 +203,40 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
     if (user?.uid) {
-      try {
-        await updateUserSubscriptionTier(user.uid, tierId);
-        const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
+      // const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
+      // const tierName = selectedTierInfo?.name || 'the selected tier';
+      // console.log(`[AppLayout] Simulating tier selection for ${tierName}. Backend update skipped.`);
+
+      // **Temporarily comment out Firestore update for UI testing of toast and modal close**
+      // try {
+      //   await updateUserSubscriptionTier(user.uid, tierId);
+      //   if (fetchUserProfile) {
+      //     await fetchUserProfile(user.uid); // Refetch profile to update tier locally
+      //   }
+      // } catch (error: any) {
+      //   toast({
+      //     title: "Update Failed",
+      //     description: error.message || "Could not update your subscription tier.",
+      //     variant: "destructive",
+      //   });
+      //   return; // Don't show success toast or close modal if update fails
+      // }
+
+      const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
+      const tierName = selectedTierInfo?.name || 'the selected tier';
+
+      toast({
+        title: `Welcome to the ${tierName}!`,
+        description: "Thank you for supporting Shinra-Ani and unlocking new features!",
+        variant: "default",
+      });
+      setShowSubscriptionModal(false);
+    } else {
         toast({
-          title: `Welcome to the ${selectedTierInfo?.name || 'new tier'}!`,
-          description: "Thank you for supporting Shinra-Ani and unlocking new features!",
-          variant: "default",
+            title: "Login Required",
+            description: "Please log in to select a subscription tier.",
+            variant: "destructive",
         });
-        setShowSubscriptionModal(false);
-        if (fetchUserProfile) {
-          await fetchUserProfile(user.uid); // Refetch profile to update tier locally
-        }
-      } catch (error: any) {
-        toast({
-          title: "Update Failed",
-          description: error.message || "Could not update your subscription tier.",
-          variant: "destructive",
-        });
-      }
     }
   };
 
@@ -251,15 +250,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
             key="appContent"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
             className={cn(
               "flex flex-col min-h-screen h-screen overflow-hidden relative bg-background text-foreground",
             )}
           >
             <TopBar
-              onSearchIconClick={() => handleSearchToggle()}
-              onSearchSubmit={handleOpenSearchWithTerm}
+              onSearchIconClick={handleSearchToggle} // For mobile search icon
+              onSearchSubmit={handleOpenSearchWithTerm} // For desktop search submit
             />
             <div className="flex-1 overflow-y-auto pb-20 scrollbar-thin"> {/* Ensure pb-20 for BottomNav clearance */}
               <main className="transition-smooth">
@@ -267,16 +266,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
               </main>
             </div>
             <BottomNavigationBar
-                onSearchIconClick={handleSearchToggle}
+                onSearchIconClick={handleSearchToggle} // Search icon on bottom nav
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
-                // Nami AI toggle is now part of SearchPopup, not directly on BottomNav
             />
             <SearchPopup
               isOpen={isSearchOpen}
               onClose={handleCloseSearch}
               isAiActive={isAiSearchActive}
               initialSearchTerm={initialSearchTerm}
-              onAiToggle={handleAiToggleInAppLayout}
+              onAiToggle={handleAiToggleInPopup} // Pass the correct handler
               openWithFilters={openWithFilters}
             />
             <SubscriptionModal
