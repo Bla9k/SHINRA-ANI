@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, History, UsersRound } from 'lucide-react'; // Added Link2, Drama, History, UsersRound
+import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, History, UsersRound, ArrowRight } from 'lucide-react'; // Added ArrowRight
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -119,6 +119,7 @@ export default function MangaDetailPage() {
         console.error(`Error fetching manga details for ID ${id}:`, err);
         setError(err.message || 'Failed to load manga details.');
       } finally {
+         // Ensure loading states are false even if there's an early exit/error
          setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false);
       }
     }
@@ -132,8 +133,10 @@ export default function MangaDetailPage() {
          <Alert variant="destructive" className="max-w-md glass"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>
       </div>
   );
-  if (!manga) return (
-      <div className="container mx-auto px-4 py-8 text-center"><p className="text-muted-foreground">Manga not found.</p></div>
+  if (!manga) return ( // Handles case where manga is null after loading finishes (e.g. error during fetch but not caught by `error` state)
+      <div className="container mx-auto px-4 py-8 text-center flex items-center justify-center min-h-[60vh]">
+          <Alert variant="destructive" className="max-w-md glass"><AlertCircle className="h-4 w-4" /><AlertTitle>Manga Not Found</AlertTitle><AlertDescription>The requested manga could not be loaded.</AlertDescription></Alert>
+      </div>
   );
 
   // Extract alternative titles for display
@@ -142,6 +145,8 @@ export default function MangaDetailPage() {
     japanese: (manga as any).title_japanese,
     synonyms: (manga as any).title_synonyms || [],
   };
+
+  const mangaDexSearchUrl = `https://mangadex.org/search?q=${encodeURIComponent(manga.title)}`;
 
   return (
      <div className="container mx-auto px-4 py-8">
@@ -159,8 +164,11 @@ export default function MangaDetailPage() {
                            : <div className="h-full w-full bg-muted flex items-center justify-center"><BookText className="w-16 h-16 text-muted-foreground opacity-50" /></div>}
                         </Card>
                         <div className="flex flex-col gap-3 mt-4">
-                            <Button size="sm" className="w-full" disabled title="Manga reader coming soon!">
-                                <BookOpen size={16} className="mr-2 opacity-50"/> Read (Coming Soon)
+                            <Button size="sm" className="w-full neon-glow-hover" asChild>
+                                <Link href={mangaDexSearchUrl} target="_blank" rel="noopener noreferrer">
+                                    <BookOpen size={16} className="mr-2"/> Read on MangaDex
+                                    <ArrowRight size={14} className="ml-1.5" />
+                                </Link>
                             </Button>
                            {manga.url && <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={manga.url} target="_blank" rel="noopener noreferrer">View on MyAnimeList <ExternalLink size={14} className="ml-2" /></Link></Button>}
@@ -216,8 +224,8 @@ export default function MangaDetailPage() {
                  <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2"><Layers size={22}/> Chapters</h3>
                  <Card className="glass p-6 flex flex-col items-center justify-center text-center border-border/50 min-h-[150px]">
                      <BookOpen size={40} className="mb-3 text-muted-foreground opacity-50"/>
-                     <p className="font-medium text-muted-foreground">Manga Reading & Chapter Lists Coming Soon!</p>
-                     <p className="text-sm text-muted-foreground">We're working hard to bring you a seamless reading experience. For now, please check MyAnimeList or other official sources for chapter details.</p>
+                     <p className="font-medium text-muted-foreground">Chapter Lists & In-App Reading Coming Soon!</p>
+                     <p className="text-sm text-muted-foreground">We're working hard to bring you a seamless reading experience. For now, please use the "Read on MangaDex" button above or check MyAnimeList/other official sources for chapter details.</p>
                  </Card>
             </section>
 
@@ -292,4 +300,3 @@ function MangaDetailSkeleton() {
     </div>
   );
 }
-
