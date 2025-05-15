@@ -1,4 +1,3 @@
-
 // src/components/subscription/SubscriptionModal.tsx
 'use client';
 
@@ -14,7 +13,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader as TierCardHeader, CardTitle as TierCardTitleOriginal, CardDescription as TierCardDescription } from '@/components/ui/card';
-import { CheckCircle2, XCircle, Loader2, Sparkles, Flame, Zap, Rocket } from 'lucide-react'; // Ensure all icons are here
+import { CheckCircle2, XCircle, Loader2, Sparkles, Flame, Zap, Rocket } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { type UserProfileData } from '@/services/profile';
@@ -106,16 +105,19 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             return;
         }
         if (!isAnimeJsLoaded) {
-            toast({ title: "Animation Library Not Ready", description: "Please wait a moment for animations to load.", variant: "default" });
-            //setIsLoading(true);
-            // await onSelectTier(tierId); // Temporarily disabled
-            //setIsLoading(false);
-            //setAnimatingTierId(null);
+            console.warn("Anime.js not loaded, skipping animation.");
+            setIsLoading(true);
+            setAnimatingTierId(tierId);
+            // await onSelectTier(tierId); // Logic remains commented out for animation testing
+            console.log(`Tier ${tierId} selected (Anime.js not loaded). Backend logic skipped for testing.`);
+            await new Promise(resolve => setTimeout(resolve, 500));
+            setIsLoading(false);
+            setAnimatingTierId(null);
             return;
         }
 
-        setAnimatingTierId(tierId);
         setIsLoading(true);
+        setAnimatingTierId(tierId);
 
         const cardElement = cardRefs.current[cardIndex];
 
@@ -123,9 +125,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             anime.remove(cardElement);
 
             const computedStyle = getComputedStyle(document.documentElement);
-            const primaryColorValue = computedStyle.getPropertyValueValue('--primary').trim();
-            const accentColorValue = computedStyle.getPropertyValueValue('--accent').trim();
-            const borderColorValue = computedStyle.getPropertyValueValue('--border').trim();
+            const primaryColorValue = computedStyle.getPropertyValue('--primary').trim();
+            const accentColorValue = computedStyle.getPropertyValue('--accent').trim();
+            const borderColorValue = computedStyle.getPropertyValue('--border').trim();
 
             console.log("Computed Colors:", { primaryColorValue, accentColorValue, borderColorValue });
 
@@ -154,7 +156,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                     { value: initialBorderColor, duration: 200, easing: 'easeInQuad', delay: 50 }
                 ],
                 boxShadow: [
-                     { value: `0 0 8px ${safePrimaryColor}`, duration: 150, easing: 'easeOutQuad'},
+                     { value: `0 0 12px ${safePrimaryColor}`, duration: 150, easing: 'easeOutQuad'}, // Slightly larger glow
                      { value: '0 0 0px transparent', duration: 200, easing: 'easeInQuad', delay: 50}
                 ],
                 easing: 'linear',
@@ -164,21 +166,24 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         cardElement.style.boxShadow = '';
                         cardElement.style.transform = '';
                     }
-                    // Simulate completion for testing animation
+                    // Logic for onSelectTier is commented out for animation-only testing
                     console.log(`Animation complete for tier: ${tierId}. Backend logic skipped for testing.`);
+                    // await onSelectTier(tierId);
                     setIsLoading(false);
                     setAnimatingTierId(null);
-                    // onClose(); // Do not close modal for testing
-                    // await onSelectTier(tierId); // Backend logic skipped for testing
+                    // onClose(); // Keep modal open for repeated testing
                 }
             });
         } else {
             console.warn("Anime.js or card element not available, selecting tier without animation.");
-            // await onSelectTier(tierId); // Backend logic skipped for testing
+            // await onSelectTier(tierId); // Logic remains commented out
+            console.log(`Tier ${tierId} selected (No animation element). Backend logic skipped for testing.`);
+            await new Promise(resolve => setTimeout(resolve, 500));
             setIsLoading(false);
             setAnimatingTierId(null);
         }
     };
+
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isLoading) onClose(); }}>
@@ -199,7 +204,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6 min-h-0"> {/* Applied min-h-0 */}
+                    <div className="flex-grow overflow-y-auto scrollbar-thin p-6 min-h-0">
                         <div className="grid grid-cols-4 gap-4">
                             {TIER_DATA.map((tier, index) => (
                                 <Card
@@ -209,7 +214,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                         "glass flex flex-col transition-all duration-300 transform-gpu h-full rounded-lg border",
                                         tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
                                         tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                        animatingTierId === tier.id && "ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl scale-105"
+                                        animatingTierId === tier.id && "ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl scale-105" // Example selected style
                                     )}
                                 >
                                     <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
@@ -250,6 +255,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                             ))}
                         </div>
                     </div>
+                    {/* Removed the overall DialogFooter with the single close button - Handled by X in header now */}
                 </motion.div>
             </DialogContent>
         </Dialog>
@@ -257,6 +263,3 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 };
 
 export default SubscriptionModal;
-
-
-    
