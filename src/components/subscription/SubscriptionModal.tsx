@@ -1,4 +1,3 @@
-
 // src/components/subscription/SubscriptionModal.tsx
 'use client';
 
@@ -9,7 +8,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
+    DialogFooter, // Keep DialogFooter for the main close button
     DialogClose,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -17,7 +16,7 @@ import { Card, CardContent, CardHeader as TierCardHeader, CardTitle as TierCardT
 import { Sparkles, Flame, Zap, Rocket, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { updateUserSubscriptionTier, UserProfileData } from '@/services/profile';
+import { type UserProfileData } from '@/services/profile';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import anime from 'animejs';
@@ -30,7 +29,7 @@ interface TierFeature {
     included: boolean;
 }
 
-interface Tier {
+export interface Tier { // Exporting Tier for AppLayout
     id: UserProfileData['subscriptionTier'];
     name: string;
     slogan: string;
@@ -51,16 +50,22 @@ interface SubscriptionModalProps {
     TIER_DATA: Tier[];
 }
 
-// Helper to parse HSL string like "H S% L%" and return a safe HSL string "hsl(H,S%,L%)"
-const formatHslForAnimeJs = (hslString: string, fallbackHue: number = 0): string => {
-    if (!hslString || typeof hslString !== 'string') return `hsl(${fallbackHue}, 0%, 0%)`;
-    const parts = hslString.trim().split(/\s+/);
+// Helper function to parse HSL string and return a format suitable for anime.js
+const formatHslForAnimeJs = (hslStringWithSpaces: string, fallbackHue: number = 0): string => {
+    if (!hslStringWithSpaces || typeof hslStringWithSpaces !== 'string') {
+        console.warn(`[formatHslForAnimeJs] Invalid input: ${hslStringWithSpaces}, using fallback.`);
+        return `hsl(${fallbackHue}, 0%, 0%)`;
+    }
+    const parts = hslStringWithSpaces.trim().split(/\s+/);
     if (parts.length >= 3) {
         const h = parseFloat(parts[0]) || fallbackHue;
-        const s = parts[1].endsWith('%') ? parts[1] : `${parseFloat(parts[1]) || 0}%`;
-        const l = parts[2].endsWith('%') ? parts[2] : `${parseFloat(parts[2]) || 0}%`;
+        const sRaw = parts[1];
+        const lRaw = parts[2];
+        const s = sRaw.endsWith('%') ? sRaw : `${parseFloat(sRaw) || 0}%`;
+        const l = lRaw.endsWith('%') ? lRaw : `${parseFloat(lRaw) || 0}%`;
         return `hsl(${h}, ${s}, ${l})`;
     }
+    console.warn(`[formatHslForAnimeJs] Could not parse HSL string: ${hslStringWithSpaces}, using fallback.`);
     return `hsl(${fallbackHue}, 0%, 0%)`; // Fallback if parsing fails
 };
 
@@ -102,6 +107,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
         }
         if (!isAnimeJsLoaded) {
             toast({ title: "Animation Library Not Ready", description: "Please wait a moment for animations to load.", variant: "default" });
+            // Proceed without animation if anime.js is not ready, or disable selection
             setIsLoading(true);
             try {
                 await onSelectTier(tierId);
@@ -120,31 +126,27 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
         const cardElement = cardRefs.current[cardIndex];
 
         if (cardElement && typeof anime === 'function') {
-            anime.remove(cardElement);
+            anime.remove(cardElement); // Remove previous animations on the target
 
             const computedStyle = getComputedStyle(document.documentElement);
-            const primaryColorVar = computedStyle.getPropertyValue('--primary').trim();
-            const accentColorVar = computedStyle.getPropertyValue('--accent').trim();
-            const borderColorVar = computedStyle.getPropertyValue('--border').trim();
+            const primaryColorVar = computedStyle.getPropertyValue('--primary').trim() || '180 100% 50%';
+            const accentColorVar = computedStyle.getPropertyValue('--accent').trim() || '15 100% 55%';
+            const borderColorVar = computedStyle.getPropertyValue('--border').trim() || '220 15% 20%';
             
-            console.log("Raw CSS Var Colors:", { primaryColorVar, accentColorVar, borderColorVar });
-
-            const safePrimaryColor = formatHslForAnimeJs(primaryColorVar, 180); // Default to cyan-ish
-            const safeAccentColor = formatHslForAnimeJs(accentColorVar, 15);  // Default to fiery orange
-            const safeBorderColor = formatHslForAnimeJs(borderColorVar, 220); // Default to dark greyish
-
-            console.log("Safe HSL Colors for Anime.js:", { safePrimaryColor, safeAccentColor, safeBorderColor });
+            const safePrimaryColor = formatHslForAnimeJs(primaryColorVar, 180);
+            const safeAccentColor = formatHslForAnimeJs(accentColorVar, 15);
+            const safeBorderColor = formatHslForAnimeJs(borderColorVar, 220);
 
             const currentTierDetails = TIER_DATA.find(t => t.id === tierId);
-            const defaultInitialBorder = formatHslForAnimeJs(borderColorVar, 220); // Fallback for initialBorderColor
-
             const initialBorderColor = currentTierDetails
                 ? currentTierDetails.isCurrent
                     ? safePrimaryColor
                     : currentTierDetails.isPopular
                         ? safeAccentColor
                         : safeBorderColor
-                : defaultInitialBorder;
+                : safeBorderColor; // Fallback if currentTierDetails is somehow undefined
+
+            console.log("Animating card with colors:", { safePrimaryColor, initialBorderColor });
 
             anime({
                 targets: cardElement,
@@ -158,28 +160,38 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                     { value: initialBorderColor, duration: 200, easing: 'easeInQuad', delay: 50 }
                 ],
                 boxShadow: [
-                     { value: `0 0 8px ${safePrimaryColor}`, duration: 150, easing: 'easeOutQuad'}, // Simpler boxShadow
+                     { value: `0 0 12px ${safePrimaryColor}`, duration: 150, easing: 'easeOutQuad'},
                      { value: '0 0 0px transparent', duration: 200, easing: 'easeInQuad', delay: 50}
                 ],
                 easing: 'linear',
-                complete: () => {
-                    if(cardElement) {
+                complete: async () => { // Make the complete callback async
+                    if(cardElement) { // Reset styles
                         cardElement.style.borderColor = '';
                         cardElement.style.boxShadow = '';
+                        cardElement.style.transform = ''; // Reset scale
+                    }
+                    try {
+                        await onSelectTier(tierId); // Await the passed in function
+                    } catch (error) {
+                        // Error is handled by onSelectTier in AppLayout, which shows a toast
+                        console.error("Error during onSelectTier callback:", error);
+                    } finally {
+                        setIsLoading(false);
+                        setAnimatingTierId(null);
                     }
                 }
             });
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 250)); 
-
-        try {
-            await onSelectTier(tierId);
-        } catch (error: any) {
-            console.error("SubscriptionModal: Error selecting tier forwarded from AppLayout:", error);
-        } finally {
-            setIsLoading(false);
-            setAnimatingTierId(null);
+        } else {
+            // Fallback if anime.js or cardElement isn't available
+            console.warn("Anime.js or card element not available, selecting tier without animation.");
+            try {
+                await onSelectTier(tierId);
+            } catch (error) {
+                 console.error("Error during onSelectTier fallback:", error);
+            } finally {
+                setIsLoading(false);
+                setAnimatingTierId(null);
+            }
         }
     };
 
@@ -193,7 +205,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
                     transition={{ duration: 0.3 }}
-                    className="flex flex-col h-full overflow-hidden" // Added overflow-hidden
+                    className="flex flex-col h-full overflow-hidden" // Ensure this flex container manages height
                 >
                     <DialogHeader className="p-6 pb-4 border-b border-border/30 flex-shrink-0 bg-card/80 backdrop-blur-md z-10 sticky top-0">
                         <DialogTitle className="text-2xl font-bold text-accent text-center fiery-glow-text">Choose Your Power Level</DialogTitle>
@@ -202,22 +214,23 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 min-h-0">
-                        <div className="p-6">
-                            <div className="grid grid-cols-4 gap-4"> {/* Always 4 columns */}
+                    {/* This ScrollArea will contain the grid of tier cards */}
+                    <ScrollArea className="flex-1 min-h-0"> {/* flex-1 and min-h-0 are key for scrollability */}
+                        <div className="p-6"> {/* Padding for the content inside ScrollArea */}
+                            <div className="grid grid-cols-4 gap-4">
                                 {TIER_DATA.map((tier, index) => (
                                     <Card
                                         key={tier.id || `tier-${index}`}
                                         ref={el => cardRefs.current[index] = el}
                                         className={cn(
-                                            "glass flex flex-col transition-all duration-300 transform-gpu h-full rounded-lg",
+                                            "glass flex flex-col transition-all duration-300 transform-gpu h-full rounded-lg", // Ensure cards can stretch
                                             tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
-                                            tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                            animatingTierId === tier.id && "scale-105 ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl"
+                                            tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : ""
+                                            // Removed animatingTierId conditional class for simplicity, relying on anime.js
                                         )}
                                     >
                                         <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
-                                            <tier.icon className={cn("w-8 h-8 sm:w-10 sm:h-10 mb-2", tier.tierColorClass, tier.iconGlowClass)} />
+                                            <tier.icon className={cn("w-8 h-8 sm:w-10 sm:h-10 mb-2 mx-auto", tier.tierColorClass, tier.iconGlowClass)} />
                                             <TierCardTitle className={cn("text-base sm:text-lg font-semibold", tier.id === currentTier ? "text-primary" : tier.isPopular ? "text-accent" : "text-foreground")}>{tier.name}</TierCardTitle>
                                             <TierCardDescription className="text-xs text-muted-foreground h-8 line-clamp-2">{tier.slogan}</TierCardDescription>
                                         </TierCardHeader>
@@ -235,7 +248,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                                 ))}
                                             </ul>
                                         </CardContent>
-                                        <DialogFooter className="p-3 sm:p-4 border-t border-border/30 mt-auto flex-shrink-0"> {/* Footer per card */}
+                                        <DialogFooter className="p-3 sm:p-4 border-t border-border/30 mt-auto flex-shrink-0">
                                             <Button
                                                 className={cn(
                                                     "w-full text-xs sm:text-sm",
@@ -256,6 +269,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                             </div>
                         </div>
                     </ScrollArea>
+                     {/* Main Close Button for the entire dialog, if needed - usually handled by X in header */}
                 </motion.div>
             </DialogContent>
         </Dialog>
@@ -263,6 +277,3 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 };
 
 export default SubscriptionModal;
-
-
-    
