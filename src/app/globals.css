@@ -10,64 +10,64 @@ body {
 /* Refined Dark Theme (Nothing UI Inspired) */
 @layer base {
   :root {
-    /* Clean Dark Theme */
-    --background: 240 10% 2.5%; /* Even darker: #060607 */
-    --foreground: 0 0% 90%;     /* Softer white: #E6E6E6 */
+    /* Deep Space Blue Theme */
+    --background: 220 20% 5%; /* #0B0C10 - Deep Space Blue */
+    --foreground: 210 40% 90%; /* #E0E7EF - Softer white/light cyan */
 
-    --card: 240 8% 8%;       /* Darker card: #121214 */
-    --card-foreground: 0 0% 90%; /* #E6E6E6 */
+    --card: 220 15% 10%;      /* #12141A - Slightly lighter than background */
+    --card-foreground: 210 40% 88%; /* #D9E2EA */
 
-    --popover: 240 10% 4%;    /* Consistent with background or slightly lighter: #0A0A0B */
-    --popover-foreground: 0 0% 90%; /* #E6E6E6 */
+    --popover: 220 15% 8%;   /* #0E1014 - Darker for popovers */
+    --popover-foreground: 210 40% 88%; /* #D9E2EA */
 
-    --primary: 221 83% 53%; /* Electric Blue: #1D4ED8 - Keep vibrant primary */
-    --primary-foreground: 0 0% 98%; /* #FAFAFA */
+    --primary: 180 100% 50%;  /* #00FFFF - Neon Cyan */
+    --primary-foreground: 220 20% 10%; /* #1A1B26 - Darker for high contrast on cyan */
 
-    --secondary: 240 6% 12%;   /* Darker gray for secondary elements: #1C1C1E */
-    --secondary-foreground: 0 0% 80%; /* #CCCCCC */
+    --secondary: 270 60% 70%; /* #9B59B6 - Neon Purple (can be used for secondary actions or text) */
+    --secondary-foreground: 210 40% 95%; /* #F0F5FA - Very light for purple bg */
 
-    --muted: 240 5% 20%;      /* Muted elements: #2E2E33 */
-    --muted-foreground: 240 5% 55%; /* Lighter muted text: #85858C */
+    --muted: 220 10% 15%;     /* #1F2129 - Muted elements */
+    --muted-foreground: 220 10% 55%; /* #828799 - Muted text */
 
-    --accent: 221 83% 60%;   /* Slightly brighter accent: #3B82F6 */
-    --accent-foreground: 0 0% 98%; /* #FAFAFA */
+    --accent: 100 100% 49%;    /* #7CFC00 - Electric Green (for call to actions, highlights) */
+    --accent-foreground: 220 20% 10%; /* #1A1B26 - Dark for green bg */
 
-    --destructive: 0 62.8% 40%; /* Darker, less saturated red: #A32121 */
+    --destructive: 0 70% 55%;   /* #E5484D - Vibrant but clear red */
     --destructive-foreground: 0 0% 98%; /* #FAFAFA */
 
-    --border: 240 4% 15%;     /* Subtle border: #242426 */
-    --input: 240 4% 10%;      /* Darker input: #171719 */
-    --ring: 221 83% 55%;     /* Ring color matching primary/accent: #2563EB */
+    --border: 180 50% 30%;     /* #269999 - Cyan-based border, less prominent */
+    --input: 220 15% 12%;      /* #17191F - Dark input background */
+    --ring: 180 100% 60%;      /* #33FFFF - Brighter cyan for rings */
 
-    --chart-1: 221 83% 53%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-    --radius: 0.5rem; /* Keep consistent radius */
+    --chart-1: 180 100% 50%; /* Neon Cyan */
+    --chart-2: 270 60% 70%; /* Neon Purple */
+    --chart-3: 100 100% 49%; /* Electric Green */
+    --chart-4: 43 74% 66%;  /* Gold/Yellowish */
+    --chart-5: 27 87% 67%;  /* Orangeish */
+    --radius: 0.5rem;
   }
 
   .dark {
-    /* Ensure dark theme variables are applied, this re-application is mostly for explicit clarity */
-    --background: 240 10% 2.5%;
-    --foreground: 0 0% 90%;
-    --card: 240 8% 8%;
-    --card-foreground: 0 0% 90%;
-    --popover: 240 10% 4%;
-    --popover-foreground: 0 0% 90%;
-    --primary: 221 83% 53%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 6% 12%;
-    --secondary-foreground: 0 0% 80%;
-    --muted: 240 5% 20%;
-    --muted-foreground: 240 5% 55%;
-    --accent: 221 83% 60%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 40%;
+    /* Apply the same variables for .dark to ensure consistency if theme toggling is added later */
+    --background: 220 20% 5%;
+    --foreground: 210 40% 90%;
+    --card: 220 15% 10%;
+    --card-foreground: 210 40% 88%;
+    --popover: 220 15% 8%;
+    --popover-foreground: 210 40% 88%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 220 20% 10%;
+    --secondary: 270 60% 70%;
+    --secondary-foreground: 210 40% 95%;
+    --muted: 220 10% 15%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 100 100% 49%;
+    --accent-foreground: 220 20% 10%;
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 4% 15%;
-    --input: 240 4% 10%;
-    --ring: 221 83% 55%;
+    --border: 180 50% 30%;
+    --input: 220 15% 12%;
+    --ring: 180 100% 60%;
   }
 }
 
@@ -86,14 +86,14 @@ body {
 
   /* Enhanced Glassmorphism - Base */
   .glass {
-    @apply bg-card/70 backdrop-blur-md border border-border/30 shadow-lg transition-all duration-300 rounded-lg;
-    /* Softer shadow, slightly more blur */
+    @apply bg-card/60 backdrop-blur-sm border border-border/20 shadow-lg transition-all duration-300 rounded-lg;
+    /* Slightly less blur, more subtle border */
   }
 
   /* Deeper/more opaque glassmorphism for prominent UI elements */
   .glass-deep {
-    @apply bg-card/85 backdrop-blur-lg border border-border/50 shadow-xl transition-all duration-300 rounded-lg;
-    /* More pronounced shadow, stronger blur */
+    @apply bg-card/75 backdrop-blur-md border border-border/40 shadow-xl transition-all duration-300 rounded-lg;
+    /* More pronounced shadow, stronger blur, more opaque */
   }
 
    .transition-smooth {
@@ -102,110 +102,124 @@ body {
 
    /* Active Nav Item styling (for BottomNavigationBar) */
     .active-nav-item {
-       color: hsl(var(--primary));
-       /* Optional: Add a subtle bottom border or icon glow for active state */
+       color: hsl(var(--primary)); /* Neon Cyan */
     }
     .active-nav-item svg {
-        filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7));
+        filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.8)) drop-shadow(0 0 8px hsl(var(--primary) / 0.5));
     }
     .nav-item-base:hover {
-       @apply bg-transparent; /* Ensure no background on hover for bottom nav */
+       @apply bg-transparent;
     }
     .nav-item-base.text-muted-foreground:hover {
-        color: hsl(var(--primary));
+        color: hsl(var(--primary)); /* Neon Cyan on hover for inactive items */
     }
 }
 
 /* Custom Scrollbar Styling - Refined */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--primary) / 0.4) hsl(var(--background) / 0.2); /* Primary accent, subtle track */
+  scrollbar-color: hsl(var(--accent) / 0.4) hsl(var(--background) / 0.2); /* Electric Green scrollbar */
 }
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: hsl(var(--background) / 0.1); /* Very subtle track */
+  background: hsl(var(--background) / 0.1);
   border-radius: 3px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--primary) / 0.5);
+  background-color: hsl(var(--accent) / 0.6); /* Electric Green thumb */
   border-radius: 3px;
   border: 1px solid transparent;
   background-clip: content-box;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background-color: hsl(var(--primary) / 0.7);
+  background-color: hsl(var(--accent) / 0.8);
 }
 
 /* Text Shadow for better readability on image backgrounds */
 .shadow-text {
-  text-shadow: 0px 1px 4px hsl(var(--background) / 0.7); /* Softer, more modern shadow */
+  text-shadow: 0px 1px 5px hsl(var(--background) / 0.8); /* Stronger shadow for dark bg */
 }
 
 /* Animation Utilities - Refined */
 @layer utilities {
     .animate-fade-in {
         opacity: 0;
-        animation: fadeIn 0.4s ease-out forwards; /* Slightly faster */
+        animation: fadeIn 0.5s ease-out forwards;
     }
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(6px); } /* Slightly more movement */
+        from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
     .animate-pulse-subtle {
-        animation: pulse-subtle 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        animation: pulse-subtle 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
      @keyframes pulse-subtle {
         0%, 100% { opacity: 1; }
-        50% { opacity: 0.6; } /* More noticeable pulse */
+        50% { opacity: 0.7; }
     }
 
-    .animate-pulse { /* Standard pulse for loading skeletons */
+    .animate-pulse {
       animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50% { opacity: 0.4; } /* Darker pulse for better contrast */
+      50% { opacity: 0.5; }
     }
 
-    /* Neon Glow Effects - Subtle and refined */
-    .neon-glow { /* For elements that should always glow lightly */
-      box-shadow: 0 0 6px hsl(var(--primary) / 0.5),
-                  0 0 12px hsl(var(--primary) / 0.3);
-      border-color: hsl(var(--primary) / 0.5);
+    /* Neon Glow Effects - Using Cyan as primary glow, Green for active/accent states */
+    .neon-glow {
+      box-shadow: 0 0 5px hsl(var(--primary) / 0.4), /* Cyan glow */
+                  0 0 10px hsl(var(--primary) / 0.2);
+      border-color: hsl(var(--primary) / 0.4);
     }
     .neon-glow-hover:hover {
-      box-shadow: 0 0 8px hsl(var(--primary) / 0.7),
-                  0 0 16px hsl(var(--primary) / 0.4);
-      /* border-color: hsl(var(--primary) / 0.7); */ /* Border can be optional on hover for cleaner look */
+      box-shadow: 0 0 7px hsl(var(--primary) / 0.6), /* Brighter Cyan glow */
+                  0 0 14px hsl(var(--primary) / 0.3);
     }
-    .neon-glow-focus:focus-visible { /* For input focus */
-      box-shadow: 0 0 7px hsl(var(--primary) / 0.6),
-                  0 0 14px hsl(var(--primary) / 0.4);
-      border-color: hsl(var(--primary) / 0.6) !important;
-      outline: 2px solid transparent; /* Custom outline instead of default */
+    .neon-glow-focus:focus-visible {
+      box-shadow: 0 0 7px hsl(var(--ring) / 0.7), /* Ring color (brighter cyan) */
+                  0 0 14px hsl(var(--ring) / 0.5);
+      border-color: hsl(var(--ring) / 0.7) !important;
+      outline: 2px solid transparent;
       outline-offset: 2px;
     }
-    .neon-glow-icon svg { /* For glowing icons like active AI toggle */
-       filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.8)) drop-shadow(0 0 6px hsl(var(--primary) / 0.6));
+     /* Specific glow for Accent-colored elements like "Join" button or popular tier */
+    .neon-glow-accent {
+      box-shadow: 0 0 5px hsl(var(--accent) / 0.5), /* Electric Green glow */
+                  0 0 10px hsl(var(--accent) / 0.3);
+      border-color: hsl(var(--accent) / 0.5);
+    }
+    .neon-glow-accent-hover:hover {
+       box-shadow: 0 0 8px hsl(var(--accent) / 0.7),
+                   0 0 16px hsl(var(--accent) / 0.4);
     }
 
-    /* Active tab states for Tabs component */
+    .neon-glow-icon svg { /* For active AI toggle, etc. Uses Primary (Cyan) */
+       filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7)) drop-shadow(0 0 6px hsl(var(--primary) / 0.5));
+    }
+
     .data-\[state\=active\]\:.neon-glow-tab[data-state="active"] {
         box-shadow: 0 0 5px hsl(var(--primary) / 0.6),
                     0 0 10px hsl(var(--primary) / 0.4);
         color: hsl(var(--primary));
-        background-color: hsl(var(--card)) !important; /* Ensure tab background fits theme */
+        background-color: hsl(var(--card)) !important;
     }
 
-    /* Shadow for elements elevated above the UI, like TopBar or BottomNav */
-    .shadow-top-md { /* For BottomNavigationBar */
-      box-shadow: 0 -3px 10px -1px hsl(var(--background) / 0.2), 0 -2px 8px -2px hsl(var(--background) / 0.15);
+    .shadow-top-md {
+      box-shadow: 0 -3px 12px -1px hsl(var(--background) / 0.3), 0 -2px 8px -2px hsl(var(--background) / 0.25);
     }
-    .shadow-bottom-md { /* For TopBar if it were visible on desktop */
-       box-shadow: 0 3px 10px -1px hsl(var(--background) / 0.2), 0 2px 8px -2px hsl(var(--background) / 0.15);
+    .shadow-bottom-md {
+       box-shadow: 0 3px 12px -1px hsl(var(--background) / 0.3), 0 2px 8px -2px hsl(var(--background) / 0.25);
+    }
+
+    /* For subscription tier cards */
+    .tier-card-hover:hover {
+        transform: translateY(-4px) scale(1.02);
+        box-shadow: 0 6px 20px hsl(var(--primary) / 0.3);
     }
 }
+
