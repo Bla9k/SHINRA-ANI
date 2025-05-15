@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle as TierCardTitle, CardDescript
 import { Sparkle, Flame, Zap, Rocket, CheckCircle2, XCircle } from 'lucide-react'; // Added Check/X icons
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { updateUserSubscriptionTier } from '@/services/profile.ts';
+import { updateUserSubscriptionTier } from '@/services/profile';
 import { cn } from '@/lib/utils';
 
 interface TierFeature {
@@ -187,7 +187,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </Card>
                     ))}
                 </div>
-                <DialogFooter className="p-4 border-t border-border/50 sticky bottom-0 bg-card/80 backdrop-blur-md z-10">
+                {/* Removed sticky bottom-0 and z-10 from DialogFooter */}
+                <DialogFooter className="p-4 border-t border-border/50 bg-card/80 backdrop-blur-md">
                      <DialogClose asChild>
                         <Button variant="ghost" onClick={onClose} className="w-full sm:w-auto">Close</Button>
                     </DialogClose>
