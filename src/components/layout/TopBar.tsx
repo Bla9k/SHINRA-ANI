@@ -4,7 +4,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Search as SearchIcon, Settings, X, Menu, LogOut } from 'lucide-react'; // Added LogOut
+import { Sparkles, Search as SearchIcon, Settings, X, Menu, LogOut, User as UserIcon } from 'lucide-react'; // User imported as UserIcon
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,7 +20,8 @@ import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnimation } from '@/context/AnimationContext';
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
 
 interface TopBarProps {
   onSearchIconClick: () => void;
@@ -53,13 +54,13 @@ const ShinraAniLogo = () => (
     <path
       d="M50 0 L65 20 L85 15 L75 40 L95 50 L75 60 L85 85 L65 80 L50 100 L35 80 L15 85 L25 60 L5 50 L25 40 L15 15 L35 20 Z"
       fill="currentColor"
-      stroke="hsl(var(--card-foreground))" // Changed from primary-foreground to card-foreground for better contrast on new bg
+      stroke="hsl(var(--card-foreground))"
       strokeWidth="2.5"
       transform="rotate(15 50 50)"
       className="group-hover:filter group-hover:drop-shadow-[0_0_3px_hsl(var(--primary))]"
     />
-    <circle cx="50" cy="50" r="12" fill="hsl(var(--background))" /> {/* Center circle with background color */}
-    <path d="M50 40 L55 50 L50 60 L45 50 Z" fill="currentColor"/> {/* Inner diamond */}
+    <circle cx="50" cy="50" r="12" fill="hsl(var(--background))" />
+    <path d="M50 40 L55 50 L50 60 L45 50 Z" fill="currentColor"/>
   </svg>
 );
 
@@ -76,11 +77,11 @@ export default function TopBar({
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const { user, signOutUser, loading: authLoading } = useAuth(); // Added authLoading
+  const { user, signOutUser, loading: authLoading } = useAuth();
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { playAnimation } = useAnimation();
-  const { toast } = useToast(); // Initialize toast
+  const { toast } = useToast();
 
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value;
@@ -171,8 +172,8 @@ export default function TopBar({
     <header
       className={cn(
         'sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b px-4 backdrop-blur-lg transition-smooth shadow-md',
-        'bg-background/80 border-border/70 glass-deep', // Enhanced glassmorphism from globals.css
-        'md:hidden', // Hide on medium screens and up for desktop view
+        'bg-background/90 border-border/70 glass-deep',
+        'md:hidden', // This class hides the TopBar on medium screens and up
         className
       )}
     >
@@ -187,7 +188,7 @@ export default function TopBar({
       </Button>
 
       {authLoading ? (
-        <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+        <Skeleton className="h-8 w-8 rounded-full" />
       ) : user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -202,7 +203,7 @@ export default function TopBar({
           <DropdownMenuContent align="end" className="glass-deep animate-fade-in w-48">
             <DropdownMenuLabel className="truncate">{user.displayName || user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><User size={14}/> Profile</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><UserIcon size={14}/> Profile</Link></DropdownMenuItem>
             <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><Settings size={14}/> Settings</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-destructive focus:text-destructive-foreground focus:bg-destructive/90">
@@ -218,4 +219,3 @@ export default function TopBar({
     </header>
   );
 }
-
