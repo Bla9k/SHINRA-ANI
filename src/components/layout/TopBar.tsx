@@ -4,7 +4,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Search as SearchIcon, Settings, X, Menu } from 'lucide-react';
+import { Sparkles, Search as SearchIcon, Settings, X, Menu, LogOut } from 'lucide-react'; // Added LogOut
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useAuth } from '@/hooks/useAuth';
 import { useAnimation } from '@/context/AnimationContext';
+import { useToast } from '@/hooks/use-toast'; // Import useToast
 
 interface TopBarProps {
   onSearchIconClick: () => void;
@@ -33,12 +34,12 @@ interface TopBarProps {
 
 const ShinraAniLogo = () => (
   <svg
-    width="32" // Increased size
+    width="32"
     height="32"
     viewBox="0 0 100 100"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
-    className="text-primary transition-transform duration-300 hover:scale-110 group-hover:rotate-[15deg]" // Added group hover rotation
+    className="text-primary transition-transform duration-300 hover:scale-110 group-hover:rotate-[15deg]"
   >
     <defs>
         <filter id="neon-glow-filter" x="-50%" y="-50%" width="200%" height="200%">
@@ -52,13 +53,13 @@ const ShinraAniLogo = () => (
     <path
       d="M50 0 L65 20 L85 15 L75 40 L95 50 L75 60 L85 85 L65 80 L50 100 L35 80 L15 85 L25 60 L5 50 L25 40 L15 15 L35 20 Z"
       fill="currentColor"
-      stroke="hsl(var(--primary-foreground))"
-      strokeWidth="2.5" // Slightly thicker for better definition
+      stroke="hsl(var(--card-foreground))" // Changed from primary-foreground to card-foreground for better contrast on new bg
+      strokeWidth="2.5"
       transform="rotate(15 50 50)"
-      className="group-hover:filter group-hover:drop-shadow-[0_0_3px_hsl(var(--primary))]" // Subtle glow on hover
+      className="group-hover:filter group-hover:drop-shadow-[0_0_3px_hsl(var(--primary))]"
     />
-    <circle cx="50" cy="50" r="12" fill="hsl(var(--background))" />
-    <path d="M50 40 L55 50 L50 60 L45 50 Z" fill="currentColor"/>
+    <circle cx="50" cy="50" r="12" fill="hsl(var(--background))" /> {/* Center circle with background color */}
+    <path d="M50 40 L55 50 L50 60 L45 50 Z" fill="currentColor"/> {/* Inner diamond */}
   </svg>
 );
 
@@ -75,10 +76,11 @@ export default function TopBar({
   const [searchTerm, setSearchTerm] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const { user, signOutUser } = useAuth();
+  const { user, signOutUser, loading: authLoading } = useAuth(); // Added authLoading
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const { playAnimation } = useAnimation();
+  const { toast } = useToast(); // Initialize toast
 
   const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const term = event.target.value;
@@ -91,9 +93,9 @@ export default function TopBar({
     const term = searchTerm.trim();
     setShowSuggestions(false);
     if (term) {
-      onSearchSubmit(term); // This will open search with standard mode
+      onSearchSubmit(term);
     } else {
-      onSearchIconClick(); // Toggle search popup if term is empty
+      onSearchIconClick();
     }
     setSearchTerm('');
     inputRef.current?.blur();
@@ -134,8 +136,9 @@ export default function TopBar({
    }, []);
 
    useEffect(() => {
-     if (suggestionsRef.current) {
-       playAnimation(suggestionsRef.current, {
+     if (suggestionsRef.current && typeof anime !== 'undefined') {
+       anime({
+         targets: suggestionsRef.current,
          opacity: showSuggestions ? [0, 1] : [1, 0],
          translateY: showSuggestions ? [-5, 0] : [0, -5],
          duration: 200,
@@ -144,20 +147,32 @@ export default function TopBar({
          complete: () => { if (!showSuggestions && suggestionsRef.current) suggestionsRef.current.style.display = 'none'; },
        });
      }
-   }, [showSuggestions, playAnimation]);
+   }, [showSuggestions]);
 
   const handleLogout = async () => {
      try {
        await signOutUser();
+       toast({
+          title: "Logged Out",
+          description: "You have been successfully logged out.",
+          variant: "default",
+       });
      } catch (error) {
        console.error("Logout failed in TopBar:", error);
+       toast({
+          title: "Logout Failed",
+          description: "Could not log you out. Please try again.",
+          variant: "destructive",
+       });
      }
    };
 
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b bg-background/80 px-4 backdrop-blur-lg glass-deep transition-smooth shadow-md md:hidden', // Hidden on md and up
+        'sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b px-4 backdrop-blur-lg transition-smooth shadow-md',
+        'bg-background/80 border-border/70 glass-deep', // Enhanced glassmorphism from globals.css
+        'md:hidden', // Hide on medium screens and up for desktop view
         className
       )}
     >
@@ -166,38 +181,41 @@ export default function TopBar({
         <span className="font-bold text-lg hidden sm:inline text-foreground group-hover:text-primary transition-colors">Shinra-Ani</span>
       </Link>
 
-      {/* Mobile Search Icon (remains) */}
       <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover" onClick={onSearchIconClick}>
         <SearchIcon className="h-5 w-5" />
         <span className="sr-only">Open Search</span>
       </Button>
 
-      {/* Profile Dropdown / Login Button (remains for mobile) */}
-      {user ? (
+      {authLoading ? (
+        <div className="h-8 w-8 rounded-full bg-muted animate-pulse"></div>
+      ) : user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover">
-              <Avatar className="h-8 w-8">
-                 <AvatarImage src={user.photoURL || undefined} alt={user.displayName || 'User'} />
+              <Avatar className="h-8 w-8 border border-primary/50">
+                 <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
                  <AvatarFallback>{(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-deep animate-fade-in">
-            <DropdownMenuLabel>{user.displayName || user.email || 'User Profile'}</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="glass-deep animate-fade-in w-48">
+            <DropdownMenuLabel className="truncate">{user.displayName || user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><Link href="/profile">Profile</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/settings">Settings</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><User size={14}/> Profile</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><Settings size={14}/> Settings</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleLogout}>Logout</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-destructive focus:text-destructive-foreground focus:bg-destructive/90">
+                <LogOut size={14}/> Logout
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       ) : (
         <Link href="/login" passHref legacyBehavior>
-           <a><Button variant="outline" className="neon-glow-hover transition-smooth text-sm h-9">Login</Button></a>
+           <a><Button variant="outline" className="neon-glow-hover transition-smooth text-sm h-9 px-3">Login</Button></a>
         </Link>
       )}
     </header>
   );
 }
+

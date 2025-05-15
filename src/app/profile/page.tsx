@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, ShieldCheck, Zap, Award, Edit2, BookOpen, ListVideo, Heart, Settings, Star, Loader2, Save, Image as ImageIcon, Camera, X, AlertCircle } from 'lucide-react';
+import { User, ShieldCheck, Zap, Award, Edit2, BookOpen, ListVideo, Heart, Settings, Star, Loader2, Save, Image as ImageIcon, Camera, X, AlertCircle, LogOut } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
@@ -18,15 +18,13 @@ import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
-import { getUserProfileDocument, updateUserProfileDocument, UserProfileData, UserListItemData, defaultUserProfileData, createUserProfileDocument } from '@/services/profile.ts'; // Import profile services with .ts extension
-import { Alert, AlertTitle, AlertDescription as AlertDescriptionUI } from "@/components/ui/alert"; // Renamed to avoid conflict
+import { useAuth } from '@/hooks/useAuth';
+import { getUserProfileDocument, updateUserProfileDocument, UserProfileData, UserListItemData, defaultUserProfileData, createUserProfileDocument } from '@/services/profile.ts';
+import { Alert, AlertTitle, AlertDescription as AlertDescriptionUI } from "@/components/ui/alert";
 
 
-// Combine fetched item details with user data
 type FetchedListItemDetails = (Anime | Manga) & UserListItemData;
 
-// --- ListItemCard (Accepts full fetched details) ---
 const ListItemCard = ({ item }: { item: FetchedListItemDetails }) => {
   if (!item || !item.mal_id) return null;
   const linkHref = `/${item.type}/${item.mal_id}`;
@@ -190,7 +188,7 @@ const UserListItemFetcher: React.FC<UserListItemData> = ({ id, type, userStatus,
 };
 
 export default function ProfilePage() {
-  const { user, loading: authLoading } = useAuth(); // Get user from AuthContext
+  const { user, loading: authLoading, signOutUser } = useAuth();
   const [userProfile, setUserProfile] = useState<UserProfileData | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [profileError, setProfileError] = useState<string | null>(null);
@@ -215,63 +213,71 @@ export default function ProfilePage() {
   const fetchAndSetUserProfile = useCallback(async (uid: string, email?: string, displayName?: string, photoURL?: string) => {
     setLoadingProfile(true);
     setProfileError(null);
-    console.log("Fetching user profile for UID:", uid);
+    console.log("[ProfilePage] Fetching user profile for UID:", uid);
     try {
       let fetchedProfile = await getUserProfileDocument(uid);
       if (fetchedProfile) {
-        console.log("Profile data fetched:", fetchedProfile);
+        console.log("[ProfilePage] Profile data fetched:", fetchedProfile);
+        setUserProfile(fetchedProfile);
+        setEditData({
+            username: fetchedProfile.username || '',
+            bio: fetchedProfile.bio || '',
+            status: fetchedProfile.status || '',
+            avatarFile: null,
+            bannerFile: null,
+            avatarPreview: fetchedProfile.avatarUrl,
+            bannerPreview: fetchedProfile.bannerUrl,
+        });
       } else {
-        console.warn("No profile document found for UID:", uid, "Creating a new one.");
-        const newProfileInitialData: Partial<UserProfileData> = {
-            email: email || '',
-            username: displayName || email?.split('@')[0] || `User${uid.substring(0,5)}`,
-            avatarUrl: photoURL || null,
+        console.warn("[ProfilePage] No profile document found for UID:", uid, "Attempting to create a new one.");
+        const newProfileInitialData = {
+            email: email || user?.email || '', // Prioritize passed email, then auth user email
+            username: displayName || user?.displayName || user?.email?.split('@')[0] || `User-${uid.substring(0,5)}`,
+            avatarUrl: photoURL || user?.photoURL || null,
         };
         fetchedProfile = await createUserProfileDocument(uid, newProfileInitialData);
         if (fetchedProfile) {
-            console.log("New profile created and fetched:", fetchedProfile);
-            setProfileError("New profile created. Please review and save any initial changes.");
-            setIsEditing(true); // Force edit mode for a new profile
+            console.log("[ProfilePage] New profile created and fetched:", fetchedProfile);
+            setUserProfile(fetchedProfile);
+            setEditData({
+                username: fetchedProfile.username || '',
+                bio: fetchedProfile.bio || '',
+                status: fetchedProfile.status || '',
+                avatarFile: null,
+                bannerFile: null,
+                avatarPreview: fetchedProfile.avatarUrl,
+                bannerPreview: fetchedProfile.bannerUrl,
+            });
+            toast({ title: "Profile Initialized", description: "Your new profile is ready! Feel free to customize it.", variant: "default" });
+            setIsEditing(true); // Enter edit mode for new profiles
         } else {
-            throw new Error("Failed to create new profile document.");
+            throw new Error("Failed to create new profile document after initial fetch returned null.");
         }
       }
-
-      setUserProfile(fetchedProfile);
-      setEditData({
-          username: fetchedProfile.username || '',
-          bio: fetchedProfile.bio || '',
-          status: fetchedProfile.status || '',
-          avatarFile: null,
-          bannerFile: null,
-          avatarPreview: fetchedProfile.avatarUrl,
-          bannerPreview: fetchedProfile.bannerUrl,
-      });
-
     } catch (error: any) {
-      console.error("Failed to fetch or create user profile:", error);
+      console.error("[ProfilePage] Failed to fetch or create user profile:", error);
       setProfileError(error.message || "Could not load or initialize profile. Please try again later.");
-      toast({ title: "Profile Error", description: "Failed to load or initialize profile.", variant: "destructive" });
+      toast({ title: "Profile Error", description: error.message || "Failed to load or initialize profile.", variant: "destructive" });
+      setUserProfile(null); // Ensure profile is null on error
     } finally {
       setLoadingProfile(false);
     }
-  }, [toast]); // Removed `user` from dependencies as it might cause loop with createUserProfileDocument
+  }, [toast, user]); // Added user to dependency array for initialData in createUserProfileDocument
 
   useEffect(() => {
-    if (user && !authLoading && !userProfile) { // Fetch only if user exists, auth not loading, and profile not yet loaded
+    if (user && !authLoading && !userProfile && !profileError) {
       fetchAndSetUserProfile(user.uid, user.email ?? undefined, user.displayName ?? undefined, user.photoURL ?? undefined);
-    } else if (!authLoading && !user) {
+    } else if (!user && !authLoading) {
       setLoadingProfile(false);
-      setProfileError("Please log in to view your profile.");
+      // No error set here, as it might be a logged-out state, handled by UI check below.
       setUserProfile(null);
       setIsEditing(false);
     }
-    // This effect should run when user or authLoading changes, to initiate fetch or clear profile.
-  }, [user, authLoading, fetchAndSetUserProfile, userProfile]);
+  }, [user, authLoading, userProfile, profileError, fetchAndSetUserProfile]);
 
 
   const handleEditToggle = () => {
-      if (isEditing && userProfile) { // Reset editData to current profile if cancelling edit
+      if (isEditing && userProfile) {
           setEditData({
              username: userProfile.username || '', bio: userProfile.bio || '', status: userProfile.status || '',
              avatarFile: null, bannerFile: null,
@@ -300,29 +306,29 @@ export default function ProfilePage() {
  };
 
  const handleSaveChanges = async () => {
-     if (!user || !userProfile) {
-         toast({ title: "Error", description: "User not logged in or profile data missing.", variant: "destructive" });
+     if (!user) { // userProfile might be null if it's being created, so check user from auth
+         toast({ title: "Error", description: "User not logged in.", variant: "destructive" });
          return;
      }
-     setLoadingProfile(true); // Use loadingProfile to indicate save operation
-     console.log("Saving profile changes for UID:", user.uid, "Data:", editData);
+     setLoadingProfile(true);
+     console.log("[ProfilePage] Saving profile changes for UID:", user.uid, "Data:", editData);
 
      try {
-         let newAvatarUrl = userProfile.avatarUrl; // Keep existing if no new file
+         // Simulate file upload if files are present
+         let newAvatarUrl = userProfile?.avatarUrl || editData.avatarPreview;
          if (editData.avatarFile) {
-             // TODO: Implement actual file upload to Firebase Storage
-             // newAvatarUrl = await uploadFileToStorage(editData.avatarFile, `avatars/${user.uid}`);
-             await new Promise(resolve => setTimeout(resolve, 500)); // Simulate
+             // TODO: Replace with actual Firebase Storage upload
+             await new Promise(resolve => setTimeout(resolve, 500));
              newAvatarUrl = editData.avatarPreview; // Use preview for simulation
-             console.log("Simulated avatar upload complete.");
+             console.log("[ProfilePage] Simulated avatar upload complete.");
          }
 
-         let newBannerUrl = userProfile.bannerUrl; // Keep existing if no new file
+         let newBannerUrl = userProfile?.bannerUrl || editData.bannerPreview;
          if (editData.bannerFile) {
-             // newBannerUrl = await uploadFileToStorage(editData.bannerFile, `banners/${user.uid}`);
-             await new Promise(resolve => setTimeout(resolve, 500)); // Simulate
+             // TODO: Replace with actual Firebase Storage upload
+             await new Promise(resolve => setTimeout(resolve, 500));
              newBannerUrl = editData.bannerPreview; // Use preview for simulation
-             console.log("Simulated banner upload complete.");
+             console.log("[ProfilePage] Simulated banner upload complete.");
          }
 
          const updatedProfileData: Partial<UserProfileData> = {
@@ -331,29 +337,29 @@ export default function ProfilePage() {
              status: editData.status,
              avatarUrl: newAvatarUrl,
              bannerUrl: newBannerUrl,
-             // updatedAt will be handled by service
          };
 
          await updateUserProfileDocument(user.uid, updatedProfileData);
-         console.log("Firestore profile update complete.");
+         console.log("[ProfilePage] Firestore profile update complete.");
 
          // Refetch profile to get server-generated timestamps and ensure consistency
-         await fetchAndSetUserProfile(user.uid);
+         await fetchAndSetUserProfile(user.uid, user.email ?? undefined, user.displayName ?? undefined, user.photoURL ?? undefined);
          setIsEditing(false);
          toast({ title: "Profile Updated", description: "Your profile has been successfully updated.", variant: "default" });
      } catch (error: any) {
-         console.error("Failed to save profile changes:", error);
+         console.error("[ProfilePage] Failed to save profile changes:", error);
          toast({ title: "Save Error", description: error.message || "Could not save profile changes.", variant: "destructive" });
      } finally {
          setLoadingProfile(false);
      }
  };
 
- const handleCreateNewProfile = async () => {
+ const handleManualProfileInitialization = async () => {
     if (!user) {
-        toast({ title: "Error", description: "You must be logged in to create a profile.", variant: "destructive" });
+        toast({ title: "Error", description: "You must be logged in to initialize a profile.", variant: "destructive" });
         return;
     }
+    // This will re-trigger the fetch/create logic
     await fetchAndSetUserProfile(user.uid, user.email ?? undefined, user.displayName ?? undefined, user.photoURL ?? undefined);
  };
 
@@ -375,9 +381,10 @@ export default function ProfilePage() {
     );
   };
 
-  if (authLoading || (loadingProfile && !userProfile && !profileError)) {
+  if (authLoading || (loadingProfile && !user && !profileError)) { // Show loader if auth is loading OR profile is loading & no user yet
     return (
       <div className="container mx-auto px-4 py-8 animate-pulse">
+        {/* Full page skeleton */}
         <Card className="mb-8 glass overflow-hidden border-primary/20 shadow-lg">
            <Skeleton className="h-36 md:h-48 w-full"/>
             <CardContent className="p-4 md:p-6 pt-10 md:pt-12">
@@ -406,34 +413,61 @@ export default function ProfilePage() {
     );
   }
 
-  if (profileError && !userProfile) { // Error and no profile to display
+  if (!user && !authLoading) { // User explicitly not logged in, auth check complete
     return (
       <div className="container mx-auto px-4 py-8 text-center flex flex-col items-center justify-center min-h-[70vh]">
-        <Alert variant="destructive" className="max-w-md glass">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Profile Error</AlertTitle>
-            <AlertDescriptionUI>{profileError}</AlertDescriptionUI>
-        </Alert>
-        {!user && <Link href="/login" className="mt-4"><Button variant="outline">Go to Login</Button></Link>}
-        {user && (
-             <Button onClick={handleCreateNewProfile} variant="outline" className="mt-4" disabled={loadingProfile}>
-                 {loadingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
-                 Initialize My Profile
-             </Button>
-        )}
+        <User size={48} className="text-muted-foreground mb-4"/>
+        <h2 className="text-2xl font-semibold mb-2">Profile Page</h2>
+        <p className="text-muted-foreground mb-6">Please log in to view and manage your profile.</p>
+        <Link href="/login">
+            <Button variant="default" className="neon-glow-hover">Go to Login</Button>
+        </Link>
       </div>
     );
   }
 
-  if (!userProfile) { // Should be caught by above, but as a fallback
+  if (profileError && !userProfile && !loadingProfile) { // Error and no profile to display, auth check complete
+    return (
+      <div className="container mx-auto px-4 py-8 text-center flex flex-col items-center justify-center min-h-[70vh]">
+        <Alert variant="destructive" className="max-w-md glass mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Profile Error</AlertTitle>
+            <AlertDescriptionUI>{profileError}</AlertDescriptionUI>
+        </Alert>
+        {user && ( // Only show if user is logged in but profile fetch/create failed
+             <Button onClick={handleManualProfileInitialization} variant="outline" className="neon-glow-hover" disabled={loadingProfile}>
+                 {loadingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : null}
+                 Retry / Initialize Profile
+             </Button>
+        )}
+         <Button variant="link" onClick={signOutUser} className="mt-4 text-sm">Log Out</Button>
+      </div>
+    );
+  }
+
+  if (!userProfile && !loadingProfile && user) { // User is logged in, profile loading finished, but profile is still null (should trigger creation)
       return (
-        <div className="container mx-auto px-4 py-8 text-center">
-            <p>Loading profile or user not logged in...</p>
-             {!user && !authLoading && <Link href="/login" className="mt-4"><Button variant="outline">Go to Login</Button></Link>}
+        <div className="container mx-auto px-4 py-8 text-center flex flex-col items-center justify-center min-h-[70vh]">
+           <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
+           <p className="text-muted-foreground">Initializing your profile...</p>
+           <p className="text-xs text-muted-foreground mt-2">If this takes too long, please try refreshing or logging out and back in.</p>
+           <Button variant="link" onClick={signOutUser} className="mt-4 text-sm">Log Out & Retry</Button>
         </div>
       );
   }
 
+  if (!userProfile) { // Final fallback if profile is still null after all checks
+      return (
+        <div className="container mx-auto px-4 py-8 text-center flex flex-col items-center justify-center min-h-[70vh]">
+             <Alert variant="destructive" className="max-w-md glass">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Profile Unavailable</AlertTitle>
+                <AlertDescriptionUI>We couldn't load your profile information. Please try logging out and back in.</AlertDescriptionUI>
+            </Alert>
+            <Button variant="link" onClick={signOutUser} className="mt-4 text-sm">Log Out</Button>
+        </div>
+      );
+  }
 
   const xpPercentage = userProfile.xpToNextLevel > 0 ? (userProfile.xp / userProfile.xpToNextLevel) * 100 : 0;
 
@@ -526,4 +560,4 @@ if (typeof window !== 'undefined') {
   }
 }
 
-    
+
