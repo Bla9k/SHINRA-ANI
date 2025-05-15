@@ -7,7 +7,7 @@ body {
   font-family: var(--font-poppins), sans-serif;
 }
 
-/* Refined Dark Theme (Nothing UI Inspired) */
+/* Refined Dark Theme (Nothing UI Inspired with Fire Force Accents) */
 @layer base {
   :root {
     /* Deep Space Blue Theme */
@@ -20,35 +20,36 @@ body {
     --popover: 220 15% 8%;   /* #0E1014 - Darker for popovers */
     --popover-foreground: 210 40% 88%; /* #D9E2EA */
 
-    --primary: 180 100% 50%;  /* #00FFFF - Neon Cyan */
+    --primary: 180 100% 50%;  /* #00FFFF - Neon Cyan (Kept as primary for general UI) */
     --primary-foreground: 220 20% 10%; /* #1A1B26 - Darker for high contrast on cyan */
 
-    --secondary: 270 60% 70%; /* #9B59B6 - Neon Purple (can be used for secondary actions or text) */
+    --secondary: 270 60% 70%; /* #9B59B6 - Neon Purple */
     --secondary-foreground: 210 40% 95%; /* #F0F5FA - Very light for purple bg */
 
     --muted: 220 10% 15%;     /* #1F2129 - Muted elements */
     --muted-foreground: 220 10% 55%; /* #828799 - Muted text */
 
-    --accent: 100 100% 49%;    /* #7CFC00 - Electric Green (for call to actions, highlights) */
-    --accent-foreground: 220 20% 10%; /* #1A1B26 - Dark for green bg */
+    /* ACCENT CHANGED TO FIERY ORANGE-RED for "Fire Force" theme */
+    --accent: 15 100% 55%;    /* hsl(15, 100%, 55%) - Fiery Orange-Red */
+    --accent-foreground: 0 0% 100%; /* #FFFFFF - White for good contrast on fiery accent */
 
     --destructive: 0 70% 55%;   /* #E5484D - Vibrant but clear red */
     --destructive-foreground: 0 0% 98%; /* #FAFAFA */
 
     --border: 180 50% 30%;     /* #269999 - Cyan-based border, less prominent */
     --input: 220 15% 12%;      /* #17191F - Dark input background */
-    --ring: 180 100% 60%;      /* #33FFFF - Brighter cyan for rings */
+    --ring: 15 100% 60%;       /* Brighter fiery color for rings (was primary cyan) */
 
     --chart-1: 180 100% 50%; /* Neon Cyan */
     --chart-2: 270 60% 70%; /* Neon Purple */
-    --chart-3: 100 100% 49%; /* Electric Green */
+    --chart-3: 15 100% 55%;  /* Fiery Orange-Red (New Accent) */
     --chart-4: 43 74% 66%;  /* Gold/Yellowish */
     --chart-5: 27 87% 67%;  /* Orangeish */
     --radius: 0.5rem;
   }
 
   .dark {
-    /* Apply the same variables for .dark to ensure consistency if theme toggling is added later */
+    /* Apply the same variables for .dark to ensure consistency */
     --background: 220 20% 5%;
     --foreground: 210 40% 90%;
     --card: 220 15% 10%;
@@ -61,13 +62,13 @@ body {
     --secondary-foreground: 210 40% 95%;
     --muted: 220 10% 15%;
     --muted-foreground: 220 10% 55%;
-    --accent: 100 100% 49%;
-    --accent-foreground: 220 20% 10%;
+    --accent: 15 100% 55%;
+    --accent-foreground: 0 0% 100%;
     --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 98%;
     --border: 180 50% 30%;
     --input: 220 15% 12%;
-    --ring: 180 100% 60%;
+    --ring: 15 100% 60%;
   }
 }
 
@@ -87,13 +88,11 @@ body {
   /* Enhanced Glassmorphism - Base */
   .glass {
     @apply bg-card/60 backdrop-blur-sm border border-border/20 shadow-lg transition-all duration-300 rounded-lg;
-    /* Slightly less blur, more subtle border */
   }
 
   /* Deeper/more opaque glassmorphism for prominent UI elements */
   .glass-deep {
     @apply bg-card/75 backdrop-blur-md border border-border/40 shadow-xl transition-all duration-300 rounded-lg;
-    /* More pronounced shadow, stronger blur, more opaque */
   }
 
    .transition-smooth {
@@ -118,7 +117,7 @@ body {
 /* Custom Scrollbar Styling - Refined */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--accent) / 0.4) hsl(var(--background) / 0.2); /* Electric Green scrollbar */
+  scrollbar-color: hsl(var(--accent) / 0.4) hsl(var(--background) / 0.2); /* Fiery accent scrollbar */
 }
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
@@ -129,7 +128,7 @@ body {
   border-radius: 3px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: hsl(var(--accent) / 0.6); /* Electric Green thumb */
+  background-color: hsl(var(--accent) / 0.6); /* Fiery accent thumb */
   border-radius: 3px;
   border: 1px solid transparent;
   background-clip: content-box;
@@ -140,7 +139,7 @@ body {
 
 /* Text Shadow for better readability on image backgrounds */
 .shadow-text {
-  text-shadow: 0px 1px 5px hsl(var(--background) / 0.8); /* Stronger shadow for dark bg */
+  text-shadow: 0px 1px 5px hsl(var(--background) / 0.8);
 }
 
 /* Animation Utilities - Refined */
@@ -170,37 +169,43 @@ body {
       50% { opacity: 0.5; }
     }
 
-    /* Neon Glow Effects - Using Cyan as primary glow, Green for active/accent states */
-    .neon-glow {
-      box-shadow: 0 0 5px hsl(var(--primary) / 0.4), /* Cyan glow */
+    /* Neon Glow Effects - Primary glow (Cyan), Accent glow (Fiery) */
+    .neon-glow { /* Uses primary color for general UI elements */
+      box-shadow: 0 0 5px hsl(var(--primary) / 0.4),
                   0 0 10px hsl(var(--primary) / 0.2);
       border-color: hsl(var(--primary) / 0.4);
     }
-    .neon-glow-hover:hover {
-      box-shadow: 0 0 7px hsl(var(--primary) / 0.6), /* Brighter Cyan glow */
+    .neon-glow-hover:hover { /* Uses primary color */
+      box-shadow: 0 0 7px hsl(var(--primary) / 0.6),
                   0 0 14px hsl(var(--primary) / 0.3);
     }
-    .neon-glow-focus:focus-visible {
-      box-shadow: 0 0 7px hsl(var(--ring) / 0.7), /* Ring color (brighter cyan) */
+     /* Specific glow for Accent-colored elements (now fiery) */
+    .fiery-glow {
+      box-shadow: 0 0 6px hsl(var(--accent) / 0.6), /* Fiery glow */
+                  0 0 12px hsl(var(--accent) / 0.3);
+      border-color: hsl(var(--accent) / 0.5) !important; /* Ensure border color changes */
+    }
+    .fiery-glow-hover:hover {
+       box-shadow: 0 0 9px hsl(var(--accent) / 0.8),
+                   0 0 18px hsl(var(--accent) / 0.5);
+       border-color: hsl(var(--accent) / 0.7) !important;
+    }
+
+    .neon-glow-focus:focus-visible { /* Uses ring color (fiery) */
+      box-shadow: 0 0 7px hsl(var(--ring) / 0.7),
                   0 0 14px hsl(var(--ring) / 0.5);
       border-color: hsl(var(--ring) / 0.7) !important;
       outline: 2px solid transparent;
       outline-offset: 2px;
     }
-     /* Specific glow for Accent-colored elements like "Join" button or popular tier */
-    .neon-glow-accent {
-      box-shadow: 0 0 5px hsl(var(--accent) / 0.5), /* Electric Green glow */
-                  0 0 10px hsl(var(--accent) / 0.3);
-      border-color: hsl(var(--accent) / 0.5);
-    }
-    .neon-glow-accent-hover:hover {
-       box-shadow: 0 0 8px hsl(var(--accent) / 0.7),
-                   0 0 16px hsl(var(--accent) / 0.4);
-    }
 
-    .neon-glow-icon svg { /* For active AI toggle, etc. Uses Primary (Cyan) */
+    .neon-glow-icon svg { /* For active AI toggle, etc. Uses Primary (Cyan) by default */
        filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7)) drop-shadow(0 0 6px hsl(var(--primary) / 0.5));
     }
+    .fiery-glow-icon svg { /* For icons that need fiery glow */
+       filter: drop-shadow(0 0 4px hsl(var(--accent) / 0.8)) drop-shadow(0 0 8px hsl(var(--accent) / 0.6));
+    }
+
 
     .data-\[state\=active\]\:.neon-glow-tab[data-state="active"] {
         box-shadow: 0 0 5px hsl(var(--primary) / 0.6),
@@ -208,6 +213,14 @@ body {
         color: hsl(var(--primary));
         background-color: hsl(var(--card)) !important;
     }
+    /* For active tabs that should use the fiery accent */
+    .data-\[state\=active\]\:.fiery-glow-tab[data-state="active"] {
+        box-shadow: 0 0 5px hsl(var(--accent) / 0.6),
+                    0 0 10px hsl(var(--accent) / 0.4);
+        color: hsl(var(--accent));
+        background-color: hsl(var(--card)) !important;
+    }
+
 
     .shadow-top-md {
       box-shadow: 0 -3px 12px -1px hsl(var(--background) / 0.3), 0 -2px 8px -2px hsl(var(--background) / 0.25);
@@ -219,7 +232,8 @@ body {
     /* For subscription tier cards */
     .tier-card-hover:hover {
         transform: translateY(-4px) scale(1.02);
-        box-shadow: 0 6px 20px hsl(var(--primary) / 0.3);
+        box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); /* Use fiery accent for shadow */
     }
 }
 
+    
