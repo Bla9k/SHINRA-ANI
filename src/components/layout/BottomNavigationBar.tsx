@@ -1,4 +1,3 @@
-
 // src/components/layout/BottomNavigationBar.tsx
 'use client';
 
@@ -10,7 +9,7 @@ import {
   Search as SearchIcon,
   Users,
   User as UserIcon,
-  Settings as SettingsIcon, // Renamed to avoid conflict with Settings page link
+  Settings as SettingsIcon,
   Tv,
   BookText,
   PlusCircle,
@@ -18,11 +17,11 @@ import {
   Sun,
   Moon,
   Star,
-  X,
   ChevronUp,
-  Award, // For Subscription tier
+  Award,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card'; // Added Card import
 import { cn } from '@/lib/utils';
 import {
   Tooltip,
@@ -46,25 +45,25 @@ interface NavSection {
   id: string;
   label: string;
   icon: React.ElementType;
-  subItems?: NavSubItem[]; // Sub-items are optional; Search won't have them
-  isDirectAction?: boolean; // For items like Search that trigger an action directly
-  directAction?: () => void; // The action for direct action items
+  subItems?: NavSubItem[];
+  isDirectAction?: boolean;
+  directAction?: () => void;
 }
 
 interface BottomNavigationBarProps {
   className?: string;
   onSearchIconClick: () => void;
   onOpenSubscriptionModal: () => void;
-  onOpenCreateCommunityModal: () => void;
-  handleLogout: () => void;
+  onOpenCreateCommunityModal: () => void; // New prop
+  handleLogout: () => void; // New prop
 }
 
 export default function BottomNavigationBar({
   className,
   onSearchIconClick,
   onOpenSubscriptionModal,
-  onOpenCreateCommunityModal,
-  handleLogout,
+  onOpenCreateCommunityModal, // Destructure new prop
+  handleLogout, // Destructure new prop
 }: BottomNavigationBarProps) {
   const pathname = usePathname();
   const { playAnimation } = useAnimation();
@@ -115,10 +114,11 @@ export default function BottomNavigationBar({
     {
       id: 'customize',
       label: 'Customize',
-      icon: SettingsIcon, // Using Settings icon for Customize as well
+      icon: SettingsIcon,
       subItems: [
         { label: 'Light Theme', icon: Sun, onClick: () => setTheme('light') },
         { label: 'Dark Theme', icon: Moon, onClick: () => setTheme('dark') },
+        // { label: 'Shinra Fire Theme', icon: Flame, onClick: () => setTheme('shinra-fire') }, // Example
         { label: 'Subscription', icon: Award, onClick: onOpenSubscriptionModal },
       ],
     },
@@ -134,7 +134,6 @@ export default function BottomNavigationBar({
 
     if (expandedSectionId === section.id && isPanelOpen) {
       setIsPanelOpen(false);
-      // Optional: setExpandedSectionId(null) after a delay to allow panel to animate out
       setTimeout(() => setExpandedSectionId(null), 300);
     } else {
       setExpandedSectionId(section.id);
@@ -144,10 +143,9 @@ export default function BottomNavigationBar({
 
   const closePanel = useCallback(() => {
     setIsPanelOpen(false);
-    setTimeout(() => setExpandedSectionId(null), 300); // Delay to allow animation
+    setTimeout(() => setExpandedSectionId(null), 300);
   }, []);
 
-  // Click outside to close panel
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -179,11 +177,12 @@ export default function BottomNavigationBar({
         {isPanelOpen && activeSectionDetails && activeSectionDetails.subItems && (
           <motion.div
             ref={panelRef}
-            initial={{ opacity: 0, y: 50, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: 'auto' }}
-            exit={{ opacity: 0, y: 50, height: 0 }}
+            initial={{ opacity: 0, y: "100%", height: 0 }}
+            animate={{ opacity: 1, y: 0, height: "var(--bottom-nav-panel-max-height, 16rem)" }}
+            exit={{ opacity: 0, y: "100%", height: 0 }}
             transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed bottom-16 left-0 right-0 z-20 mx-auto w-full max-w-md" // Centered and max-width
+            className="fixed bottom-16 left-0 right-0 z-20 mx-auto w-full max-w-md"
+            style={{ maxHeight: 'var(--bottom-nav-panel-max-height, 16rem)' }}
           >
             <div className="p-2"> {/* Add a small margin around the panel card */}
               <Card className="glass-deep shadow-xl border-primary/30 overflow-hidden max-h-[240px] flex flex-col"> {/* max-h and flex-col */}
@@ -192,7 +191,7 @@ export default function BottomNavigationBar({
                     {activeSectionDetails.label}
                   </h3>
                   <Button variant="ghost" size="icon" onClick={closePanel} className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                    <ChevronUp size={18} /> {/* Changed to ChevronUp for "collapse" feel */}
+                    <ChevronUp size={18} />
                     <span className="sr-only">Close Panel</span>
                   </Button>
                 </div>
@@ -206,7 +205,7 @@ export default function BottomNavigationBar({
                               <Link href={item.href} passHref legacyBehavior>
                                 <a
                                   className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-md text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                                  onClick={closePanel} // Close panel on navigation
+                                  onClick={closePanel}
                                 >
                                   <item.icon size={16} />
                                   <span>{item.label}</span>
@@ -251,14 +250,17 @@ export default function BottomNavigationBar({
         <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-1 relative">
           {navSections.map((section) => {
             const itemRef = React.createRef<HTMLButtonElement | HTMLAnchorElement>();
-            const isLinkActive = section.subItems?.some(sub => sub.href && pathname.startsWith(sub.href)) || (section.id === 'home' && (pathname === '/' || section.subItems?.some(sub => sub.href && pathname.startsWith(sub.href))));
+            // Determine if a section is active: either a direct sub-item link matches or if it's the home section on the root path.
+            const isLinkActive = section.subItems?.some(sub => sub.href && pathname === sub.href || (sub.href && sub.href !== '/' && pathname.startsWith(sub.href)))
+              || (section.id === 'home' && (pathname === '/' || section.subItems?.some(sub => sub.href && pathname.startsWith(sub.href) && sub.href !== '/')));
+
             const isSectionExpanded = expandedSectionId === section.id && isPanelOpen;
 
             const commonClasses = cn(
               'nav-item-base flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm transition-colors duration-200 ease-in-out relative z-10',
-              'hover:bg-transparent',
+              'hover:bg-transparent', // Remove hover background from main icon
               (isLinkActive && !section.isDirectAction) || isSectionExpanded
-                ? 'active-nav-item text-primary'
+                ? 'active-nav-item text-primary' // Apply active class for active links or expanded section
                 : 'text-muted-foreground hover:text-primary',
               '[&_svg]:transition-colors [&_svg]:duration-200 [&_svg]:ease-in-out',
               '[&_span]:transition-colors [&_span]:duration-200 [&_span]:ease-in-out'
