@@ -15,6 +15,7 @@ import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard'; // Us
 import type { DisplayItem } from '@/app/page'; // Import DisplayItem type from homepage
 import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils'; // Added missing import
 
 // Jikan genres for anime
 const genres = [
