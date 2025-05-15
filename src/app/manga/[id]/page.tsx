@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, type ReactElement } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -11,12 +11,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, ArrowRight } from 'lucide-react';
+import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, ArrowRight, Compass, Search } from 'lucide-react'; // Added Compass
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
 import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
+import LongPressButtonWrapper, { type AlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -143,6 +144,13 @@ export default function MangaDetailPage() {
   };
 
   const mangaDexSearchUrl = `https://mangadex.org/search?q=${encodeURIComponent(manga.title)}`;
+  const mangaReadOptions: AlternativeOption[] = [
+    { label: "Comick", href: `https://comick.io/search?q=${encodeURIComponent(manga.title)}`, icon: BookOpen },
+    { label: "MangaKakalot", href: `https://mangakakalot.com/search/story/${encodeURIComponent(manga.title.replace(/\s+/g, '_'))}`, icon: BookOpen },
+    { label: "MangaSee", href: `https://mangasee123.com/search/?name=${encodeURIComponent(manga.title)}`, icon: BookOpen },
+    { label: "MangaLife", href: `https://mangalife.org/search/?name=${encodeURIComponent(manga.title)}`, icon: BookOpen },
+    { label: "MangaReader.to", href: `https://mangareader.to/search?keyword=${encodeURIComponent(manga.title)}`, icon: BookOpen },
+  ];
 
   return (
      <div className="container mx-auto px-4 py-8">
@@ -160,12 +168,17 @@ export default function MangaDetailPage() {
                            : <div className="h-full w-full bg-muted flex items-center justify-center"><BookText className="w-16 h-16 text-muted-foreground opacity-50" /></div>}
                         </Card>
                         <div className="flex flex-col gap-3 mt-4">
-                            <Button size="sm" className="w-full neon-glow-hover" asChild>
-                                <Link href={mangaDexSearchUrl} target="_blank" rel="noopener noreferrer">
-                                    <BookOpen size={16} className="mr-2"/> Read on MangaDex
-                                    <ArrowRight size={14} className="ml-1.5" />
-                                </Link>
-                            </Button>
+                            <LongPressButtonWrapper
+                                onPrimaryAction={() => window.open(mangaDexSearchUrl, '_blank')}
+                                alternativeOptions={mangaReadOptions}
+                                buttonLabel={`Search ${manga.title} on MangaDex and other sites`}
+                            >
+                                <Button size="sm" className="w-full neon-glow-hover">
+                                  {/* Content of the button is handled by LongPressButtonWrapper children */}
+                                  <BookOpen size={16} className="mr-2"/> Read on MangaDex <Compass size={14} className="ml-1.5 opacity-70"/>
+                                </Button>
+                            </LongPressButtonWrapper>
+
                            {manga.url && <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={manga.url} target="_blank" rel="noopener noreferrer">View on MyAnimeList <ExternalLink size={14} className="ml-2" /></Link></Button>}
                         </div>

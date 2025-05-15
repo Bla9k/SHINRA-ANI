@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, type ReactElement } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound, useParams } from 'next/navigation';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search } from 'lucide-react';
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search, Layers, Library, BookOpen, Sparkles, Users, Link2, Drama, ArrowRight, Compass } from 'lucide-react'; // Added Compass for more options
 import { Separator } from '@/components/ui/separator';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,6 +21,7 @@ import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendatio
 import { useToast } from '@/hooks/use-toast';
 import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge';
 import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave';
+import LongPressButtonWrapper, { type AlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
 
 // --- Interfaces ---
 interface Episode {
@@ -255,6 +256,15 @@ export default function AnimeDetailPage() {
 
   const animePaheSearchUrl = `https://animepahe.ru/search?q=${encodeURIComponent(anime.title)}`;
 
+  const animeWatchOptions: AlternativeOption[] = [
+    { label: "Crunchyroll", href: `https://www.crunchyroll.com/search?q=${encodeURIComponent(anime.title)}`, icon: Tv },
+    { label: "HiAnime", href: `https://hianime.to/search?keyword=${encodeURIComponent(anime.title)}`, icon: Tv },
+    { label: "AniWave", href: `https://aniwave.to/filter?keyword=${encodeURIComponent(anime.title)}`, icon: Tv },
+    { label: "AnimeSuge", href: `https://animesuge.to/filter?keyword=${encodeURIComponent(anime.title)}`, icon: Tv },
+    { label: "9Anime (Google)", href: `https://www.google.com/search?q=site%3A9animetv.to+${encodeURIComponent(anime.title)}`, icon: Search },
+  ];
+
+
   return (
     <div className="container mx-auto px-4 py-8">
         <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
@@ -299,11 +309,20 @@ export default function AnimeDetailPage() {
                             >
                                 <PlayCircle size={18} className="mr-2"/> Watch Episodes
                             </Button>
-                            <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
-                                <Link href={animePaheSearchUrl} target="_blank" rel="noopener noreferrer">
-                                    <Search size={14} className="mr-2" /> Watch on AnimePahe
-                                </Link>
-                            </Button>
+
+                             <LongPressButtonWrapper
+                                onPrimaryAction={() => window.open(animePaheSearchUrl, '_blank')}
+                                alternativeOptions={animeWatchOptions}
+                                buttonLabel={`Search ${anime.title} on AnimePahe and other sites`}
+                              >
+                                <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
+                                  {/* Content of the button is handled by LongPressButtonWrapper children */}
+                                   <span>
+                                    <Search size={14} className="mr-2" /> Watch on AnimePahe <Compass size={14} className="ml-1.5 opacity-70" />
+                                   </span>
+                                </Button>
+                              </LongPressButtonWrapper>
+
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={anime.url} target="_blank" rel="noopener noreferrer">
@@ -376,7 +395,7 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-            <div ref={episodesSectionRef}>
+            <div ref={episodesSectionRef} id="episodes-section">
                 <section className="mb-12">
                     <div className="flex justify-between items-center mb-4">
                         <h3 className="text-2xl font-semibold flex items-center gap-2"><Film size={24}/> Episodes</h3>
@@ -442,7 +461,7 @@ export default function AnimeDetailPage() {
                     )}
                      {renderHorizontalSection(
                          "",
-                         () => null,
+                         () => null, // No icon needed if title is already there
                          namiRecommendations,
                          loadingNamiRecs,
                          "Nami couldn't find any recommendations based on this anime right now.",
