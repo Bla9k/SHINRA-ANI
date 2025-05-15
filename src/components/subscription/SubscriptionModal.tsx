@@ -1,4 +1,3 @@
-
 // src/components/subscription/SubscriptionModal.tsx
 'use client';
 
@@ -21,9 +20,9 @@ import { updateUserSubscriptionTier, UserProfileData } from '@/services/profile'
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
 import anime from 'animejs';
-import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
+import { ScrollArea } from '@/components/ui/scroll-area'; // Ensure ScrollArea is imported
 
-const TierCardTitle = TierCardTitleOriginal;
+const TierCardTitle = TierCardTitleOriginal; // Alias for clarity if needed
 
 interface TierFeature {
     text: string;
@@ -156,26 +155,33 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 
         const cardElement = cardRefs.current[cardIndex];
         if (cardElement && typeof anime === 'function') {
-            anime.remove(cardElement); // Remove previous animations on this target
+            anime.remove(cardElement); // Remove previous animations
             anime({
                 targets: cardElement,
                 scale: [
-                    { value: 1.05, duration: 200, easing: 'easeOutQuad' },
-                    { value: 1, duration: 300, easing: 'easeInQuad' }
+                    { value: 1, duration: 0 }, // Reset scale before animating
+                    { value: 1.05, duration: 150, easing: 'easeOutQuad' },
+                    { value: 1, duration: 250, easing: 'easeInQuad' }
                 ],
                 borderColor: [
-                    { value: 'hsl(var(--primary))', duration: 200, easing: 'easeOutQuad' },
-                    { value: tier.id === currentTier || (tier.isPopular && tier.id !== currentTier) ? 'hsl(var(--accent))' : 'hsl(var(--border))', duration: 300, easing: 'easeInQuad', delay: 100 }
+                    { value: 'hsl(var(--primary))', duration: 150, easing: 'easeOutQuad' },
+                    { value: TIER_DATA[cardIndex].id === currentTier || (TIER_DATA[cardIndex].isPopular && TIER_DATA[cardIndex].id !== currentTier) ? 'hsl(var(--accent))' : 'hsl(var(--border))', duration: 250, easing: 'easeInQuad', delay: 50 }
                 ],
                 boxShadow: [
-                    { value: '0 0 15px hsl(var(--primary) / 0.5), 0 0 30px hsl(var(--primary) / 0.3)', duration: 200, easing: 'easeOutQuad'},
-                    { value: '0 0 0px transparent', duration: 300, easing: 'easeInQuad', delay: 100}
+                    { value: '0 0 12px hsl(var(--primary) / 0.4), 0 0 24px hsl(var(--primary) / 0.25)', duration: 150, easing: 'easeOutQuad'},
+                    { value: '0 0 0px transparent', duration: 250, easing: 'easeInQuad', delay: 50}
                 ],
                 easing: 'linear',
+                complete: () => {
+                    // Reset styles if needed, though the conditional classes should handle the final state
+                    cardElement.style.borderColor = '';
+                    cardElement.style.boxShadow = '';
+                }
             });
         }
         
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait for animation to be visible
+        // Short delay for animation visibility before async operation
+        await new Promise(resolve => setTimeout(resolve, 300)); 
 
         try {
             await onSelectTier(tierId);
@@ -183,7 +189,7 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
             console.error("SubscriptionModal: Error selecting tier forwarded from AppLayout:", error);
         } finally {
             setIsLoading(false);
-            setAnimatingTierId(null);
+            setAnimatingTierId(null); // Reset animation state after operation
         }
     };
 
@@ -206,8 +212,9 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                         </DialogDescription>
                     </DialogHeader>
 
-                    <ScrollArea className="flex-1 min-h-0"> {/* ScrollArea for the tier cards section */}
-                        <div className="p-6"> {/* Padding moved to the direct child of ScrollArea */}
+                    {/* This ScrollArea should take up the flexible space */}
+                    <ScrollArea className="flex-1 min-h-0"> 
+                        <div className="p-6"> {/* Padding for the content inside ScrollArea */}
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"> 
                                 {TIER_DATA.map((tier, index) => (
                                     <Card
@@ -217,7 +224,8 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
                                             "glass flex flex-col transition-all duration-300 transform-gpu h-full", 
                                             tier.id === currentTier ? "border-2 border-primary neon-glow ring-2 ring-primary/50" : "border-border/30 hover:border-accent/70",
                                             tier.isPopular && tier.id !== currentTier ? "border-accent fiery-glow ring-1 ring-accent/70" : "",
-                                            animatingTierId === tier.id && "scale-105 ring-2 ring-primary/70 shadow-2xl"
+                                            // Conditional styling for selection animation (can be managed by anime.js too)
+                                            animatingTierId === tier.id && "scale-105 ring-2 ring-offset-2 ring-offset-background ring-primary/70 shadow-2xl" 
                                         )}
                                     >
                                         <TierCardHeader className="items-center text-center p-4 border-b border-border/30 flex-shrink-0">
@@ -273,6 +281,3 @@ const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, 
 };
 
 export default SubscriptionModal;
-
-
-    
