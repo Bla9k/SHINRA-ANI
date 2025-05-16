@@ -2,15 +2,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card'; // Added Card
-import { BookText, Layers, Library, AlertCircle, Loader2, Star, Filter, X, LayoutGrid, List, Info } from 'lucide-react'; // Added Info for future use
-import { getMangas, Manga, MangaResponse } from '@/services/manga';
+import { Card } from '@/components/ui/card';
+import { BookText, Layers, Library, AlertCircle, Loader2, Star, Filter, X, LayoutGrid, List, Info, Palette } from 'lucide-react';
+import { getMangas, Manga, MangaResponse, mapJikanDataToManga } from '@/services/manga';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
 import type { DisplayItem } from '@/app/page';
@@ -49,28 +49,13 @@ const sortOptions = [
     { value: "favorites", label: "Follows" },
 ];
 
-const ANY_VALUE = "any";
+const ANY_VALUE = "any"; // Reusing ANY_VALUE for consistency
 const DEFAULT_SORT = "popularity";
 
-const mapMangaToDisplayItem = (manga: Manga): DisplayItem | null => {
-    if (!manga || typeof manga.mal_id !== 'number') return null;
-    return {
-        ...manga,
-        id: manga.mal_id,
-        type: 'manga',
-        imageUrl: manga.images?.jpg?.large_image_url ?? manga.images?.webp?.large_image_url ?? manga.images?.jpg?.image_url ?? null,
-        description: manga.synopsis,
-        year: manga.year,
-        score: manga.score,
-        chapters: manga.chapters,
-        volumes: manga.volumes,
-        status: manga.status,
-        genres: manga.genres,
-    };
-};
 
 export default function MangaPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [mangaList, setMangaList] = useState<DisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,17 +70,23 @@ export default function MangaPage() {
   const initialStatus = searchParams.get('status') || undefined;
   const initialSort = searchParams.get('sort') || DEFAULT_SORT;
   const initialDemographic = searchParams.get('demographic') || undefined;
+  const initialMoodTag = searchParams.get('mood_tag') || ''; // Added for mood tag
 
   const [selectedGenre, setSelectedGenre] = useState<string | undefined>(initialGenre);
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(initialStatus);
   const [selectedSort, setSelectedSort] = useState<string>(initialSort);
   const [selectedDemographic, setSelectedDemographic] = useState<string | undefined>(initialDemographic);
-  const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialStatus || !!searchTerm || !!initialDemographic);
+  const [currentMoodTag, setCurrentMoodTag] = useState<string>(initialMoodTag); // State for mood tag display
+
+  const [showFilters, setShowFilters] = useState(
+      !!initialGenre || !!initialStatus || !!searchTerm || !!initialDemographic || !!initialMoodTag
+  );
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+
   const hasActiveFilters = useMemo(() => {
-    return !!selectedGenre || !!selectedStatus || !!debouncedSearchTerm || !!selectedDemographic;
-  }, [selectedGenre, selectedStatus, debouncedSearchTerm, selectedDemographic]);
+    return !!selectedGenre || !!selectedStatus || !!debouncedSearchTerm || !!selectedDemographic || !!currentMoodTag;
+  }, [selectedGenre, selectedStatus, debouncedSearchTerm, selectedDemographic, currentMoodTag]);
 
   const fetchManga = useCallback(async (page: number, filtersOrSearchChanged = false) => {
       if (page === 1 || filtersOrSearchChanged) {
@@ -108,14 +99,22 @@ export default function MangaPage() {
       try {
         const genreParam = selectedGenre === ANY_VALUE ? undefined : selectedGenre;
         const statusParam = selectedStatus === ANY_VALUE ? undefined : selectedStatus;
-        const searchParam = debouncedSearchTerm.trim() || undefined;
-
+        // Jikan doesn't directly support demographic as a top-level filter for general manga search,
+        // but we can pass it as part of the search query if the user selects one.
+        let searchParam = debouncedSearchTerm.trim() || undefined;
+        if (selectedDemographic && selectedDemographic !== ANY_VALUE) {
+            const demographicName = demographics.find(d => d.id === selectedDemographic)?.name;
+            if (demographicName) {
+                searchParam = searchParam ? `${searchParam} ${demographicName}` : demographicName;
+            }
+        }
+        
         console.log(`[MangaPage] Fetching manga page ${page} - Filters: Genre=${genreParam}, Status=${statusParam}, Sort=${selectedSort}, Search=${searchParam}`);
         const response: MangaResponse = await getMangas(
             genreParam, statusParam, searchParam, undefined, page, selectedSort
         );
         const newManga = (response.mangas || [])
-                            .map(mapMangaToDisplayItem)
+                            .map(mapJikanDataToManga) // Use the correct map function
                             .filter((item): item is DisplayItem => item !== null);
         setMangaList(prev => (page === 1 || filtersOrSearchChanged) ? newManga : [...prev, ...newManga]);
         setHasNextPage(response.hasNextPage ?? false);
@@ -128,36 +127,49 @@ export default function MangaPage() {
       } finally {
         setLoading(false); setLoadingMore(false);
       }
-  }, [selectedGenre, selectedStatus, selectedSort, debouncedSearchTerm]);
+  }, [selectedGenre, selectedStatus, selectedSort, debouncedSearchTerm, selectedDemographic]);
 
   useEffect(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (debouncedSearchTerm) params.set('q', debouncedSearchTerm); else params.delete('q');
-      if (selectedGenre && selectedGenre !== ANY_VALUE) params.set('genre', selectedGenre); else params.delete('genre');
-      if (selectedStatus && selectedStatus !== ANY_VALUE) params.set('status', selectedStatus); else params.delete('status');
-      if (selectedDemographic && selectedDemographic !== ANY_VALUE) params.set('demographic', selectedDemographic); else params.delete('demographic');
-      if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort); else params.delete('sort');
-
+      const params = new URLSearchParams();
+      if (debouncedSearchTerm) params.set('q', debouncedSearchTerm);
+      if (selectedGenre && selectedGenre !== ANY_VALUE) params.set('genre', selectedGenre);
+      if (selectedStatus && selectedStatus !== ANY_VALUE) params.set('status', selectedStatus);
+      if (selectedDemographic && selectedDemographic !== ANY_VALUE) params.set('demographic', selectedDemographic);
+      if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort);
+      if (currentMoodTag) params.set('mood_tag', currentMoodTag);
+      
       const newSearch = params.toString();
-      if (newSearch !== searchParams.toString()) {
-        window.history.replaceState(null, '', `?${newSearch}`);
-      }
+      router.replace(`/manga?${newSearch}`, { scroll: false });
+
       fetchManga(1, true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, selectedGenre, selectedStatus, selectedSort, selectedDemographic]);
+  }, [debouncedSearchTerm, selectedGenre, selectedStatus, selectedSort, selectedDemographic, currentMoodTag]); // Removed router from deps
+
+  // Effect to update currentMoodTag if it changes in URL
+  useEffect(() => {
+    setCurrentMoodTag(searchParams.get('mood_tag') || '');
+    setSearchTerm(searchParams.get('q') || '');
+    setSelectedGenre(searchParams.get('genre') || undefined);
+    setSelectedStatus(searchParams.get('status') || undefined);
+    setSelectedDemographic(searchParams.get('demographic') || undefined);
+    setSelectedSort(searchParams.get('sort') || DEFAULT_SORT);
+  }, [searchParams]);
 
 
   const loadMoreManga = () => { if (hasNextPage && !loadingMore && !loading) fetchManga(currentPage + 1, false); };
 
    const resetFiltersAndSearch = () => {
-      setSearchTerm(''); setSelectedGenre(undefined); setSelectedStatus(undefined); setSelectedDemographic(undefined); setSelectedSort(DEFAULT_SORT);
-      window.history.replaceState(null, '', window.location.pathname);
+      setSearchTerm(''); setSelectedGenre(undefined); setSelectedStatus(undefined); setSelectedDemographic(undefined); setSelectedSort(DEFAULT_SORT); setCurrentMoodTag('');
+      router.replace('/manga', { scroll: false });
   };
 
   return (
     <div className="container mx-auto px-2 sm:px-4 py-6">
       <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-3">
-           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-primary"><BookText className="w-7 h-7" />Explore Manga</h1>
+           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-primary">
+             <BookText className="w-7 h-7" />
+             {currentMoodTag ? `Manga for Mood: ${currentMoodTag}` : 'Explore Manga'}
+           </h1>
            <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Input type="search" placeholder="Search manga titles..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 glass-deep w-full sm:max-w-xs border-primary/30 focus:border-primary neon-glow-focus" aria-label="Search manga" />
                <TooltipProvider><Tooltip><TooltipTrigger asChild>
@@ -198,7 +210,7 @@ export default function MangaPage() {
                            <SelectContent className="glass">{sortOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
                     </div>
                 </div>
-                 {hasActiveFilters && <Button variant="ghost" size="sm" onClick={resetFiltersAndSearch} className="text-xs text-muted-foreground hover:text-destructive mt-4 h-auto p-1"><X size={14} className="mr-1"/> Reset Filters</Button>}
+                 {hasActiveFilters && <Button variant="ghost" size="sm" onClick={resetFiltersAndSearch} className="text-xs text-muted-foreground hover:text-destructive mt-4 h-auto p-1"><X size={14} className="mr-1"/> Reset Filters & Mood</Button>}
             </Card>
         )}
       <section>
@@ -211,7 +223,7 @@ export default function MangaPage() {
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
            {loading && mangaList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} viewMode={viewMode} />)
-             : mangaList.length > 0 ? mangaList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null )) // No onScanDna for manga cards
+             : mangaList.length > 0 ? mangaList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}-${item.title}`} item={item} viewMode={viewMode} /> : null ))
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No manga found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
              {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
          </motion.div>
@@ -225,9 +237,6 @@ export default function MangaPage() {
           {!hasNextPage && mangaList.length > 0 && !loading && !error && (<p className="text-center text-muted-foreground mt-8 py-4">You've browsed all available manga!</p>)}
       </section>
       <Footer />
-      {/* No AnimeDnaModal needed here if this page only displays manga */}
     </div>
   );
 }
-
-    

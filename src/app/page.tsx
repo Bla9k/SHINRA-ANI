@@ -5,17 +5,20 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAnimes, getMangas, Anime, Manga, mapJikanDataToAnime, mapJikanDataToManga } from '@/services';
-import { Sparkles, AlertCircle, Tv, BookText, Star, TrendingUp, Clock, CalendarDays, ArrowRight, Zap, HelpCircle, RefreshCw, Heart } from 'lucide-react';
+import { Sparkles, AlertCircle, Tv, BookText, Star, TrendingUp, Clock, CalendarDays, ArrowRight, Zap, HelpCircle, RefreshCw, Heart, Palette } from 'lucide-react'; // Added Palette for Mood
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import { ItemCard, SkeletonItemCard, BannerCard, SkeletonBannerCard } from '@/components/shared/ItemCard';
 import Footer from '@/components/layout/Footer';
 import { surpriseMeRecommendation, SurpriseMeRecommendationInput, SurpriseMeRecommendationOutput } from '@/ai/flows/surprise-me-recommendation';
-import SurpriseMeModal from '@/components/shared/SurpriseMeModal'; // Corrected import
+import SurpriseMeModal from '@/components/shared/SurpriseMeModal';
 import AnimeDnaModal from '@/components/shared/AnimeDnaModal';
+import { MOOD_FILTERS_ANIME, type Mood } from '@/config/moods'; // Import moods
+import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Define a unified type for items displayed on the homepage
-export type DisplayItem = (Anime | Manga) & {
+export type DisplayItem = (Partial<Anime> & Partial<Manga>) & {
     id: number;
     mal_id: number; // Ensure mal_id is always present
     type: 'anime' | 'manga';
@@ -43,7 +46,7 @@ export default function Home() {
     const [trendingManga, setTrendingManga] = useState<DisplayItem[]>([]);
     const [popularManga, setPopularManga] = useState<DisplayItem[]>([]);
 
-    const [surpriseContent, setSurpriseContent] = useState<SurpriseMeRecommendationOutput | null>(null);
+    const [surpriseContent, setSurpriseContent] = useState<Anime | null>(null); // Changed to Anime
     const [isSurpriseModalOpen, setIsSurpriseModalOpen] = useState(false);
     const [loadingSurprise, setLoadingSurprise] = useState(false);
 
@@ -66,8 +69,7 @@ export default function Home() {
         setLoadingStates(prev => ({ ...prev, [sectionKey]: true }));
         try {
             const response = await fetchFunction(...params);
-            // Jikan specific response structure
-            const items = (response.data || []) // Access data field from Jikan response
+            const items = (response.data || response.animes || response.mangas || [])
                 .map(mapFunction)
                 .filter((item): item is DisplayItem => item !== null);
             setData(items.slice(0, 10));
@@ -83,37 +85,36 @@ export default function Home() {
 
     const fetchInitialData = useCallback(async () => {
         setError(null);
-        const baseParams = [undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10];
-        const scoreParams = [undefined, undefined, undefined, undefined, undefined, 1, 'score', 10];
+        const baseParamsAnime = [undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10];
+        const baseParamsManga = [undefined, undefined, undefined, undefined, 1, 'popularity', 10];
+        const scoreParamsAnime = [undefined, undefined, undefined, undefined, undefined, 1, 'score', 10];
+        const scoreParamsManga = [undefined, undefined, undefined, undefined, 1, 'score', 10];
         const airingParams = [undefined, undefined, undefined, undefined, 'airing', 1, 'popularity', 10];
         const upcomingParams = [undefined, undefined, undefined, undefined, 'upcoming', 1, 'popularity', 10];
 
-        // Fetch Nami's Picks
         setLoadingStates(prev => ({ ...prev, namiPicks: true }));
         try {
             const [namiAnimeRes, namiMangaRes] = await Promise.all([
-                getAnimes(undefined, undefined, 8.5, undefined, undefined, 1, 'score', 5), // Fetch top 5 high-score anime
-                getMangas(undefined, undefined, undefined, 8.5, 1, 'score', 5)  // Fetch top 5 high-score manga
+                getAnimes(undefined, undefined, 8.5, undefined, undefined, 1, 'score', 5),
+                getMangas(undefined, undefined, undefined, 8.5, 1, 'score', 5)
             ]);
             const namiAnimeItems = (namiAnimeRes.animes || []).map(mapJikanDataToAnime).filter((i): i is DisplayItem => i !== null);
             const namiMangaItems = (namiMangaRes.mangas || []).map(mapJikanDataToManga).filter((i): i is DisplayItem => i !== null);
-
-            // Combine and shuffle for variety, then take top 6
             const combinedNamiPicks = [...namiAnimeItems, ...namiMangaItems].sort(() => 0.5 - Math.random());
             setNamiPicks(combinedNamiPicks.slice(0, 6));
         } catch (e) {
             console.error("[Home Page] Failed to fetch Nami's Picks:", e);
-            setNamiPicks([]); // Set to empty on error
+            setNamiPicks([]);
         } finally {
             setLoadingStates(prev => ({ ...prev, namiPicks: false }));
         }
 
-        // Sequential fetching for other sections to respect Jikan's rate limit
-        await fetchSectionData(getAnimes, setTrendingAnime, 'trendingAnime', mapJikanDataToAnime, baseParams);
-        await fetchSectionData(getMangas, setTrendingManga, 'trendingManga', mapJikanDataToManga, baseParams);
+        // Sequential fetching for other sections
+        await fetchSectionData(getAnimes, setTrendingAnime, 'trendingAnime', mapJikanDataToAnime, baseParamsAnime);
+        await fetchSectionData(getMangas, setTrendingManga, 'trendingManga', mapJikanDataToManga, baseParamsManga);
         await fetchSectionData(getAnimes, setAiringAnime, 'airingAnime', mapJikanDataToAnime, airingParams);
-        await fetchSectionData(getAnimes, setPopularAnime, 'popularAnime', mapJikanDataToAnime, scoreParams);
-        await fetchSectionData(getMangas, setPopularManga, 'popularManga', mapJikanDataToManga, scoreParams);
+        await fetchSectionData(getAnimes, setPopularAnime, 'popularAnime', mapJikanDataToAnime, scoreParamsAnime);
+        await fetchSectionData(getMangas, setPopularManga, 'popularManga', mapJikanDataToManga, scoreParamsManga);
         await fetchSectionData(getAnimes, setUpcomingAnime, 'upcomingAnime', mapJikanDataToAnime, upcomingParams);
 
     }, [fetchSectionData]);
@@ -127,13 +128,13 @@ export default function Home() {
         setLoadingSurprise(true);
         setSurpriseContent(null);
         try {
-            // For a simple roulette, we directly fetch a random anime or manga here
-            // For this example, let's fetch a random anime
-            const input: SurpriseMeRecommendationInput = { requestType: 'anime' };
-            const recommendation = await surpriseMeRecommendation(input);
-
-            if (recommendation && recommendation.mal_id) { // Ensure we have a valid recommendation
-                setSurpriseContent(recommendation);
+            // Directly fetch a random anime from Jikan
+            const randomPage = Math.floor(Math.random() * 10) + 1; // Fetch from first 10 pages of popular
+            const response = await getAnimes(undefined, undefined, 7.5, undefined, undefined, randomPage, 'score', 25); // score & popularity
+            if (response.animes && response.animes.length > 0) {
+                const randomIndex = Math.floor(Math.random() * response.animes.length);
+                const surpriseAnime = response.animes[randomIndex];
+                setSurpriseContent(surpriseAnime);
                 setIsSurpriseModalOpen(true);
             } else {
                 setError("Nami couldn't find a surprise right now. Try again!");
@@ -181,7 +182,7 @@ export default function Home() {
                     {isLoading && items.length === 0
                         ? Array.from({ length: itemComponent === BannerCard ? 3 : 6 }).map((_, index) => React.createElement(skeletonComponent, { key: `${title}-skel-${index}` }))
                         : items.length > 0
-                            ? items.map((item, index) => React.createElement(itemComponent, { key: `${item.type}-${item.id}-${index}`, item: item, onScanDna: item.type === 'anime' ? handleOpenDnaModal : undefined }))
+                            ? items.map((item) => ( item && item.id ? React.createElement(itemComponent, { key: `${item.type}-${item.id}-${item.title}`, item: item, onScanDna: item.type === 'anime' ? handleOpenDnaModal : undefined }) : null ))
                             : !isLoading && <p className="w-full text-center text-muted-foreground italic px-4 py-5">Nothing to show here right now.</p>}
                   </div>
                 </div>
@@ -189,11 +190,32 @@ export default function Home() {
         );
     };
 
+    const MoodCard: React.FC<{ mood: Mood }> = ({ mood }) => {
+      const queryParams = new URLSearchParams();
+      if (mood.genreIds && mood.genreIds.length > 0) {
+        queryParams.set('genre', mood.genreIds.join(','));
+      }
+      if (mood.keywords && mood.keywords.length > 0) {
+        queryParams.set('q', mood.keywords.join(' '));
+      }
+      queryParams.set('mood_tag', mood.name);
+
+      return (
+        <Link href={`/anime?${queryParams.toString()}`} className="block snap-start group">
+          <Card className="glass-deep neon-glow-hover w-48 h-28 sm:w-56 sm:h-32 flex flex-col items-center justify-center text-center p-3 transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:border-primary/50">
+            <mood.icon size={32} className="mb-2 text-primary transition-colors group-hover:text-accent" />
+            <h3 className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">{mood.name}</h3>
+            <p className="text-xs text-muted-foreground line-clamp-2">{mood.description}</p>
+          </Card>
+        </Link>
+      );
+    };
+
     return (
-        <div className="py-8 md:py-10"> {/* Increased vertical padding */}
+        <div className="py-8 md:py-10">
             {error && (
-                 <div className="px-4 md:px-6 lg:px-8 mb-8"> {/* Increased bottom margin */}
-                   <Alert variant="destructive" className="glass-deep shadow-lg"> {/* Use glass-deep */}
+                 <div className="px-4 md:px-6 lg:px-8 mb-8">
+                   <Alert variant="destructive" className="glass-deep shadow-lg">
                      <AlertCircle className="h-4 w-4" />
                      <AlertTitle>Error Loading Homepage</AlertTitle>
                      <AlertDescription>{error}</AlertDescription>
@@ -202,6 +224,22 @@ export default function Home() {
             )}
 
             {renderHorizontalSection("Nami's Picks For You", Sparkles, namiPicks, loadingStates.namiPicks, undefined, BannerCard, SkeletonBannerCard)}
+
+            <section className="mb-10 md:mb-14">
+              <div className="flex items-center justify-between mb-3 md:mb-4 px-4 md:px-6 lg:px-8">
+                <h2 className="text-xl md:text-2xl font-semibold flex items-center gap-2 text-foreground">
+                  <Palette className="text-primary w-5 h-5 md:w-6 md:h-6" /> Discover by Mood
+                </h2>
+              </div>
+              <div className="relative">
+                <div className={cn(
+                    "flex space-x-3 md:space-x-4 overflow-x-auto pb-4 scrollbar-thin",
+                    "pl-4 md:pl-6 lg:pl-8", "snap-x snap-mandatory", "pr-4 md:pr-6 lg:pr-8"
+                )}>
+                  {MOOD_FILTERS_ANIME.map(mood => <MoodCard key={mood.id} mood={mood} />)}
+                </div>
+              </div>
+            </section>
 
             <div className="text-center my-8 md:my-12 px-4">
                 <Button
@@ -212,7 +250,7 @@ export default function Home() {
                     className="neon-glow-hover glass-deep text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-xl border-primary/50 hover:border-primary hover:bg-primary/10"
                 >
                     {loadingSurprise ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <HelpCircle className="mr-2 h-5 w-5 text-primary" />}
-                    What's Next?
+                    What's Next? (Roulette)
                 </Button>
             </div>
 
@@ -226,8 +264,7 @@ export default function Home() {
             <Footer />
             {surpriseContent && (
               <SurpriseMeModal
-                // Pass the correct type for anime. Jikan's Anime type is directly usable.
-                anime={surpriseContent.type === 'anime' ? (surpriseContent as Anime) : null}
+                anime={surpriseContent} // Pass Anime type directly
                 isOpen={isSurpriseModalOpen}
                 onClose={() => setIsSurpriseModalOpen(false)}
                 onTryAnother={handleWhatNextClick}

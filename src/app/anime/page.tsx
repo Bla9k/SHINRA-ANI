@@ -2,15 +2,15 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card } from '@/components/ui/card';
-import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X, LayoutGrid, List, Info } from 'lucide-react'; // Added Info
-import { getAnimes, Anime, AnimeResponse } from '@/services/anime';
+import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X, LayoutGrid, List, Info, Palette } from 'lucide-react';
+import { getAnimes, Anime, AnimeResponse, mapJikanDataToAnime } from '@/services/anime';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
 import type { DisplayItem } from '@/app/page';
@@ -18,9 +18,8 @@ import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import AnimeDnaModal from '@/components/shared/AnimeDnaModal'; // Import DNA Modal
+import AnimeDnaModal from '@/components/shared/AnimeDnaModal';
 
-// Jikan genres for anime
 const genres = [
     { id: "1", name: "Action" }, { id: "2", name: "Adventure" }, { id: "4", name: "Comedy" },
     { id: "8", name: "Drama" }, { id: "10", name: "Fantasy" }, { id: "14", name: "Horror" },
@@ -50,25 +49,10 @@ const ANY_GENRE_VALUE = "any-genre";
 const ANY_STATUS_VALUE = "any-status";
 const DEFAULT_SORT = "popularity";
 
-const mapAnimeToDisplayItem = (anime: Anime): DisplayItem | null => {
-    if (!anime || typeof anime.mal_id !== 'number') return null;
-    return {
-        ...anime,
-        id: anime.mal_id,
-        type: 'anime',
-        imageUrl: anime.images?.jpg?.large_image_url ?? anime.images?.webp?.large_image_url ?? anime.images?.jpg?.image_url ?? null,
-        description: anime.synopsis,
-        year: anime.year,
-        score: anime.score,
-        episodes: anime.episodes,
-        status: anime.status,
-        genres: anime.genres,
-    };
-};
-
 
 export default function AnimePage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
 
   const [animeList, setAnimeList] = useState<DisplayItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,6 +60,7 @@ export default function AnimePage() {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(true);
+  
   const [searchTerm, setSearchTerm] = useState(searchParams.get('q') || '');
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
 
@@ -83,12 +68,17 @@ export default function AnimePage() {
   const initialYear = searchParams.get('year') || '';
   const initialStatus = searchParams.get('status') || undefined;
   const initialSort = searchParams.get('sort') || DEFAULT_SORT;
+  const initialMoodTag = searchParams.get('mood_tag') || '';
 
   const [selectedGenre, setSelectedGenre] = useState<string | undefined>(initialGenre);
   const [selectedYear, setSelectedYear] = useState<string>(initialYear);
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(initialStatus);
   const [selectedSort, setSelectedSort] = useState<string>(initialSort);
-  const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialYear || !!initialStatus || !!searchTerm);
+  const [currentMoodTag, setCurrentMoodTag] = useState<string>(initialMoodTag); // For display
+
+  const [showFilters, setShowFilters] = useState(
+      !!initialGenre || !!initialYear || !!initialStatus || !!searchTerm || !!initialMoodTag
+  );
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [dnaModalAnimeId, setDnaModalAnimeId] = useState<number | null>(null);
   const [isDnaModalOpen, setIsDnaModalOpen] = useState(false);
@@ -96,8 +86,8 @@ export default function AnimePage() {
   const debouncedYear = useDebounce(selectedYear, 500);
 
   const hasActiveFilters = useMemo(() => {
-    return !!selectedGenre || !!debouncedYear || !!selectedStatus || !!debouncedSearchTerm;
-  }, [selectedGenre, debouncedYear, selectedStatus, debouncedSearchTerm]);
+    return !!selectedGenre || !!debouncedYear || !!selectedStatus || !!debouncedSearchTerm || !!currentMoodTag;
+  }, [selectedGenre, debouncedYear, selectedStatus, debouncedSearchTerm, currentMoodTag]);
 
   const fetchAnime = useCallback(async (page: number, filtersOrSearchChanged = false) => {
       if (page === 1 || filtersOrSearchChanged) {
@@ -120,11 +110,11 @@ export default function AnimePage() {
           );
 
           const newAnime = (response.animes || [])
-                            .map(mapAnimeToDisplayItem)
+                            .map(mapJikanDataToAnime) // Use the correct map function
                             .filter((item): item is DisplayItem => item !== null);
 
           setAnimeList(prev => (page === 1 || filtersOrSearchChanged) ? newAnime : [...prev, ...newAnime]);
-          setHasNextPage(response.hasNextPage ?? false); // Ensure hasNextPage is boolean
+          setHasNextPage(response.hasNextPage ?? false);
           setCurrentPage(page);
       } catch (err: any) {
           console.error("[AnimePage] Failed to fetch anime:", err);
@@ -137,27 +127,39 @@ export default function AnimePage() {
   }, [selectedGenre, debouncedYear, selectedStatus, selectedSort, debouncedSearchTerm]);
 
   useEffect(() => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (debouncedSearchTerm) params.set('q', debouncedSearchTerm); else params.delete('q');
-      if (selectedGenre && selectedGenre !== ANY_GENRE_VALUE) params.set('genre', selectedGenre); else params.delete('genre');
-      if (debouncedYear) params.set('year', debouncedYear); else params.delete('year');
-      if (selectedStatus && selectedStatus !== ANY_STATUS_VALUE) params.set('status', selectedStatus); else params.delete('status');
-      if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort); else params.delete('sort');
+      const params = new URLSearchParams();
+      if (debouncedSearchTerm) params.set('q', debouncedSearchTerm);
+      if (selectedGenre && selectedGenre !== ANY_GENRE_VALUE) params.set('genre', selectedGenre);
+      if (debouncedYear) params.set('year', debouncedYear);
+      if (selectedStatus && selectedStatus !== ANY_STATUS_VALUE) params.set('status', selectedStatus);
+      if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort);
+      if (currentMoodTag) params.set('mood_tag', currentMoodTag); // Persist mood_tag in URL
       
       const newSearch = params.toString();
-      if (newSearch !== searchParams.toString()) {
-         window.history.replaceState(null, '', `?${newSearch}`);
-      }
+      // Use router.replace to update URL without adding to history stack
+      router.replace(`/anime?${newSearch}`, { scroll: false }); 
+
       fetchAnime(1, true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, selectedGenre, debouncedYear, selectedStatus, selectedSort]);
+  }, [debouncedSearchTerm, selectedGenre, debouncedYear, selectedStatus, selectedSort, currentMoodTag]); // Removed router from deps
+
+  // Effect to update currentMoodTag if it changes in URL (e.g., back button)
+  useEffect(() => {
+    setCurrentMoodTag(searchParams.get('mood_tag') || '');
+    // Also update other filters if they change in URL
+    setSearchTerm(searchParams.get('q') || '');
+    setSelectedGenre(searchParams.get('genre') || undefined);
+    setSelectedYear(searchParams.get('year') || '');
+    setSelectedStatus(searchParams.get('status') || undefined);
+    setSelectedSort(searchParams.get('sort') || DEFAULT_SORT);
+  }, [searchParams]);
 
 
   const loadMoreAnime = () => { if (hasNextPage && !loadingMore && !loading) fetchAnime(currentPage + 1, false); };
 
   const resetFiltersAndSearch = () => {
-      setSearchTerm(''); setSelectedGenre(undefined); setSelectedYear(''); setSelectedStatus(undefined); setSelectedSort(DEFAULT_SORT);
-      window.history.replaceState(null, '', window.location.pathname);
+      setSearchTerm(''); setSelectedGenre(undefined); setSelectedYear(''); setSelectedStatus(undefined); setSelectedSort(DEFAULT_SORT); setCurrentMoodTag('');
+      router.replace('/anime', { scroll: false }); // Clear URL params
   };
 
   const handleOpenDnaModal = (animeId: number) => {
@@ -173,7 +175,10 @@ export default function AnimePage() {
   return (
     <div className="container mx-auto px-2 sm:px-4 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-3">
-           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-primary"><Tv className="w-7 h-7" />Browse Anime</h1>
+           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2 text-primary">
+             <Tv className="w-7 h-7" />
+             {currentMoodTag ? `Anime for Mood: ${currentMoodTag}` : 'Browse Anime'}
+           </h1>
            <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Input type="search" placeholder="Search anime titles..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-10 glass-deep w-full sm:max-w-xs border-primary/30 focus:border-primary neon-glow-focus" aria-label="Search anime" />
                <TooltipProvider><Tooltip><TooltipTrigger asChild>
@@ -213,7 +218,7 @@ export default function AnimePage() {
                            <SelectContent className="glass">{sortOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
                     </div>
                 </div>
-                 {hasActiveFilters && <Button variant="ghost" size="sm" onClick={resetFiltersAndSearch} className="text-xs text-muted-foreground hover:text-destructive mt-4 h-auto p-1"><X size={14} className="mr-1"/> Reset Filters</Button>}
+                 {hasActiveFilters && <Button variant="ghost" size="sm" onClick={resetFiltersAndSearch} className="text-xs text-muted-foreground hover:text-destructive mt-4 h-auto p-1"><X size={14} className="mr-1"/> Reset Filters & Mood</Button>}
             </Card>
         )}
 
@@ -227,7 +232,7 @@ export default function AnimePage() {
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
            {loading && animeList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} viewMode={viewMode} />)
-             : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} onScanDna={item.type === 'anime' ? handleOpenDnaModal : undefined} /> : null ))
+             : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}-${item.title}`} item={item} viewMode={viewMode} onScanDna={item.type === 'anime' ? handleOpenDnaModal : undefined} /> : null ))
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No anime found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
              {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
          </motion.div>
@@ -249,5 +254,3 @@ export default function AnimePage() {
     </div>
   );
 }
-
-    
