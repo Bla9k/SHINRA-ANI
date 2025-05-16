@@ -58,12 +58,14 @@ const searchQueryAnalysisPrompt = ai.definePrompt({
   input: { schema: AIPoweredSearchInputSchema },
   output: {
     schema: z.object({
-        extractedSearchKeywords: z.string().optional().describe('Relevant keywords extracted from the query to use in Jikan\'s "q" parameter (e.g., "isekai op mc", "sad romance"). Keep it concise. If the query is very specific like a full title, use that as keywords.'),
+        extractedSearchKeywords: z.string().optional().describe('Relevant keywords extracted from the query to use in Jikan\'s "q" parameter. If the query is about content *featuring* a character (e.g., "anime with Gojo Satoru"), try to use the main series title (e.g., "Jujutsu Kaisen") as keywords if known; otherwise, use the character name and general terms (e.g., "Gojo anime"). For direct title searches (e.g., "Naruto Shippuden"), use the title itself.'),
         extractedGenreId: z.string().optional().describe('A SINGLE relevant MAL genre ID extracted or inferred (e.g., "10" for Fantasy, "22" for Romance). Pick the most prominent one. Reference common MAL genre IDs. If a niche genre like "isekai" (62) or "psychological" (40) is mentioned, use its ID.'),
         extractedStatus: z.string().optional().describe('Status extracted (e.g., "finished", "airing", "publishing", "complete", "upcoming"). Standardize to Jikan values like "complete" for finished anime, "finished" for finished manga.'),
+        extractedYear: z.number().optional().describe('If a specific year is mentioned (e.g., "anime from 2022"), extract the year as a number.'),
+        minScore: z.number().optional().describe('If the query implies high quality (e.g., "best", "top rated"), suggest a minScore like 7.5 or 8.0.'),
         targetType: z.enum(['anime', 'manga', 'character', 'both', 'unknown']).describe("The primary type of content: 'anime', 'manga', 'character' (if looking *for* a character or *about* a character), 'both' (if applicable to either or query is generic like 'best adventure'), or 'unknown'."),
-        characterToSearch: z.string().optional().describe('If the query is about finding a character (e.g. "Gojo Satoru") or content *featuring* a character (e.g., "anime with Gojo Satoru"), specify the CHARACTER NAME here. The flow will decide whether to call the character tool or use this to refine anime/manga search.'),
-        aiAnalysis: z.string().describe('Brief analysis (1-2 sentences) of the user query and your plan. Mention what parameters you extracted for Jikan/character search. E.g., "User looking for isekai anime. Will search Jikan with genre ID 62." or "User searching for character Guts. Will use character tool."'),
+        characterToSearch: z.string().optional().describe('If a character name is mentioned (e.g., "Gojo Satoru", "Guts"), specify the CHARACTER NAME here. This helps identify series for keyword extraction or for direct character searches.'),
+        aiAnalysis: z.string().describe('Brief analysis (1-2 sentences) of the user query and your plan. Mention what parameters you extracted for Jikan/character search. E.g., "User looking for isekai anime. Will search Jikan with genre ID 62." or "User searching for character Guts. Will use character tool." or "User wants anime featuring Gojo. Will search Jikan anime with keywords \'Jujutsu Kaisen\' and also show character details for Gojo."'),
     })
   },
   tools: [searchCharacterTool], // Jikan character search tool
@@ -71,17 +73,24 @@ const searchQueryAnalysisPrompt = ai.definePrompt({
 User Query: "{{searchTerm}}"
 
 Analyze the query. Extract parameters for Jikan API or character search.
-1.  **Keywords:** Extract concise Jikan 'q' keywords. If it's a title, use the title.
-2.  **Genre ID:** If a genre is strongly implied (e.g., "fantasy", "romance", "isekai"), provide its single most relevant MAL genre ID (e.g., Fantasy: "10", Romance: "22", Isekai: "62", Psychological: "40").
-3.  **Status:** If status like "finished anime" or "ongoing manga" is mentioned, extract Jikan-compatible status ("complete" for finished anime, "finished" for manga, "airing", "publishing", "upcoming").
-4.  **Target Type:** Determine if user wants 'anime', 'manga', 'character', 'both', or 'unknown'. If query is just "Gojo Satoru", target is 'character'. If "anime with Gojo", target is 'anime' and characterToSearch is "Gojo Satoru".
-5.  **Character to Search:** If a character is mentioned, specify the character's name.
-6.  **AI Analysis:** Briefly explain your plan and parameters.
+1.  **Keywords**:
+    *   Extract concise Jikan 'q' keywords.
+    *   If the query is a specific title (e.g., "Naruto Shippuden"), use that title as keywords.
+    *   If the query is about content *featuring* a character (e.g., "anime with Gojo Satoru", "manga where Guts appears"), and you know the primary series associated with that character (e.g., "Jujutsu Kaisen" for Gojo, "Berserk" for Guts), use the **SERIES TITLE** as the primary keywords. If the series is unknown, use the character name along with general terms like "anime" or "manga".
+2.  **Genre ID**: If a genre is strongly implied (e.g., "fantasy", "romance", "isekai"), provide its single most relevant MAL genre ID (e.g., Fantasy: "10", Romance: "22", Isekai: "62", Psychological: "40").
+3.  **Status**: If a status like "finished anime" or "ongoing manga" is mentioned, extract a Jikan-compatible status string (e.g., "complete" for finished anime, "finished" for finished manga, "airing", "publishing", "upcoming").
+4.  **Year**: If a specific year is mentioned (e.g., "anime from 2022"), extract the year as a number.
+5.  **Min Score**: If the query implies high quality (e.g., "best", "top rated", "highly acclaimed"), suggest a minScore like 7.5 or 8.0.
+6.  **Target Type**: Determine if the user wants 'anime', 'manga', 'character', 'both' (if applicable to either or query is generic like 'best adventure'), or 'unknown'.
+    *   If the query is just a character name like "Gojo Satoru", targetType is 'character'.
+    *   If "anime with Gojo", targetType is 'anime' and characterToSearch is "Gojo Satoru".
+7.  **Character to Search**: If a character's name is mentioned (e.g., "Gojo Satoru", "Guts"), specify the CHARACTER NAME here. This helps identify series for keyword extraction or for direct character searches.
+8.  **AI Analysis**: Briefly explain your plan and extracted parameters. E.g., "User looking for isekai anime. Will search Jikan with genre ID 62." or "User searching for character Guts. Will use character tool." or "User wants anime featuring Gojo. Will search Jikan anime with keywords 'Jujutsu Kaisen' and also show character details for Gojo."
 
 Example: "sad romance anime" -> { "extractedSearchKeywords": "sad romance", "extractedGenreId": "22", "targetType": "anime", "aiAnalysis": "User wants sad romance anime. Searching Jikan anime with genre 22, keywords 'sad romance'." }
-Example: "manga with character Guts" -> { "extractedSearchKeywords": "Berserk Guts", "targetType": "manga", "characterToSearch": "Guts", "aiAnalysis": "User wants manga featuring Guts. Will first search for Guts character, then related manga." }
+Example: "manga with character Guts" -> { "extractedSearchKeywords": "Berserk Guts", "targetType": "manga", "characterToSearch": "Guts", "aiAnalysis": "User wants manga featuring Guts. Will first search for Guts character, then related manga using 'Berserk' as keyword." }
 Example: "Gojo Satoru" -> { "targetType": "character", "characterToSearch": "Gojo Satoru", "aiAnalysis": "User searching for Gojo Satoru. Will use character search tool." }
-Example: "best completed isekai series" -> { "extractedSearchKeywords": "best isekai", "extractedGenreId": "62", "extractedStatus": "complete", "targetType": "both", "aiAnalysis": "User wants completed Isekai. Searching Jikan anime (status=complete) and manga (status=finished) with genre 62, keywords 'best isekai'."}
+Example: "best completed isekai series" -> { "extractedSearchKeywords": "best isekai", "extractedGenreId": "62", "extractedStatus": "complete", "extractedYear": null, "minScore": 8.0, "targetType": "both", "aiAnalysis": "User wants completed Isekai. Searching Jikan anime (status=complete) and manga (status=finished) with genre 62, keywords 'best isekai', min score 8.0."}
 
 Output ONLY the JSON object.`,
 });
@@ -94,6 +103,7 @@ const searchSuggestionPrompt = ai.definePrompt({
       aiAnalysis: z.string().optional().describe("Nami's analysis of the original query."),
       filtersApplied: z.object({
           keywords: z.string().optional(), genreId: z.string().optional(), status: z.string().optional(),
+          year: z.number().optional(), minScore: z.number().optional(),
           type: z.enum(['anime', 'manga', 'character', 'both', 'unknown']), character: z.string().optional(),
       }).describe('Parameters used for the search based on AI analysis.'),
       resultsCount: z.number().describe('Number of results found.'),
@@ -103,11 +113,11 @@ const searchSuggestionPrompt = ai.definePrompt({
   output: { schema: z.object({ suggestions: z.array(z.string()).max(4).describe('3-4 concise NEW search term suggestions.') }) },
   prompt: `User Query: "{{originalQuery}}"
 {{#if aiAnalysis}}Nami's Interpretation: {{aiAnalysis}}{{/if}}
-Search Used: Type={{filtersApplied.type}}{{#if filtersApplied.keywords}}, Keywords="{{filtersApplied.keywords}}"{{/if}}{{#if filtersApplied.genreId}}, GenreID="{{filtersApplied.genreId}}"{{/if}}{{#if filtersApplied.status}}, Status="{{filtersApplied.status}}"{{/if}}{{#if filtersApplied.character}}, Character="{{filtersApplied.character}}"{{/if}}
+Search Used: Type={{filtersApplied.type}}{{#if filtersApplied.keywords}}, Keywords="{{filtersApplied.keywords}}"{{/if}}{{#if filtersApplied.genreId}}, GenreID="{{filtersApplied.genreId}}"{{/if}}{{#if filtersApplied.status}}, Status="{{filtersApplied.status}}"{{/if}}{{#if filtersApplied.year}}, Year={{filtersApplied.year}}{{/if}}{{#if filtersApplied.minScore}}, MinScore={{filtersApplied.minScore}}{{/if}}{{#if filtersApplied.character}}, Character="{{filtersApplied.character}}"{{/if}}
 Results Found: {{resultsCount}}
 {{#if exampleResultsTitles}}Examples: {{#each exampleResultsTitles}}{{{this}}}{{#unless @last}}, {{/unless}}{{/each}}{{/if}}
 
-Provide 3-4 concise NEW search terms. Think related genres, themes, character roles, alternative phrasings, or correcting misunderstandings. Example: { "suggestions": ["Action fantasy anime", "Manga by Kentaro Miura", "Upcoming Isekai 2024"] }
+Provide 3-4 concise NEW search terms. Think related genres, themes, character roles, alternative phrasings, or correcting misunderstandings. Example: { "suggestions": ["Action fantasy anime", "Manga by Kentaro Miura", "Upcoming Isekai 2024", "Psychological thrillers like Death Note"] }
 Return ONLY the JSON object.`,
 });
 
@@ -129,52 +139,43 @@ const aiPoweredSearchFlow = ai.defineFlow< typeof AIPoweredSearchInputSchema, ty
         aiAnalysisResult = analysisOutput.aiAnalysis;
         console.log("[AI Search] AI Analysis Output:", analysisOutput);
 
-        const { extractedSearchKeywords, extractedGenreId, extractedStatus, targetType, characterToSearch } = analysisOutput;
-        appliedFilters = { keywords: extractedSearchKeywords, genreId: extractedGenreId, status: extractedStatus, type: targetType, character: characterToSearch };
+        const { extractedSearchKeywords, extractedGenreId, extractedStatus, extractedYear, minScore, targetType, characterToSearch } = analysisOutput;
+        appliedFilters = { keywords: extractedSearchKeywords, genreId: extractedGenreId, status: extractedStatus, year: extractedYear, minScore, type: targetType, character: characterToSearch };
 
         // Character-focused search strategy
-        if (characterToSearch && (targetType === 'character' || (targetType !== 'character' && extractedSearchKeywords?.toLowerCase().includes(characterToSearch.toLowerCase())))) {
+        if (characterToSearch && (targetType === 'character' || (targetType !== 'character' && (extractedSearchKeywords || '').toLowerCase().includes(characterToSearch.toLowerCase())))) {
             console.log(`[AI Search] Using character search tool for: "${characterToSearch}"`);
-            const characterResults: CharacterSearchResult[] = await searchCharacterTool({ name: characterToSearch });
-            console.log(`[AI Search] Character tool returned ${characterResults.length} results.`);
-            const mappedCharResults = characterResults.map(char => ({
-                id: char.mal_id, title: char.name, imageUrl: char.images?.jpg?.image_url ?? null,
-                description: char.about ? char.about.split('. ')[0] + '.' : null, type: 'character' as const,
+            const characterToolResults: CharacterSearchResult[] = await searchCharacterTool({ name: characterToSearch });
+            console.log(`[AI Search] Character tool returned ${characterToolResults.length} results.`);
+            const mappedCharResults = characterToolResults.map(char => ({
+                id: char.mal_id, title: char.name, imageUrl: char.images?.jpg?.image_url ?? char.images?.webp?.small_image_url ?? char.images?.webp?.image_url ?? null,
+                description: char.about ? (char.about.length > 150 ? char.about.substring(0, 147) + '...' : char.about) : null, type: 'character' as const,
                 nicknames: char.nicknames, favorites: char.favorites,
                 anime: char.anime?.map(a => ({ mal_id: a.anime.mal_id, title: a.anime.title })) || [],
                 manga: char.manga?.map(m => ({ mal_id: m.manga.mal_id, title: m.manga.title })) || [],
             }));
             finalResults.push(...mappedCharResults);
-
-            // If the primary target was ONLY the character, we might stop here or fetch their works.
-            // For "anime with character X", we continue to search anime/manga using the character's known works.
-            if (targetType !== 'character' && mappedCharResults.length > 0) {
-                // Logic to refine anime/manga search based on character's known works can be added.
-                // For now, we'll proceed with the general anime/manga search if targetType isn't solely 'character'.
-                // This means if user searched "anime with Goku", we show Goku, then search for "Dragon Ball" related anime.
-                // The searchQueryAnalysisPrompt should ideally set extractedSearchKeywords to something like "Dragon Ball" in such cases.
-            }
         }
 
         // Anime/Manga Search (runs if not solely character search, or as primary search)
         if (targetType === 'anime' || targetType === 'manga' || targetType === 'both' || targetType === 'unknown') {
              const searchPromises: Promise<any>[] = [];
-             const animeStatus = extractedStatus === 'finished' ? 'complete' : extractedStatus; // Jikan uses 'complete' for finished anime
-             const mangaStatus = extractedStatus; // Jikan uses 'finished' for finished manga
+             const animeStatus = extractedStatus === 'finished' ? 'complete' : extractedStatus;
+             const mangaStatus = extractedStatus;
 
              if (targetType === 'anime' || targetType === 'both' || targetType === 'unknown') {
-                 console.log(`[AI Search] Queueing Jikan anime search: Keywords='${extractedSearchKeywords}', Genre='${extractedGenreId}', Status='${animeStatus}'`);
+                 console.log(`[AI Search] Queueing Jikan anime search: Keywords='${extractedSearchKeywords}', Genre='${extractedGenreId}', Status='${animeStatus}', Year='${extractedYear}', MinScore='${minScore}'`);
                  searchPromises.push(
-                     getAnimes(extractedGenreId, undefined, undefined, extractedSearchKeywords, animeStatus, 1, 'rank', 10)
-                         .then(res => (res.animes || []).map(a => ({ ...a, id: a.mal_id, description: a.synopsis, type: 'anime' as const, imageUrl: a.imageUrl })))
+                     getAnimes(extractedGenreId, extractedYear, minScore, extractedSearchKeywords, animeStatus, 1, 'rank', 10)
+                         .then(res => (res.animes || []).map(a => ({ ...a, id: a.mal_id, description: a.synopsis, type: 'anime' as const, imageUrl: a.imageUrl, score: a.score, year: a.year, episodes: a.episodes, status: a.status, genres: a.genres })))
                          .catch(err => { console.warn("AI Anime search failed:", err); return []; })
                  );
              }
              if (targetType === 'manga' || targetType === 'both' || targetType === 'unknown') {
-                 console.log(`[AI Search] Queueing Jikan manga search: Keywords='${extractedSearchKeywords}', Genre='${extractedGenreId}', Status='${mangaStatus}'`);
+                 console.log(`[AI Search] Queueing Jikan manga search: Keywords='${extractedSearchKeywords}', Genre='${extractedGenreId}', Status='${mangaStatus}', Year='${extractedYear}', MinScore='${minScore}'`);
                  searchPromises.push(
-                     getMangas(extractedGenreId, mangaStatus, extractedSearchKeywords, undefined, 1, 'rank', 10)
-                         .then(res => (res.mangas || []).map(m => ({ ...m, id: m.mal_id, description: m.synopsis, type: 'manga' as const, imageUrl: m.imageUrl })))
+                     getMangas(extractedGenreId, mangaStatus, extractedSearchKeywords, minScore, 1, 'rank', 10, extractedYear)
+                         .then(res => (res.mangas || []).map(m => ({ ...m, id: m.mal_id, description: m.synopsis, type: 'manga' as const, imageUrl: m.imageUrl, score: m.score, year: m.year, chapters: m.chapters, volumes: m.volumes, status: m.status, genres: m.genres })))
                          .catch(err => { console.warn("AI Manga search failed:", err); return []; })
                  );
              }
@@ -185,7 +186,7 @@ const aiPoweredSearchFlow = ai.defineFlow< typeof AIPoweredSearchInputSchema, ty
         }
 
         const uniqueResults = Array.from(new Map(finalResults.map((item, index) => [`${item.type}-${item.id}-${index}`, item])).values());
-        finalResults = uniqueResults.slice(0, 20); // Limit total results to 20 for popup
+        finalResults = uniqueResults.slice(0, 20);
         console.log(`[AI Search] Total unique results: ${finalResults.length}`);
 
         // Generate Suggestions
@@ -212,3 +213,5 @@ const aiPoweredSearchFlow = ai.defineFlow< typeof AIPoweredSearchInputSchema, ty
   }
 );
 
+
+    
