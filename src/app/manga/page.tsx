@@ -8,7 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { BookText, Layers, Library, AlertCircle, Loader2, Star, Filter, X, LayoutGrid, List } from 'lucide-react';
+import { Card } from '@/components/ui/card'; // Added Card
+import { BookText, Layers, Library, AlertCircle, Loader2, Star, Filter, X, LayoutGrid, List, Info } from 'lucide-react'; // Added Info for future use
 import { getMangas, Manga, MangaResponse } from '@/services/manga';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
@@ -16,6 +17,8 @@ import type { DisplayItem } from '@/app/page';
 import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
+// AnimeDnaModal is specific to anime, so not imported here unless mixed content is planned
 
 const genres = [
     { id: "1", name: "Action" }, { id: "2", name: "Adventure" }, { id: "4", name: "Comedy" },
@@ -200,15 +203,18 @@ export default function MangaPage() {
         )}
       <section>
         {error && !loadingMore && <Alert variant="destructive" className="mb-6 glass-deep"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescription>{error}</AlertDescription></Alert>}
-        <div className={cn(
+        <motion.div
+            layout
+            transition={{ duration: 0.5, ease: "easeInOut" }}
+            className={cn(
             "gap-3 md:gap-4",
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
            {loading && mangaList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} viewMode={viewMode} />)
-             : mangaList.length > 0 ? mangaList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null ))
+             : mangaList.length > 0 ? mangaList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null )) // No onScanDna for manga cards
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No manga found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
              {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
-         </div>
+         </motion.div>
         {hasNextPage && !loading && !error && mangaList.length > 0 && (
              <div className="flex justify-center mt-8">
                   <Button onClick={loadMoreManga} disabled={loadingMore} variant="outline" className="neon-glow-hover glass-deep px-6 py-3 text-base">
@@ -219,6 +225,9 @@ export default function MangaPage() {
           {!hasNextPage && mangaList.length > 0 && !loading && !error && (<p className="text-center text-muted-foreground mt-8 py-4">You've browsed all available manga!</p>)}
       </section>
       <Footer />
+      {/* No AnimeDnaModal needed here if this page only displays manga */}
     </div>
   );
 }
+
+    

@@ -8,8 +8,8 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card } from '@/components/ui/card'; // Added Card import
-import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X, LayoutGrid, List } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { Tv, Star, CalendarDays, Film, AlertCircle, Loader2, Filter, X, LayoutGrid, List, Info } from 'lucide-react'; // Added Info
 import { getAnimes, Anime, AnimeResponse } from '@/services/anime';
 import { useDebounce } from '@/hooks/use-debounce';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
@@ -18,6 +18,7 @@ import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import AnimeDnaModal from '@/components/shared/AnimeDnaModal'; // Import DNA Modal
 
 // Jikan genres for anime
 const genres = [
@@ -89,6 +90,8 @@ export default function AnimePage() {
   const [selectedSort, setSelectedSort] = useState<string>(initialSort);
   const [showFilters, setShowFilters] = useState(!!initialGenre || !!initialYear || !!initialStatus || !!searchTerm);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [dnaModalAnimeId, setDnaModalAnimeId] = useState<number | null>(null);
+  const [isDnaModalOpen, setIsDnaModalOpen] = useState(false);
 
   const debouncedYear = useDebounce(selectedYear, 500);
 
@@ -157,6 +160,16 @@ export default function AnimePage() {
       window.history.replaceState(null, '', window.location.pathname);
   };
 
+  const handleOpenDnaModal = (animeId: number) => {
+    setDnaModalAnimeId(animeId);
+    setIsDnaModalOpen(true);
+  };
+
+  const handleCloseDnaModal = () => {
+    setIsDnaModalOpen(false);
+    setDnaModalAnimeId(null);
+  };
+
   return (
     <div className="container mx-auto px-2 sm:px-4 py-6">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-4 gap-3">
@@ -214,7 +227,7 @@ export default function AnimePage() {
             viewMode === 'grid' ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6" : "flex flex-col space-y-3"
         )}>
            {loading && animeList.length === 0 ? Array.from({ length: viewMode === 'grid' ? 18 : 5 }).map((_, index) => <SkeletonItemCard key={`skel-${index}`} viewMode={viewMode} />)
-             : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} /> : null ))
+             : animeList.length > 0 ? animeList.map((item) => ( item && item.id ? <ItemCard key={`${item.type}-${item.id}`} item={item} viewMode={viewMode} onScanDna={item.type === 'anime' ? handleOpenDnaModal : undefined} /> : null ))
                : !error && !loading && ( <div className="col-span-full text-center py-10"><p className="text-lg text-muted-foreground">No anime found.</p><p className="text-sm text-muted-foreground">Try adjusting your search or filters.</p></div> )}
              {loadingMore && Array.from({ length: viewMode === 'grid' ? 6 : 3 }).map((_, index) => <SkeletonItemCard key={`skel-more-${index}`} viewMode={viewMode} />)}
          </motion.div>
@@ -228,6 +241,13 @@ export default function AnimePage() {
           {!hasNextPage && animeList.length > 0 && !loading && !error && (<p className="text-center text-muted-foreground mt-8 py-4">You've browsed all available anime!</p>)}
       </section>
       <Footer />
+      <AnimeDnaModal
+        animeId={dnaModalAnimeId}
+        isOpen={isDnaModalOpen}
+        onClose={handleCloseDnaModal}
+      />
     </div>
   );
 }
+
+    
