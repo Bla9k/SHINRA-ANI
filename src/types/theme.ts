@@ -36,34 +36,33 @@ export interface CommunityCustomTexts {
   // Add more specific custom text keys as needed
 }
 
-export interface CommunityTheme {
-  communityId: string;
-  themeName: string;
-  colors: CommunityThemeColors;
-  background: CommunityThemeBackground;
-  customTexts?: CommunityCustomTexts;
-  updatedAt?: Date | FirebaseTimestamp; // Using a generic FirebaseTimestamp type for Firestore
-}
-
-// Define a type for Firestore Timestamps if not already globally available
 export interface FirebaseTimestamp {
   seconds: number;
   nanoseconds: number;
   toDate: () => Date;
 }
 
+export interface CommunityTheme {
+  communityId: string;
+  themeName: string;
+  colors: CommunityThemeColors;
+  background: CommunityThemeBackground;
+  customTexts?: CommunityCustomTexts;
+  updatedAt?: Date | FirebaseTimestamp;
+}
+
+
 // Default theme values, mirroring a base dark theme for now
-// These should correspond to your main theme in globals.css to ensure consistency
 export const defaultCommunityTheme: Omit<CommunityTheme, 'communityId' | 'updatedAt'> = {
-  themeName: 'Default Community Theme',
+  themeName: 'Default Community Look',
   colors: {
     background: '220 20% 5%',
     foreground: '210 40% 90%',
-    primary: '180 100% 50%',
+    primary: '180 100% 50%', // Neon Cyan
     primaryForeground: '220 20% 10%',
-    secondary: '270 60% 70%',
+    secondary: '270 60% 70%', // Neon Purple
     secondaryForeground: '210 40% 95%',
-    accent: '15 100% 55%', // Default fiery accent
+    accent: '15 100% 55%', // Fiery Orange-Red
     accentForeground: '0 0% 100%',
     destructive: '0 70% 55%',
     destructiveForeground: '0 0% 98%',
@@ -73,7 +72,7 @@ export const defaultCommunityTheme: Omit<CommunityTheme, 'communityId' | 'update
     popoverForeground: '210 40% 88%',
     border: '180 50% 30%',
     input: '220 15% 12%',
-    ring: '180 100% 55%',
+    ring: '180 100% 55%', // Neon Cyan for rings
   },
   background: {
     type: 'color',
@@ -81,7 +80,7 @@ export const defaultCommunityTheme: Omit<CommunityTheme, 'communityId' | 'update
     filePreviewUrl: null,
   },
   customTexts: {
-    welcomeMessage: 'Welcome to our community!',
-    communityTagline: 'The best place for fans!',
+    welcomeMessage: 'Welcome to our awesome community!',
+    communityTagline: 'The place to be for fans!',
   },
 };

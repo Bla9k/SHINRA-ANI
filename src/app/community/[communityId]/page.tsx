@@ -1,39 +1,42 @@
 
 'use client';
 
-import { useParams, useRouter, notFound } from 'next/navigation'; // Added useRouter
+import { useParams, useRouter, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Users, MessageSquare, Hash, Settings, Mic, Loader2, AlertCircle, Palette, Drama } from 'lucide-react';
+import { Users, MessageSquare, Hash, Settings, Mic, Loader2, AlertCircle, Palette, Drama } from 'lucide-react'; // Added Palette
 import Link from 'next/link';
 import React, { useEffect, useState, CSSProperties } from 'react';
 import { Alert, AlertTitle, AlertDescription as AlertDescriptionUI } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { getCommunityTheme, type CommunityTheme, type CommunityThemeColors } from '@/types/theme'; // Import theme types and getter
+import { getCommunityTheme, type CommunityTheme } from '@/types/theme';
 import { Community as CommunityData } from '@/services/community'; // Assuming Community type is exported from here
 
-// --- Interfaces for Community Data (simplified for this page, assuming full data is fetched) ---
+// Simplified interfaces for this page
 interface CommunityChannel {
     id: string;
     name: string;
     type: 'text' | 'voice';
 }
 
-interface CommunityDetails extends CommunityData { // Extend base community data
-    // Already has: id, name, description, imageUrl, memberCount, onlineCount, channels
-    // Potentially add fetched members if needed directly on this page, or handle in sub-components
+interface CommunityDetails extends CommunityData {
+    // Inherits: id, name, description, imageUrl, memberCount, onlineCount, channels, creatorId, creatorName, createdAt, members
 }
 
+// Dummy channel data if community.channels is empty
+const dummyChannels: CommunityChannel[] = [
+  { id: 'general-dummy', name: 'general', type: 'text' },
+  { id: 'lounge-dummy', name: 'lounge', type: 'voice' },
+];
 
-// --- Component ---
 export default function CommunityDetailPage() {
   const params = useParams();
-  const router = useRouter(); // For navigation
+  const router = useRouter();
   const communityId = params.communityId as string;
   const { toast } = useToast();
 
@@ -45,43 +48,31 @@ export default function CommunityDetailPage() {
   const [messages, setMessages] = useState<any[]>([]); // Define proper message type later
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  const [dynamicStyles, setDynamicStyles] = useState<CSSProperties>({});
 
-  // --- Data Fetching (Community Details & Theme) ---
   useEffect(() => {
     const fetchCommunityPageData = async () => {
       setLoading(true);
       setError(null);
       try {
         console.log(`Fetching data for community ID: ${communityId}`);
-        // TODO: Replace with actual API call to fetch full community details
-        // For now, using a simplified placeholder or direct data
+        // TODO: Replace with actual API call to fetch full community details by ID
+        // For now, using a placeholder
         const dummyDataMap: { [key: string]: CommunityDetails } = {
-            'action-hub': {
-                id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', imageUrl: 'https://placehold.co/100x100.png?text=AH', memberCount: 1234, onlineCount: 156, channels: [{id: 'general-action', name: 'general', type: 'text'}, {id: 'powerscaling', name: 'power-scaling', type: 'text'}], creatorId: 'adminUser', creatorName: 'Admin', createdAt: new Date(), members: ['adminUser']
-            },
-             'berserk-fans': {
-                 id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art.', imageUrl: 'https://placehold.co/100x100.png?text=BF', memberCount: 876, onlineCount: 92, channels: [{id: 'general-berserk', name: 'general-discussion', type: 'text'}, {id: 'manga-spoilers', name: 'manga-spoilers', type: 'text'}], creatorId: 'adminUser', creatorName: 'Admin', createdAt: new Date(), members: ['adminUser']
-             },
+            'action-hub': { id: 'action-hub', name: 'Action Hub', description: 'Discuss the latest fights & power levels!', imageUrl: 'https://placehold.co/100x100.png?text=AH', memberCount: 1234, onlineCount: 156, channels: [{id: 'general-action', name: 'general', type: 'text'}, {id: 'powerscaling', name: 'power-scaling', type: 'text'}], creatorId: 'adminUser', creatorName: 'Admin', createdAt: new Date(), members: ['adminUser']},
+            'berserk-fans': { id: 'berserk-fans', name: 'Berserk Fans', description: 'Analysis, theories, and fan art.', imageUrl: 'https://placehold.co/100x100.png?text=BF', memberCount: 876, onlineCount: 92, channels: [{id: 'general-berserk', name: 'general-discussion', type: 'text'}, {id: 'manga-spoilers', name: 'manga-spoilers', type: 'text'}], creatorId: 'adminUser', creatorName: 'Admin', createdAt: new Date(), members: ['adminUser']},
         };
-        const fetchedCommunity = dummyDataMap[communityId] || null; // Replace with actual fetch
+        const fetchedCommunity = dummyDataMap[communityId] || { id: communityId, name: `Community ${communityId}`, description: 'A cool place to hang out.', imageUrl: `https://placehold.co/100x100.png?text=${communityId.slice(0,2).toUpperCase()}`, memberCount: 1, onlineCount: 0, channels: dummyChannels, creatorId: 'system', creatorName: 'System', createdAt: new Date(), members: [] }; // Fallback if not in dummy map
 
-        if (fetchedCommunity) {
-          setCommunity(fetchedCommunity);
-          const defaultChannel = fetchedCommunity.channels?.find(c => c.type === 'text');
-          if (defaultChannel) setSelectedChannel(defaultChannel);
+        setCommunity(fetchedCommunity);
+        const defaultChannel = (fetchedCommunity.channels && fetchedCommunity.channels.length > 0) ? fetchedCommunity.channels.find(c => c.type === 'text') || fetchedCommunity.channels[0] : dummyChannels.find(c => c.type === 'text');
+        if (defaultChannel) setSelectedChannel(defaultChannel);
 
-          // Fetch custom theme
-          const theme = await getCommunityTheme(communityId);
-          if (theme) {
-            setCommunityTheme(theme);
-            console.log("Custom theme loaded:", theme);
-          } else {
-            console.log("No custom theme found, using defaults.");
-          }
-        } else {
-          setError('Community not found.');
-          // notFound(); // Use this for actual 404 in production
-        }
+        const theme = await getCommunityTheme(communityId);
+        setCommunityTheme(theme);
+        if (theme) console.log("Custom theme loaded for community:", communityId, theme);
+        else console.log("No custom theme found for community:", communityId, "using defaults.");
+
       } catch (err: any) {
         console.error("Error fetching community page data:", err);
         setError("Failed to load community details or theme.");
@@ -95,47 +86,39 @@ export default function CommunityDetailPage() {
     }
   }, [communityId]);
 
-  // --- Apply Dynamic Theme Styles ---
-  const [dynamicStyles, setDynamicStyles] = useState<CSSProperties>({});
   useEffect(() => {
     if (communityTheme) {
       const newStyles: CSSProperties = {};
-      // Apply colors as CSS variables scoped to the community content wrapper
       Object.entries(communityTheme.colors).forEach(([key, value]) => {
         const cssVarName = `--community-${key.replace(/([A-Z])/g, '-$1').toLowerCase()}`;
         newStyles[cssVarName as any] = `hsl(${value})`;
       });
 
-      // Apply background
       if (communityTheme.background.type === 'color') {
         newStyles.backgroundColor = `hsl(${communityTheme.background.value})`;
         newStyles.backgroundImage = 'none';
-      } else if (communityTheme.background.value) { // image_url, gif_url, or filePreviewUrl
+      } else if (communityTheme.background.value) {
         newStyles.backgroundImage = `url("${communityTheme.background.value}")`;
         newStyles.backgroundSize = 'cover';
         newStyles.backgroundPosition = 'center';
-        newStyles.backgroundAttachment = 'fixed'; // Optional: for parallax-like effect
-         // Ensure text is readable over image/gif
-        newStyles.color = `hsl(${communityTheme.colors.foreground})`; // Use theme's foreground for text
+        newStyles.backgroundAttachment = 'fixed';
+        newStyles.color = `hsl(${communityTheme.colors.foreground})`;
       }
       setDynamicStyles(newStyles);
     } else {
-      // Reset to default styles if no theme (or clear styles)
+      // Reset to default styles or ensure global theme applies cleanly
       setDynamicStyles({});
     }
   }, [communityTheme]);
 
-
-  // --- Fetch Messages (Placeholder) ---
   useEffect(() => {
     const fetchMessages = async () => {
       if (!selectedChannel || selectedChannel.type !== 'text' || !community) return;
       setLoadingMessages(true);
-      // ... (placeholder message fetching logic as before) ...
       await new Promise(resolve => setTimeout(resolve, 300));
       setMessages([
-          { id: 'm1', userId: 'u1', username: 'ShinraUser', avatarUrl: 'https://placehold.co/40x40.png?text=SU', text: `Welcome to #${selectedChannel.name} in ${community.name}! ${communityTheme?.customTexts?.welcomeMessage || ''}`, timestamp: new Date() },
-          { id: 'm2', userId: 'u2', username: 'NamiAI', avatarUrl: 'https://placehold.co/40x40.png?text=NAI', text: `Tagline: ${communityTheme?.customTexts?.communityTagline || 'Enjoy your stay!'}`, timestamp: new Date() }
+          { id: 'm1', userId: 'u1', username: 'ShinraUser', avatarUrl: 'https://placehold.co/40x40.png?text=SU', text: communityTheme?.customTexts?.welcomeMessage || `Welcome to #${selectedChannel.name} in ${community.name}!`, timestamp: new Date() },
+          { id: 'm2', userId: 'u2', username: 'NamiAI', avatarUrl: 'https://placehold.co/40x40.png?text=NAI', text: communityTheme?.customTexts?.communityTagline || 'Enjoy your stay!', timestamp: new Date() }
       ]);
       setLoadingMessages(false);
     };
@@ -144,24 +127,29 @@ export default function CommunityDetailPage() {
 
   const handleSendMessage = (e: React.FormEvent) => {
       e.preventDefault();
-      // ... (placeholder send message logic as before) ...
-      toast({ title: "Message Sent!" });
+      toast({ title: "Message Sent!", description: "Your message: " + newMessage });
       setNewMessage('');
   };
 
-  // --- Render Logic ---
   if (loading) return <CommunityDetailSkeleton />;
-  if (error) return ( /* ... error UI ... */ );
-  if (!community) return ( /* ... not found UI ... */ );
+  if (error) return (
+    <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[calc(100vh-10rem)]">
+        <Alert variant="destructive" className="max-w-md glass"><AlertCircle className="h-4 w-4" /><AlertTitle>Error</AlertTitle><AlertDescriptionUI>{error}</AlertDescriptionUI></Alert>
+    </div>
+  );
+  if (!community) return (
+    <div className="container mx-auto px-4 py-8 text-center min-h-[calc(100vh-10rem)] flex items-center justify-center">
+        <Alert variant="destructive" className="max-w-md glass"><AlertCircle className="h-4 w-4" /><AlertTitle>Community Not Found</AlertTitle><AlertDescriptionUI>The requested community does not exist or could not be loaded.</AlertDescriptionUI></Alert>
+    </div>
+  );
 
-  const textChannels = community.channels?.filter(c => c.type === 'text') || [];
-  const voiceChannels = community.channels?.filter(c => c.type === 'voice') || [];
+  const channelsToDisplay = (community.channels && community.channels.length > 0) ? community.channels : dummyChannels;
+  const textChannels = channelsToDisplay.filter(c => c.type === 'text');
+  const voiceChannels = channelsToDisplay.filter(c => c.type === 'voice');
 
   return (
-    // Main wrapper where dynamic styles will be applied
     <div id="community-content-wrapper" style={dynamicStyles} className="transition-colors duration-500 ease-in-out min-h-screen bg-background text-foreground">
       <div className="flex h-screen overflow-hidden">
-        {/* Sidebar for Channels */}
         <div className="w-60 md:w-72 flex-shrink-0 border-r flex flex-col" style={{ backgroundColor: 'var(--community-card, inherit)', borderColor: 'var(--community-border, inherit)'}}>
           <CardHeader className="p-4 border-b" style={{borderColor: 'var(--community-border, inherit)'}}>
             <div className="flex items-center gap-3">
@@ -173,7 +161,6 @@ export default function CommunityDetailPage() {
                     <CardTitle className="text-base line-clamp-1" style={{color: 'var(--community-primary-foreground, var(--community-foreground, inherit))'}}>{community.name}</CardTitle>
                     <CardDescription className="text-xs" style={{color: 'var(--community-foreground, inherit)', opacity: 0.8}}>{community.memberCount} Members</CardDescription>
                 </div>
-                {/* TODO: Add admin check for theme settings button */}
                 <Button variant="ghost" size="icon" className="ml-auto h-7 w-7" style={{color: 'var(--community-foreground, inherit)'}} onClick={() => router.push(`/community/${communityId}/settings/theme`)}>
                     <Palette size={16} />
                 </Button>
@@ -197,7 +184,6 @@ export default function CommunityDetailPage() {
                 <p className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider" style={{color: 'var(--community-foreground, inherit)', opacity: 0.7}}>Voice Channels</p>
                 {voiceChannels.map(channel => ( <Button key={channel.id} variant="ghost" onClick={() => toast({ title: "Voice Chat Coming Soon!" })} className="w-full justify-start text-sm h-8" style={{color: 'var(--community-foreground, inherit)'}}> <Mic size={16} className="mr-2"/> {channel.name} </Button> ))}
             </div>)}
-            {/* ... (User controls at bottom as before) ... */}
           </ScrollArea>
            <div className="p-2 border-t flex items-center gap-2" style={{borderColor: 'var(--community-border, inherit)'}}>
               <Avatar className="h-8 w-8"><AvatarImage src="https://placehold.co/40x40.png?text=U" alt="User Avatar"/><AvatarFallback>U</AvatarFallback></Avatar>
@@ -205,8 +191,7 @@ export default function CommunityDetailPage() {
           </div>
         </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col" style={{backgroundColor: 'var(--community-background, inherit)' /* Fallback to main background if not set */}}>
+        <div className="flex-1 flex flex-col" style={{backgroundColor: 'var(--community-background, inherit)'}}>
           <div className="h-16 flex items-center px-4 border-b flex-shrink-0" style={{backgroundColor: 'var(--community-card, inherit)', borderColor: 'var(--community-border, inherit)'}}>
             {selectedChannel ? ( <>
                 {selectedChannel.type === 'text' ? <Hash size={20} className="mr-2" style={{color: 'var(--community-accent, inherit)'}}/> : <Mic size={20} className="mr-2" style={{color: 'var(--community-accent, inherit)'}}/>}
@@ -246,9 +231,7 @@ export default function CommunityDetailPage() {
   );
 }
 
-// Skeleton Component for Loading State
 function CommunityDetailSkeleton() {
-    // ... (skeleton UI as before, it doesn't need dynamic theming yet) ...
     return (
         <div className="flex h-screen overflow-hidden bg-background animate-pulse">
              <div className="w-60 md:w-72 flex-shrink-0 bg-card border-r border-border/50 flex flex-col glass">

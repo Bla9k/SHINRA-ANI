@@ -7,7 +7,7 @@ body {
   font-family: var(--font-poppins), sans-serif;
 }
 
-/* Base Theme (Dark - Deep Space Blue with Neon Cyan/Purple Accents) */
+/* Base Theme (Dark - Deep Space Blue with Fiery Accents) */
 @layer base {
   :root {
     --background: 220 20% 5%; /* #0B0C10 - Deep Space Blue */
@@ -25,28 +25,46 @@ body {
     --secondary: 270 60% 70%; /* #9B59B6 - Neon Purple (Secondary elements) */
     --secondary-foreground: 210 40% 95%; /* #F0F5FA - Very light for purple bg */
 
-    /* ACCENT FOR DEFAULT DARK THEME - Reverted to Neon Purple */
-    --accent: 270 60% 70%;    /* hsl(270, 60%, 70%) - Neon Purple */
-    --accent-foreground: 210 40% 95%; /* #F0F5FA - White/Light for good contrast on purple */
+    /* ACCENT FOR DEFAULT DARK THEME - Now Fiery Orange-Red */
+    --accent: 15 100% 55%;    /* hsl(15, 100%, 55%) - Fiery Orange-Red */
+    --accent-foreground: 0 0% 100%; /* White for good contrast */
 
     --destructive: 0 70% 55%;   /* #E5484D - Vibrant but clear red */
     --destructive-foreground: 0 0% 98%; /* #FAFAFA */
 
     --border: 180 50% 30%;     /* #269999 - Cyan-based border, less prominent */
     --input: 220 15% 12%;      /* #17191F - Dark input background */
-    --ring: 180 100% 55%;       /* Neon Cyan for rings */
+    --ring: 15 100% 55%;       /* Fiery Orange-Red for rings */
 
-    --chart-1: 180 100% 50%; /* Neon Cyan */
-    --chart-2: 270 60% 70%; /* Neon Purple */
-    --chart-3: 15 100% 55%;  /* Fiery Orange-Red (Used by Shinra Fire, but defined for charts) */
-    --chart-4: 43 74% 66%;  /* Gold/Yellowish */
-    --chart-5: 27 87% 67%;  /* Orangeish */
+    --chart-1: 15 100% 55%;   /* Fiery Orange-Red */
+    --chart-2: 270 60% 70%;   /* Neon Purple */
+    --chart-3: 180 100% 50%;  /* Neon Cyan */
+    --chart-4: 43 74% 66%;    /* Gold/Yellowish */
+    --chart-5: 27 87% 67%;    /* Orangeish */
     --radius: 0.5rem;
 
-    --bottom-nav-panel-max-height: 16rem; /* Approx 256px, adjust as needed */
+    --bottom-nav-panel-max-height: 16rem;
+
+    /* CSS Variables for Theme Maker Preview (can be overridden by JS) */
+    --preview-background: hsl(var(--background));
+    --preview-foreground: hsl(var(--foreground));
+    --preview-primary: hsl(var(--primary));
+    --preview-primary-foreground: hsl(var(--primary-foreground));
+    --preview-secondary: hsl(var(--secondary));
+    --preview-secondary-foreground: hsl(var(--secondary-foreground));
+    --preview-accent: hsl(var(--accent));
+    --preview-accent-foreground: hsl(var(--accent-foreground));
+    --preview-destructive: hsl(var(--destructive));
+    --preview-destructive-foreground: hsl(var(--destructive-foreground));
+    --preview-card: hsl(var(--card));
+    --preview-card-foreground: hsl(var(--card-foreground));
+    --preview-popover: hsl(var(--popover));
+    --preview-popover-foreground: hsl(var(--popover-foreground));
+    --preview-border: hsl(var(--border));
+    --preview-input: hsl(var(--input));
+    --preview-ring: hsl(var(--ring));
   }
 
-  /* Ensure .dark class (if used by ThemeProvider) applies the same variables */
   .dark {
     --background: 220 20% 5%;
     --foreground: 210 40% 90%;
@@ -67,67 +85,79 @@ body {
     --ring: 180 100% 55%;
   }
 
-  /* Light Theme Definition */
   html[data-theme="light"] {
-    --background: 210 40% 98%; /* Very light blue/gray */
-    --foreground: 220 20% 10%; /* Dark text */
-    --card: 0 0% 100%;          /* White cards */
+    --background: 210 40% 98%;
+    --foreground: 220 20% 10%;
+    --card: 0 0% 100%;
     --card-foreground: 220 20% 10%;
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 10%;
-    --primary: 180 90% 45%;  /* Slightly desaturated Cyan for light mode */
+    --primary: 180 90% 45%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 270 50% 60%; /* Slightly desaturated Purple */
+    --secondary: 270 50% 60%;
     --secondary-foreground: 0 0% 100%;
-    --accent: 270 50% 55%;     /* Desaturated Purple for light mode accent */
+    --accent: 270 50% 55%;
     --accent-foreground: 0 0% 100%;
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 210 30% 85%;     /* Light gray border */
-    --input: 210 30% 95%;      /* Very light input background */
+    --border: 210 30% 85%;
+    --input: 210 30% 95%;
     --ring: 180 90% 50%;
   }
 
-  /* Shinra Fire Theme Definition */
   html[data-theme="shinra-fire"] {
-    --background: 20 10% 8%; /* Very dark charcoal, slightly warm */
-    --foreground: 30 60% 92%; /* Warm off-white / light orange-tinted white */
-
-    --card: 10 10% 12%;       /* Dark, desaturated red tint for cards */
+    --background: 20 10% 8%;
+    --foreground: 30 60% 92%;
+    --card: 10 10% 12%;
     --card-foreground: 30 50% 90%;
-
-    --popover: 10 10% 10%;    /* Even darker popovers */
+    --popover: 10 10% 10%;
     --popover-foreground: 30 50% 90%;
-
-    --primary: 15 100% 55%;   /* hsl(15, 100%, 55%) - Fiery Orange-Red (Main interaction color for this theme) */
-    --primary-foreground: 30 100% 95%; /* Very light, almost white, for contrast */
-
-    --secondary: 30 100% 60%; /* Brighter Orange */
+    --primary: 15 100% 55%;
+    --primary-foreground: 30 100% 95%;
+    --secondary: 30 100% 60%;
     --secondary-foreground: 20 20% 10%;
-
-    --accent: 35 100% 60%;    /* Yellow-Orange accent for highlights */
-    --accent-foreground: 20 20% 5%; /* Dark text for yellow-orange bg */
-
-    --destructive: 0 80% 60%; /* Slightly brighter red for destructive actions in this theme */
+    --accent: 35 100% 60%;
+    --accent-foreground: 20 20% 5%;
+    --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
+    --border: 15 40% 30%;
+    --input: 15 15% 15%;
+    --ring: 15 100% 60%;
+  }
 
-    --border: 15 40% 30%;     /* Dark, warm reddish border */
-    --input: 15 15% 15%;      /* Dark input with slight red tint */
-    --ring: 15 100% 60%;       /* Brighter version of primary for focus rings */
+  /* Netflix Theme */
+  html[data-theme="hypercharge-netflix"] {
+    --background: 0 0% 8%; /* Very dark grey/black */
+    --foreground: 0 0% 90%; /* Light grey/off-white */
+    --card: 0 0% 12%; /* Slightly lighter dark grey */
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 357 92% 47%; /* Netflix Red (approx #E50914) */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 0 0% 20%; /* Darker grey for secondary elements */
+    --secondary-foreground: 0 0% 90%;
+    --accent: 357 80% 40%; /* Slightly darker/muted red for accents */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%; /* Dark, very subtle border */
+    --input: 0 0% 14%; /* Dark input background */
+    --ring: 357 92% 50%; /* Netflix Red for rings */
   }
 }
 
-/* Base Styles */
 @layer base {
   * {
     @apply border-border;
   }
   html {
       @apply h-full scroll-smooth;
+      transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
   }
   body {
     @apply bg-background text-foreground;
-    @apply transition-colors duration-300 ease-in-out; /* Smooth theme transitions */
+    @apply transition-colors duration-300 ease-in-out;
   }
 
   .glass {
@@ -140,66 +170,52 @@ body {
       @apply transition-all duration-300 ease-in-out;
    }
     .active-nav-item {
-       color: hsl(var(--primary)); /* Uses the current theme's primary color */
+       color: hsl(var(--primary));
     }
-    /* Icon glow for active nav items - ONLY for Shinra Fire */
     html[data-theme="shinra-fire"] .active-nav-item svg.neon-glow-icon-shinra {
         filter: drop-shadow(0 0 5px hsl(var(--primary) / 1)) drop-shadow(0 0 10px hsl(var(--primary) / 0.7));
     }
-    /* Ensure other themes don't have this strong active icon glow unless specifically desired */
     html[data-theme="dark"] .active-nav-item svg,
     html[data-theme="light"] .active-nav-item svg {
-        /* No strong glow, or a very subtle theme-appropriate one if needed */
-        filter: none; /* Example: explicitly no glow */
+        filter: none;
     }
 
 
     .nav-item-base:hover {
-       /* Base hover styling is handled by conditional classes in the component */
     }
 }
 
-/* Custom Scrollbar */
 .scrollbar-thin {
   scrollbar-width: thin;
-  scrollbar-color: hsl(var(--accent) / 0.4) hsl(var(--background) / 0.2); /* Uses theme's accent */
+  scrollbar-color: hsl(var(--accent) / 0.4) hsl(var(--background) / 0.2);
 }
 .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
 .scrollbar-thin::-webkit-scrollbar-track { background: hsl(var(--background) / 0.1); border-radius: 3px; }
-.scrollbar-thin::-webkit-scrollbar-thumb { background-color: hsl(var(--accent) / 0.6); border-radius: 3px; border: 1px solid transparent; background-clip: content-box; } /* Uses theme's accent */
-.scrollbar-thin::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--accent) / 0.8); } /* Uses theme's accent */
+.scrollbar-thin::-webkit-scrollbar-thumb { background-color: hsl(var(--accent) / 0.6); border-radius: 3px; border: 1px solid transparent; background-clip: content-box; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--accent) / 0.8); }
 
 .shadow-text { text-shadow: 0px 1px 5px hsl(var(--background) / 0.8); }
 
-/* Animation Utilities */
 @layer utilities {
     .animate-fade-in { opacity: 0; animation: fadeIn 0.5s ease-out forwards; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
     .animate-pulse-subtle { animation: pulse-subtle 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-    .animate-pulse { animation: pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-    /* General Neon Glow (uses --primary, which is theme-dependent) */
     .neon-glow { box-shadow: 0 0 5px hsl(var(--primary) / 0.4), 0 0 10px hsl(var(--primary) / 0.2); border-color: hsl(var(--primary) / 0.4) !important; }
     .neon-glow-hover:hover { box-shadow: 0 0 7px hsl(var(--primary) / 0.6), 0 0 14px hsl(var(--primary) / 0.3); }
     .neon-glow-focus:focus-visible { box-shadow: 0 0 7px hsl(var(--ring) / 0.7), 0 0 14px hsl(var(--ring) / 0.5); border-color: hsl(var(--ring) / 0.7) !important; outline: 2px solid transparent; outline-offset: 2px; }
 
-    /* Specific glow for icons using primary - this is fine as primary changes per theme */
-    /* This general icon glow is removed, specific glows are applied conditionally */
-    /* .neon-glow-icon svg { filter: drop-shadow(0 0 3px hsl(var(--primary) / 0.7)) drop-shadow(0 0 6px hsl(var(--primary) / 0.5)); } */
+    .fiery-glow { box-shadow: 0 0 6px hsl(var(--accent) / 0.5), 0 0 12px hsl(var(--accent) / 0.3); border-color: hsl(var(--accent) / 0.5) !important; }
+    .fiery-glow-hover:hover { box-shadow: 0 0 8px hsl(var(--accent) / 0.7), 0 0 16px hsl(var(--accent) / 0.4); }
+    .fiery-glow-focus:focus-visible { box-shadow: 0 0 8px hsl(var(--ring) / 0.8), 0 0 16px hsl(var(--ring) / 0.6); border-color: hsl(var(--ring) / 0.8) !important; outline: 2px solid transparent; outline-offset: 2px; }
 
-
-    /* Specific Tab Glows */
     .data-\[state=active\]\:.neon-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--primary) / 0.6), 0 0 10px hsl(var(--primary) / 0.4); color: hsl(var(--primary)); background-color: hsl(var(--card)) !important; }
     .data-\[state=active\]\:.fiery-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--accent) / 0.6), 0 0 10px hsl(var(--accent) / 0.4); color: hsl(var(--accent)); background-color: hsl(var(--card)) !important; }
 
-
     .shadow-top-md { box-shadow: 0 -3px 12px -1px hsl(var(--background) / 0.3), 0 -2px 8px -2px hsl(var(--background) / 0.25); }
-    .shadow-bottom-md { box-shadow: 0 3px 12px -1px hsl(var(--background) / 0.3), 0 2px 8px -2px hsl(var(--background) / 0.25); }
-    .tier-card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); } /* Uses theme's accent */
+    .tier-card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); }
 
-    /* Shinra Fire Theme Specific Effects - These are correctly scoped */
     html[data-theme="shinra-fire"] .sf-text-glow {
       text-shadow: 0 0 6px hsl(var(--primary)), 0 0 12px hsl(var(--primary)/0.8), 0 0 18px hsl(var(--primary)/0.6), 0 0 24px hsl(var(--accent)/0.5);
     }
@@ -207,7 +223,6 @@ body {
       box-shadow: 0 0 8px hsl(var(--primary)), 0 0 16px hsl(var(--primary)/0.7), 0 0 24px hsl(var(--accent)/0.5);
     }
 
-    /* Radiating Aura for Shinra Fire Theme */
     html[data-theme="shinra-fire"] .sf-radiating-aura-target:hover,
     html[data-theme="shinra-fire"] .sf-radiating-aura-target:focus-within {
       animation: sf-radiate 1.5s infinite ease-out;
@@ -217,10 +232,9 @@ body {
       50% { box-shadow: 0 0 10px hsl(var(--primary)/0.7), 0 0 20px hsl(var(--primary)/0.5), 0 0 30px hsl(var(--accent)/0.3), 0 0 40px hsl(var(--accent)/0.1); }
     }
 
-    /* Intense Glitch for Shinra Fire Theme */
     html[data-theme="shinra-fire"] .sf-glitch-intense {
       position: relative;
-      --glitch-intensity: 2px; /* Control intensity with a variable */
+      --glitch-intensity: 2px;
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::before,
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::after {
@@ -231,15 +245,15 @@ body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: hsl(var(--background)); /* Match theme background */
+      background: hsl(var(--background));
       clip-path: inset(50% 0 0 0);
     }
-    html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::before {
+    html[data-theme="shinra-fire"] .sf-glitch-intense::before {
       color: hsl(var(--primary));
       text-shadow: -1.5px 0 hsl(var(--accent)/0.7);
       animation: sf-glitch-anim-1 3s infinite steps(2, end) alternate-reverse;
     }
-    html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::after {
+    html[data-theme="shinra-fire"] .sf-glitch-intense::after {
       color: hsl(var(--accent));
       text-shadow: 1.5px 0 hsl(var(--primary)/0.7);
       animation: sf-glitch-anim-2 2.5s infinite steps(2, end) alternate-reverse;
@@ -255,11 +269,9 @@ body {
       25%, 45%, 65%, 85% { transform: translate(calc(-1px * var(--glitch-intensity))), calc(1px * var(--glitch-intensity))); clip-path: inset(10% 0 80% 0); }
     }
 
-    /* Bansho Man Glow for Buttons in Shinra Fire Theme */
     html[data-theme="shinra-fire"] .sf-bansho-button {
         position: relative;
-        /* Ensure other button styles don't conflict too much */
-        background-color: hsl(var(--primary)/0.1); /* Subtle base for the button */
+        background-color: hsl(var(--primary)/0.1);
         border: 1px solid hsl(var(--primary)/0.3);
         color: hsl(var(--primary-foreground));
     }
@@ -267,8 +279,8 @@ body {
     html[data-theme="shinra-fire"] .sf-bansho-button:active,
     html[data-theme="shinra-fire"] .sf-bansho-button:hover {
       animation: sf-bansho-burst 0.5s ease-out forwards;
-      z-index: 1; /* Ensure glow is not clipped by siblings */
-      background-color: hsl(var(--primary)/0.2); /* Slightly more pronounced bg on interact */
+      z-index: 1;
+      background-color: hsl(var(--primary)/0.2);
       border-color: hsl(var(--primary)/0.7);
     }
     @keyframes sf-bansho-burst {
@@ -281,9 +293,8 @@ body {
         transform: scale(1.03);
       }
       100% {
-        box-shadow: 0 0 5px 2px hsl(var(--primary)/0.7), 0 0 10px 5px hsl(var(--accent)/0.5); /* Keep some glow at end */
+        box-shadow: 0 0 5px 2px hsl(var(--primary)/0.7), 0 0 10px 5px hsl(var(--accent)/0.5);
         transform: scale(1);
       }
     }
 }
-
