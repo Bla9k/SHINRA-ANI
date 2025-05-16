@@ -83,6 +83,8 @@ export interface Anime {
     * Mapped ID field for component key consistency
     */
    id: number; // Use definite ID
+   relations?: Array<{ relation: string, entry: Array<{ mal_id: number, type: string, name: string, url: string }> }>; // For adaptation queries
+   aired?: { from: string | null; to: string | null; }; // For year calculation if not directly present
 }
 
 /**
@@ -164,7 +166,7 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 
 // Helper function to map Jikan API response to our Anime interface
-const mapJikanDataToAnime = (jikanData: any): Anime | null => {
+export const mapJikanDataToAnime = (jikanData: any): Anime | null => {
   // Basic validation to ensure essential fields exist
   if (!jikanData || typeof jikanData.mal_id !== 'number' || !jikanData.title) {
       console.warn("Skipping invalid Jikan anime data:", jikanData);
@@ -185,6 +187,8 @@ const mapJikanDataToAnime = (jikanData: any): Anime | null => {
     url: jikanData.url || null,
     trailer: jikanData.trailer || null,
     type: 'anime', // Add type identifier
+    relations: jikanData.relations || [],
+    aired: jikanData.aired,
   };
 };
 
@@ -202,6 +206,7 @@ const mapJikanDataToAnime = (jikanData: any): Anime | null => {
  * @param sort Optional sorting parameter mapping to Jikan's `order_by` and `sort`.
  *             Examples: "popularity", "score", "rank", "title", "start_date", "episodes", "favorites".
  * @param limit Optional number of items per page (defaults to DEFAULT_JIKAN_LIMIT, max 25).
+ * @param sortDirection Optional sort direction ('asc' or 'desc').
  * @returns A promise that resolves to an AnimeResponse object containing the list of Anime and pagination info.
  */
 export async function getAnimes(
@@ -212,272 +217,142 @@ export async function getAnimes(
   status?: string,
   page: number = 1,
   sort: string = 'popularity', // Default sort is popularity
-  limit: number = DEFAULT_JIKAN_LIMIT // Allow custom limit
+  limit: number = DEFAULT_JIKAN_LIMIT, // Allow custom limit
+  sortDirection?: 'asc' | 'desc' // New parameter
 ): Promise<AnimeResponse> {
-  // Ensure limit doesn't exceed Jikan's max
   const effectiveLimit = Math.min(limit, 25);
 
   const params = new URLSearchParams({
     page: page.toString(),
     limit: effectiveLimit.toString(),
-    // sfw: 'true', // Ensure Safe-for-Work results, optional
   });
 
   if (search) params.append('q', search);
-  if (genre) params.append('genres', genre.toString()); // Jikan uses 'genres' param with comma-separated IDs
-  if (year) params.append('start_date', `${year}-01-01`); // Approximate year filtering by start date
+  if (genre) params.append('genres', genre.toString());
+  if (year) params.append('start_date', `${year}-01-01`);
   if (minScore && minScore > 0 && minScore <= 10) params.append('min_score', minScore.toString());
   if (status) params.append('status', status);
 
-  // Jikan Sorting Logic
   let orderBy = '';
-  let sortDirection = 'desc'; // Default sort direction
+  let effectiveSortDirection = sortDirection || 'desc'; // Use provided or default to 'desc'
 
   switch (sort) {
-      case 'popularity':
-          orderBy = 'members'; // Jikan uses 'members' for popularity
-          break;
-      case 'score':
-          orderBy = 'score';
-          break;
-      case 'rank':
-          orderBy = 'rank';
-          sortDirection = 'asc'; // Rank is ascending
-          break;
-      case 'title':
-          orderBy = 'title';
-          sortDirection = 'asc'; // Title A-Z
-          break;
-      case 'start_date':
-          orderBy = 'start_date';
-          break;
-       case 'episodes':
-          orderBy = 'episodes';
-          break;
-       case 'favorites': // Added favorites sort
-           orderBy = 'favorites';
-           break;
-      default:
-         // If no specific sort matches, and no search term, default to popularity
-         if(!search) {
-            orderBy = 'members';
-         }
-         // If there's a search term, Jikan might default to relevance, so we don't force an order_by unless specifically requested
+      case 'popularity': orderBy = 'members'; break;
+      case 'score': orderBy = 'score'; break;
+      case 'rank': orderBy = 'rank'; if (!sortDirection) effectiveSortDirection = 'asc'; break;
+      case 'title': orderBy = 'title'; if (!sortDirection) effectiveSortDirection = 'asc'; break;
+      case 'start_date': orderBy = 'start_date'; break;
+      case 'episodes': orderBy = 'episodes'; break;
+      case 'favorites': orderBy = 'favorites'; break;
+      default: if(!search) orderBy = 'members';
   }
 
   if (orderBy) {
      params.append('order_by', orderBy);
-     params.append('sort', sortDirection);
+     params.append('sort', effectiveSortDirection);
   }
 
   const url = `${JIKAN_API_URL}/anime?${params.toString()}`;
-  const headers: HeadersInit = {
-    'Accept': 'application/json',
-  };
+  const headers: HeadersInit = { 'Accept': 'application/json' };
   let response: Response | undefined;
 
   console.log(`[getAnimes] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
-  await delay(JIKAN_DELAY); // Wait before making the API call
+  await delay(JIKAN_DELAY);
 
   try {
     response = await fetch(url, {
       method: 'GET',
       headers: headers,
-      next: { revalidate: 3600 }, // Revalidate cache every hour
+      next: { revalidate: 3600 },
     });
 
     console.log(`[getAnimes] Response status for ${url}: ${response.status}`);
 
     if (!response.ok) {
       const errorBody = await response.text();
-      console.error('[getAnimes] Jikan API response not OK:', response.status, response.statusText);
-      console.error('[getAnimes] Jikan Error Body:', errorBody);
+      console.error(`[getAnimes] Jikan API response not OK: ${response.status} "${response.statusText}"`);
+      console.error('[getAnimes] Jikan Error Body:', errorBody.substring(0, 500)); // Log only first 500 chars
       console.error('[getAnimes] Jikan Request URL:', url);
-       // Improved logging for rate limiting
-       if (response.status === 429) {
-          console.warn("[getAnimes] Jikan API rate limit likely exceeded (429). Consider increasing JIKAN_DELAY or reducing requests.");
-          // Provide a specific error message for rate limiting
-          // Consider returning an empty response or a specific error object
-           return {
-               animes: [],
-               hasNextPage: false,
-               currentPage: page,
-               lastPage: page, // Assume current page is last on error
-           };
-       }
-      // Try parsing for structured error
-      let parsedError = null;
-      try {
-          parsedError = JSON.parse(errorBody);
-          if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
-              // Empty JSON object received
-              console.warn('[getAnimes] Parsed Jikan error body was an empty JSON object.');
-          } else if (parsedError) {
-              // Log parsed error structure
-              console.error('[getAnimes] Parsed Jikan Error Body:', parsedError);
-          } else {
-              // Log if parsing failed
-              console.warn('[getAnimes] Could not parse Jikan error body as JSON.');
-          }
-      } catch {
-           console.warn('[getAnimes] Failed to parse Jikan error body as JSON.');
-      }
-      // Instead of throwing, return an empty response
-        return {
-            animes: [],
-            hasNextPage: false,
-            currentPage: page,
-            lastPage: page, // Assume current page is last on error
-        };
-      // throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
+      return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
     }
 
     const jsonResponse: JikanAnimeListResponse = await response.json();
-    // console.log('[getAnimes] Jikan JSON Response:', JSON.stringify(jsonResponse, null, 2)); // Verbose logging
 
-    // Check for valid data structure in response
+    if (jsonResponse.status && jsonResponse.status !== 200 && jsonResponse.message) {
+      console.warn(`[getAnimes] Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}. URL: ${url}`);
+      return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
+    }
+
     if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-         console.warn('[getAnimes] Jikan API error: Response OK but missing or invalid "data" field.');
-         console.warn('[getAnimes] Jikan Response:', JSON.stringify(jsonResponse));
-         console.warn('[getAnimes] Jikan Request URL:', url);
-         // Return empty results gracefully
-         return {
-             animes: [],
-             hasNextPage: false,
-             currentPage: page,
-             lastPage: jsonResponse?.pagination?.last_visible_page ?? page,
-         };
+         console.warn(`[getAnimes] Jikan API error: Response OK but missing or invalid "data" field. URL: ${url}`);
+         console.warn('[getAnimes] Jikan Response Body:', JSON.stringify(jsonResponse).substring(0, 500));
+         return { animes: [], hasNextPage: false, currentPage: page, lastPage: jsonResponse?.pagination?.last_visible_page ?? page };
     }
 
     const pagination = jsonResponse.pagination;
     const animes = jsonResponse.data
                         .map(mapJikanDataToAnime)
-                        .filter((anime): anime is Anime => anime !== null); // Filter out null results
+                        .filter((anime): anime is Anime => anime !== null);
 
     console.log(`[getAnimes] Successfully fetched ${animes.length} anime for URL: ${url}. HasNextPage: ${pagination?.has_next_page ?? false}`);
-
-    return {
-        animes: animes,
-        hasNextPage: pagination?.has_next_page ?? false,
-        currentPage: pagination?.current_page,
-        lastPage: pagination?.last_visible_page,
-    };
+    return { animes, hasNextPage: pagination?.has_next_page ?? false, currentPage: pagination?.current_page, lastPage: pagination?.last_visible_page };
 
   } catch (error: any) {
     console.error(`[getAnimes] Failed to fetch anime from Jikan. URL: ${url}`);
-    if(response) {
-        console.error('[getAnimes] Response Status on Catch:', response.status, response.statusText);
-    }
-    // Log detailed fetch error
+    if(response) console.error('[getAnimes] Response Status on Catch:', response.status, response.statusText);
     console.error('[getAnimes] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-     // Return empty response on fetch error
-     return {
-         animes: [],
-         hasNextPage: false,
-         currentPage: page,
-         lastPage: page,
-     };
-    // throw new Error(`Failed to fetch anime data from Jikan: ${error.message || 'Unknown fetch error'}`);
+    return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
   }
 }
 
 /**
- * Fetches a single anime by its MyAnimeList ID using Jikan API.
+ * Fetches a single anime by its MyAnimeList ID or by title (if ID is 0 or not provided).
  * Includes delay to mitigate rate limiting.
  *
- * @param mal_id The MyAnimeList ID of the anime to fetch.
+ * @param mal_id The MyAnimeList ID of the anime to fetch. If 0 or undefined, uses title.
+ * @param title Optional title to search for if mal_id is not used.
  * @returns A promise that resolves to the Anime object or null if not found.
  */
-export async function getAnimeById(mal_id: number): Promise<Anime | null> {
-  const url = `${JIKAN_API_URL}/anime/${mal_id}`;
-  const headers: HeadersInit = { 'Accept': 'application/json' };
-  let response: Response | undefined;
+export async function getAnimeDetails(mal_id?: number, title?: string): Promise<Anime | null> {
+  if (mal_id && mal_id > 0) {
+    const url = `${JIKAN_API_URL}/anime/${mal_id}`;
+    const headers: HeadersInit = { 'Accept': 'application/json' };
+    let response: Response | undefined;
 
-    console.log(`[getAnimeById] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
-    await delay(JIKAN_DELAY); // Wait before making the API call
+    console.log(`[getAnimeDetailsByID] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
+    await delay(JIKAN_DELAY);
 
     try {
-        response = await fetch(url, {
-            method: 'GET',
-            headers: headers,
-            next: { revalidate: 3600 }, // Cache for 1 hour
-        });
-
-        console.log(`[getAnimeById] Response status for ${url}: ${response.status}`);
-
-
-        if (response.status === 404) {
-            console.warn(`[getAnimeById] Jikan: Anime with MAL ID ${mal_id} not found (404).`);
-            return null; // Not found
-        }
-
+        response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 3600 } });
+        console.log(`[getAnimeDetailsByID] Response status for ${url}: ${response.status}`);
+        if (response.status === 404) return null;
         if (!response.ok) {
             const errorBody = await response.text();
-            console.error('[getAnimeById] Jikan API response not OK:', response.status, response.statusText);
-            console.error('[getAnimeById] Jikan Error Body:', errorBody);
-            console.error('[getAnimeById] Jikan Request URL:', url);
-             if (response.status === 429) {
-                console.warn("[getAnimeById] Jikan API rate limit likely exceeded on single fetch (429). Consider increasing JIKAN_DELAY.");
-             }
-             let parsedError = null;
-             try {
-                parsedError = JSON.parse(errorBody);
-                if (parsedError && typeof parsedError === 'object' && Object.keys(parsedError).length === 0) {
-                    console.warn('[getAnimeById] Parsed Jikan error body was empty.');
-                } else if (parsedError) {
-                    console.error('[getAnimeById] Parsed Jikan Error Body:', parsedError);
-                } else {
-                    console.warn('[getAnimeById] Could not parse Jikan error body as JSON.');
-                }
-            } catch {}
-             // Return null on failure
-             return null;
-            // throw new Error(`Jikan API request failed: ${response.status} ${response.statusText}. URL: ${url}. Error: ${parsedError?.error || errorBody}`);
+            console.error(`[getAnimeDetailsByID] Jikan API not OK: ${response.status} for ${url}. Body: ${errorBody.substring(0,200)}`);
+            return null;
         }
-
         const jsonResponse: JikanSingleAnimeResponse = await response.json();
-        // console.log('[getAnimeById] Jikan JSON Response:', JSON.stringify(jsonResponse, null, 2));
-
-
         if (!jsonResponse.data) {
-             console.warn('[getAnimeById] Jikan API error: Response OK but missing data field for single anime.');
-             console.warn('[getAnimeById] Jikan Response:', JSON.stringify(jsonResponse));
-             console.warn('[getAnimeById] Jikan Request URL:', url);
-             return null; // Return null if data is missing
+             console.warn(`[getAnimeDetailsByID] Jikan API missing data for ID ${mal_id}. Resp: ${JSON.stringify(jsonResponse).substring(0,200)}`);
+             return null;
         }
-
-        const mappedAnime = mapJikanDataToAnime(jsonResponse.data);
-
-        if (mappedAnime) {
-             console.log(`[getAnimeById] Successfully fetched anime ID ${mal_id}: ${mappedAnime.title}`);
-        } else {
-             console.warn(`[getAnimeById] Failed to map Jikan data for anime ID ${mal_id}. Raw Data:`, JSON.stringify(jsonResponse.data));
-        }
-
-        return mappedAnime;
+        return mapJikanDataToAnime(jsonResponse.data);
     } catch (error: any) {
-        console.error(`[getAnimeById] Failed to fetch anime with MAL ID ${mal_id} from Jikan. URL: ${url}`);
-        if(response) {
-            console.error('[getAnimeById] Response Status on Catch:', response.status, response.statusText);
-        }
-        console.error('[getAnimeById] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        // Return null or re-throw based on how you want to handle errors
+        console.error(`[getAnimeDetailsByID] Failed for ID ${mal_id}, URL: ${url}. Error: ${error.message}`);
         return null;
-        // Or: throw new Error(`Failed to fetch anime details (ID: ${mal_id}): ${error.message}`);
     }
+  } else if (title) {
+    console.log(`[getAnimeDetailsByTitle] Searching for title: "${title}"`);
+    const searchResult = await getAnimes(undefined, undefined, undefined, title, undefined, 1, 'rank', 1);
+    if (searchResult.animes.length > 0) {
+      return searchResult.animes[0]; // Return the first, most relevant result
+    }
+    return null;
+  }
+  console.warn("[getAnimeDetails] Called with no ID and no title.");
+  return null;
 }
 
-/**
- * Fetches detailed information for a single anime by ID using Jikan API.
- * Currently identical to getAnimeById, but can be expanded later.
- *
- * @param id The MyAnimeList ID of the anime.
- * @returns A promise that resolves to the detailed Anime object or null if not found.
- */
-export async function getAnimeDetails(id: number): Promise<Anime | null> {
-  // For now, fetching by ID gives sufficient detail from Jikan
-  return getAnimeById(id);
-}
 
 /**
  * Fetches anime recommendations based on a given MAL ID using Jikan API.
@@ -492,53 +367,91 @@ export async function getAnimeRecommendations(mal_id: number): Promise<Anime[]> 
     let response: Response | undefined;
 
     console.log(`[getAnimeRecommendations] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
-    await delay(JIKAN_DELAY); // Wait before making the API call
+    await delay(JIKAN_DELAY);
 
     try {
-        response = await fetch(url, {
-            method: 'GET',
-            headers: headers,
-            next: { revalidate: 3600 * 12 }, // Cache recommendations for 12 hours
-        });
-
+        response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 3600 * 12 } });
         console.log(`[getAnimeRecommendations] Response status for ${url}: ${response.status}`);
-
         if (!response.ok) {
             const errorBody = await response.text();
-            console.error('[getAnimeRecommendations] Jikan API response not OK:', response.status, response.statusText);
-            console.error('[getAnimeRecommendations] Jikan Error Body:', errorBody);
-            console.error('[getAnimeRecommendations] Jikan Request URL:', url);
-            if (response.status === 429) {
-                console.warn("[getAnimeRecommendations] Jikan API rate limit likely exceeded (429).");
-            }
-            // Return empty array on error
+            console.error(`[getAnimeRecommendations] Jikan API not OK: ${response.status} for ${url}. Body: ${errorBody.substring(0,200)}`);
             return [];
         }
-
         const jsonResponse: JikanAnimeRecommendationsResponse = await response.json();
-
         if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-            console.warn('[getAnimeRecommendations] Jikan API error: Response OK but missing or invalid "data" field.');
-            console.warn('[getAnimeRecommendations] Jikan Response:', JSON.stringify(jsonResponse));
-            console.warn('[getAnimeRecommendations] Jikan Request URL:', url);
+            console.warn(`[getAnimeRecommendations] Jikan API missing/invalid data for MAL ID ${mal_id}. Resp: ${JSON.stringify(jsonResponse).substring(0,200)}`);
             return [];
         }
-
-        // Map the Jikan recommendation structure to our Anime interface
-        // The 'entry' object within the recommendation data matches our Anime structure closely
-        const recommendations = jsonResponse.data
-            .map(rec => mapJikanDataToAnime(rec.entry)) // Map the 'entry' object
-            .filter((anime): anime is Anime => anime !== null); // Filter out null results
-
-        console.log(`[getAnimeRecommendations] Successfully fetched ${recommendations.length} recommendations for MAL ID ${mal_id}.`);
-        return recommendations;
-
+        return jsonResponse.data.map(rec => mapJikanDataToAnime(rec.entry)).filter((anime): anime is Anime => anime !== null);
     } catch (error: any) {
-        console.error(`[getAnimeRecommendations] Failed to fetch recommendations for MAL ID ${mal_id} from Jikan. URL: ${url}`);
-        if(response) {
-            console.error('[getAnimeRecommendations] Response Status on Catch:', response.status, response.statusText);
-        }
-        console.error('[getAnimeRecommendations] Fetch Error Details:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
-        return []; // Return empty array on fetch error
+        console.error(`[getAnimeRecommendations] Failed for MAL ID ${mal_id}, URL: ${url}. Error: ${error.message}`);
+        return [];
     }
 }
+
+
+/**
+ * Fetches anime for a specific season (year and season name).
+ * @param year The year of the season.
+ * @param season The season name ('winter', 'spring', 'summer', 'fall').
+ * @param page The page number.
+ * @param limit The number of items per page.
+ * @returns A promise that resolves to an AnimeResponse object.
+ */
+export async function getSeasonAnime(
+  year: number,
+  season: 'winter' | 'spring' | 'summer' | 'fall',
+  page: number = 1,
+  limit: number = DEFAULT_JIKAN_LIMIT
+): Promise<AnimeResponse> {
+  const effectiveLimit = Math.min(limit, 25);
+  const params = new URLSearchParams({
+    page: page.toString(),
+    limit: effectiveLimit.toString(),
+    // Jikan's season endpoint doesn't support sfw or other filters directly in the same way
+    // but content is generally SFW.
+  });
+
+  const url = `${JIKAN_API_URL}/seasons/${year}/${season}?${params.toString()}`;
+  const headers: HeadersInit = { 'Accept': 'application/json' };
+  let response: Response | undefined;
+
+  console.log(`[getSeasonAnime] Attempting fetch: ${url} (Delay: ${JIKAN_DELAY}ms)`);
+  await delay(JIKAN_DELAY);
+
+  try {
+    response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 3600 * 24 } }); // Cache seasonal data for a day
+    console.log(`[getSeasonAnime] Response status for ${url}: ${response.status}`);
+
+    if (!response.ok) {
+      const errorBody = await response.text();
+      console.error(`[getSeasonAnime] Jikan API not OK: ${response.status} for ${url}. Body: ${errorBody.substring(0,500)}`);
+      return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
+    }
+
+    const jsonResponse: JikanAnimeListResponse = await response.json();
+    if (jsonResponse.status && jsonResponse.status !== 200 && jsonResponse.message) {
+        console.warn(`[getSeasonAnime] Jikan API returned error ${jsonResponse.status} in 2xx response: ${jsonResponse.message}. URL: ${url}`);
+        return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
+    }
+    if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+      console.warn(`[getSeasonAnime] Jikan API missing/invalid data for ${year} ${season}. Resp: ${JSON.stringify(jsonResponse).substring(0,500)}`);
+      return { animes: [], hasNextPage: false, currentPage: page, lastPage: jsonResponse?.pagination?.last_visible_page ?? page };
+    }
+
+    const pagination = jsonResponse.pagination;
+    const animes = jsonResponse.data
+                        .map(mapJikanDataToAnime)
+                        .filter((anime): anime is Anime => anime !== null);
+
+    console.log(`[getSeasonAnime] Successfully fetched ${animes.length} anime for ${year} ${season}. URL: ${url}. HasNextPage: ${pagination?.has_next_page ?? false}`);
+    return { animes, hasNextPage: pagination?.has_next_page ?? false, currentPage: pagination?.current_page, lastPage: pagination?.last_visible_page };
+
+  } catch (error: any) {
+    console.error(`[getSeasonAnime] Failed for ${year} ${season}, URL: ${url}. Error: ${error.message}`);
+    if(response) console.error('[getSeasonAnime] Response Status on Catch:', response.status, response.statusText);
+    return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
+  }
+}
+
+    
