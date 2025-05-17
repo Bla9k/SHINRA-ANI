@@ -1,14 +1,15 @@
+
 // src/app/gacha/page.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive } from '@/components/ui/card'; // Renamed CardTitle
 import { useToast } from '@/hooks/use-toast';
 import { performGachaRoll } from '@/services/collectibles';
 import type { Collectible } from '@/types/collectibles';
 import Image from 'next/image';
-import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Tv, BookText, Film, Layers, Library } from 'lucide-react'; // Added Film, Layers, Library
+import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -16,6 +17,12 @@ import { getAnimeDetails, type Anime } from '@/services/anime';
 import { getMangaDetails, type Manga } from '@/services/manga';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
+import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import { GACHA_ROLL_SIZE, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT } from '@/config/gachaConfig';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
+// Use the CardTitle from shadcn/ui
+const CardTitle = CardTitlePrimitive;
 
 interface GachaCardProps {
   collectible: Collectible;
@@ -25,12 +32,13 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
   const [realItemDetails, setRealItemDetails] = useState<Anime | Manga | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchRealDetails = async () => {
       if (!collectible.originalMalId || !collectible.originalType) {
         setIsLoadingDetails(false);
-        setErrorDetails('Missing original item ID or type for this collectible.');
+        setErrorDetails('Missing original item ID or type.');
         return;
       }
       setIsLoadingDetails(true);
@@ -39,17 +47,16 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
         let details: Anime | Manga | null = null;
         if (collectible.originalType === 'anime') {
           details = await getAnimeDetails(collectible.originalMalId, undefined, true); // true for noDelay
-        } else if (collectible.originalType === 'manga') { // Added else if for manga
+        } else if (collectible.originalType === 'manga') {
           details = await getMangaDetails(collectible.originalMalId, undefined, true); // true for noDelay
         }
         setRealItemDetails(details);
         if (!details) {
-            // Refined error message
             setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
         }
       } catch (err) {
         console.error(`Error fetching details for collectible ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
-        setErrorDetails('Failed to load original item details from source.');
+        setErrorDetails('Failed to load original item details.');
       } finally {
         setIsLoadingDetails(false);
       }
@@ -57,65 +64,68 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
     fetchRealDetails();
   }, [collectible]);
 
-  const getRarityColor = (rarity: Collectible['rarity']) => {
+  const getRarityColorClasses = (rarity: Collectible['rarity']) => {
     switch (rarity) {
-      case 'Common': return 'bg-gray-500/20 border-gray-500 text-gray-300';
-      case 'Rare': return 'bg-blue-500/20 border-blue-500 text-blue-300';
-      case 'Ultra Rare': return 'bg-purple-500/20 border-purple-500 text-purple-300';
-      case 'Legendary': return 'bg-orange-500/20 border-orange-500 text-orange-300';
-      case 'Mythic': return 'bg-red-600/20 border-red-600 text-red-300';
-      case 'Event': return 'bg-yellow-500/20 border-yellow-500 text-yellow-300';
-      default: return 'bg-muted/20 border-muted text-muted-foreground';
+      case 'Common': return 'border-gray-400/50 bg-gray-700/20 text-gray-300';
+      case 'Rare': return 'border-blue-400/60 bg-blue-600/20 text-blue-300 neon-glow-rare';
+      case 'Ultra Rare': return 'border-purple-400/60 bg-purple-600/20 text-purple-300 neon-glow-ultra-rare';
+      case 'Legendary': return 'border-orange-400/70 bg-orange-500/20 text-orange-300 neon-glow-legendary';
+      case 'Mythic': return 'border-red-500/70 bg-red-600/20 text-red-300 fiery-glow'; // Use fiery-glow for Mythic
+      case 'Event': return 'border-yellow-400/70 bg-yellow-500/20 text-yellow-300 neon-glow-event';
+      default: return 'border-muted/50 bg-muted/20 text-muted-foreground';
     }
   };
+  
+  const rarityColor = getRarityColorClasses(collectible.rarity);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.random() * 0.3 }} // Staggered animation
+      ref={cardRef}
+      initial={{ opacity: 0, y: 50, scale: 0.8 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.5, delay: Math.random() * 0.4, type: "spring", stiffness: 100, damping: 10 }}
       className="w-full group"
     >
       <Card className={cn(
-        "glass-deep shadow-lg border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:scale-105",
-        getRarityColor(collectible.rarity).split(' ')[1] // Use border color from rarity
+        "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:shadow-2xl",
+        rarityColor.split(' ')[0] // Use border color from rarity
       )}>
         <CardHeader className="p-0 relative aspect-[3/4]">
           {isLoadingDetails && (!realItemDetails?.imageUrl && !collectible.imageUrl) && (
-            <Skeleton className="absolute inset-0" />
+            <Skeleton className="absolute inset-0 bg-muted/30" />
           )}
-          {/* Display real item image if available, otherwise parody image, otherwise placeholder */}
           <Image
-            src={realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Art&font=lora'}
+            src={realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Shinra&font=lora'}
             alt={collectible.parodyTitle}
-            fill // Changed from layout="fill"
+            fill
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover transition-opacity duration-300"
+            className={cn("object-cover transition-opacity duration-500", isLoadingDetails ? "opacity-30" : "opacity-100")}
             data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
             onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x400.png?text=Error&font=lora'; }}
+            priority={false} // Banners should be priority, not gacha cards
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
           <Badge
             className={cn(
               "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
-              getRarityColor(collectible.rarity)
+              rarityColor // Apply full rarity class for bg and text
             )}
           >
             {collectible.rarity}
           </Badge>
-          <CardTitle className="absolute bottom-1.5 left-2 right-2 z-10 text-xs sm:text-sm font-semibold text-primary-foreground line-clamp-2 shadow-text group-hover:text-primary transition-colors">
+          <CardTitle className="absolute bottom-1.5 left-2 right-2 z-10 text-xs sm:text-sm font-bold text-primary-foreground line-clamp-2 shadow-text group-hover:text-primary transition-colors">
             {collectible.parodyTitle}
           </CardTitle>
         </CardHeader>
-        <CardContent className="p-2 sm:p-3 flex-grow flex flex-col">
-            <div className="flex-grow">
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 italic line-clamp-2 sm:line-clamp-3">
+        <CardContent className="p-2 sm:p-3 flex-grow flex flex-col bg-card/50">
+            <div className="flex-grow mb-1.5">
+                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 italic line-clamp-2 sm:line-clamp-3 group-hover:line-clamp-none transition-all duration-200">
                     "{collectible.parodyBlurb}"
                 </p>
                 {isLoadingDetails && (
                     <div className="space-y-1 mt-1">
-                        <Skeleton className="h-3 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-3 w-3/4 bg-muted/30" />
+                        <Skeleton className="h-3 w-1/2 bg-muted/30" />
                     </div>
                 )}
                 {errorDetails && !isLoadingDetails && (
@@ -165,21 +175,28 @@ export default function GachaPage() {
   const [pulledCollectibles, setPulledCollectibles] = useState<Collectible[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
+  const { user, userProfile, loading: authLoading, fetchUserProfile } = useAuth();
   const { toast } = useToast();
+  const [currentPityCount, setCurrentPityCount] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    if (user && userProfile) {
+      setCurrentPityCount(userProfile.gachaPityCounter || 0);
+    } else if (!user && !authLoading) { // If not logged in and auth check is done
+      setCurrentPityCount(0); // Reset for non-logged-in users
+    }
+  }, [user, userProfile, authLoading]);
 
   const handleRoll = async () => {
     if (!isClient) return;
-
     setIsLoading(true);
-    setPulledCollectibles(null); // Clear previous results for new roll
+    setPulledCollectibles(null); // Clear previous for animation
 
+    // Simulate a short delay for UX before API call
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    const result = await performGachaRoll();
+    const result = await performGachaRoll(user?.uid || null);
 
     if ('error' in result) {
       toast({
@@ -187,9 +204,17 @@ export default function GachaPage() {
         description: result.error,
         variant: 'destructive',
       });
-      setPulledCollectibles([]);
+      setPulledCollectibles([]); // Set to empty array to clear skeletons
     } else {
       setPulledCollectibles(result.collectibles);
+      if(result.newPityCounter !== undefined) {
+        setCurrentPityCount(result.newPityCounter);
+        // If user is logged in, optimistic update of local profile pity (or refetch)
+        if(user && fetchUserProfile) {
+            // Optimistically update for now, or trigger full refetch:
+            // await fetchUserProfile(user.uid);
+        }
+      }
       toast({
         title: 'Gacha Roll Success!',
         description: `You pulled ${result.collectibles.length} new collectibles!`,
@@ -198,44 +223,85 @@ export default function GachaPage() {
     }
     setIsLoading(false);
   };
+  
+  const pityTooltipContent = user ? (
+    <>
+        Current Pity: {currentPityCount}/{HARD_PITY_COUNT} <br />
+        (Soft pity starts at {SOFT_PITY_START_COUNT}. Target: {PITY_TARGET_RARITIES.join('/')})
+    </>
+    ) : "Log in to track pity progress.";
 
-  const GACHA_ROLL_SIZE = 4; // Defined here for skeleton consistency
 
   return (
-    <div className="container mx-auto px-2 sm:px-4 py-8 flex flex-col items-center">
+    <div className="container mx-auto px-2 sm:px-4 py-8 flex flex-col items-center min-h-screen">
       <div className="text-center mb-6 sm:mb-8">
-        <Gift className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-primary mb-2 sm:mb-3" />
-        <h1 className="text-3xl sm:text-4xl font-bold text-primary sf-text-glow">Shinra-Ani Gacha</h1>
-        <p className="text-muted-foreground mt-1 sm:mt-2 text-md sm:text-lg">
-          Roll for unique, parody collectibles! It's free!
-        </p>
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ type: "spring", stiffness: 150, damping: 15, delay: 0.2 }}
+        >
+          <Gift className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-primary mb-2 sm:mb-3 fiery-glow-icon" />
+        </motion.div>
+        <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
+            className="text-3xl sm:text-4xl font-bold text-primary sf-text-glow" // Added Shinra Fire text glow
+        >
+            Shinra-Ani Gacha
+        </motion.h1>
+        <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base"
+        >
+          Roll for unique, parody collectibles! (Free during Beta)
+        </motion.p>
       </div>
 
-      <Button
-        onClick={handleRoll}
-        disabled={isLoading || !isClient}
-        size="lg"
-        className="px-6 py-4 sm:px-8 sm:py-6 text-md sm:text-lg fiery-glow-hover sf-bansho-button mb-6 sm:mb-8 rounded-xl"
-      >
-        {isLoading ? (
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-        ) : (
-          <Sparkles className="mr-2 h-5 w-5" />
-        )}
-        Roll for {GACHA_ROLL_SIZE} Collectibles!
-      </Button>
+      <div className="flex items-center gap-3 mb-6 sm:mb-8">
+        <Button
+            onClick={handleRoll}
+            disabled={isLoading || !isClient}
+            size="lg"
+            className="px-6 py-4 sm:px-8 sm:py-6 text-md sm:text-lg fiery-glow-hover sf-bansho-button rounded-xl relative overflow-hidden"
+            aria-label={`Roll for ${GACHA_ROLL_SIZE} collectibles`}
+        >
+            {isLoading ? (
+            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+            ) : (
+            <Sparkles className="mr-2 h-5 w-5" />
+            )}
+            Roll for {GACHA_ROLL_SIZE} Collectibles!
+        </Button>
+        <TooltipProvider delayDuration={100}>
+            <Tooltip>
+                <TooltipTrigger asChild>
+                    <Button variant="outline" size="icon" className="rounded-full glass h-10 w-10 sm:h-12 sm:w-12">
+                        <HelpCircle size={20} className="text-muted-foreground"/>
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent className="glass-deep max-w-xs text-xs" side="bottom">
+                    <p className="font-semibold mb-1">Gacha Pity System:</p>
+                    {pityTooltipContent}
+                </TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
+      </div>
+
 
       {isLoading && (
-        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
           {Array.from({ length: GACHA_ROLL_SIZE }).map((_, index) => (
             <Card key={`skel-${index}`} className="glass-deep aspect-[3/4] animate-pulse">
                 <CardHeader className="p-0 relative h-2/3">
-                    <Skeleton className="h-full w-full rounded-t-lg" />
+                    <Skeleton className="h-full w-full rounded-t-lg bg-muted/40" />
                 </CardHeader>
                 <CardContent className="p-2 space-y-1">
-                    <Skeleton className="h-3 w-3/4" />
-                    <Skeleton className="h-2 w-full" />
-                    <Skeleton className="h-2 w-1/2" />
+                    <Skeleton className="h-3 w-3/4 bg-muted/40" />
+                    <Skeleton className="h-2 w-full bg-muted/40" />
+                    <Skeleton className="h-2 w-1/2 bg-muted/40" />
                 </CardContent>
             </Card>
           ))}
@@ -243,7 +309,7 @@ export default function GachaPage() {
       )}
 
       {pulledCollectibles && pulledCollectibles.length > 0 && !isLoading && (
-        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
           {pulledCollectibles.map((collectible) => (
             <GachaCard key={collectible.id} collectible={collectible} />
           ))}
@@ -251,10 +317,15 @@ export default function GachaPage() {
       )}
 
        {!pulledCollectibles && !isLoading && isClient && (
-          <div className="text-center text-muted-foreground mt-8 p-6 border border-dashed border-border/50 rounded-lg glass max-w-md w-full">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="text-center text-muted-foreground mt-8 p-6 border border-dashed border-border/50 rounded-lg glass max-w-md w-full"
+          >
             <p className="text-lg">Your next legendary (or hilariously common) pulls await!</p>
             <p className="text-sm mt-1">Click the button above to try your luck.</p>
-          </div>
+          </motion.div>
         )}
     </div>
   );
