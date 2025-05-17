@@ -104,7 +104,7 @@ body {
     --primary-foreground: 0 0% 100%;
     --secondary: 270 50% 60%;
     --secondary-foreground: 0 0% 100%;
-    --accent: 270 50% 55%;
+    --accent: 270 50% 55%; /* Accent for light theme */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 100%;
@@ -114,23 +114,44 @@ body {
   }
 
   html[data-theme="shinra-fire"] {
-    --background: 20 10% 8%;
-    --foreground: 30 60% 92%;
-    --card: 10 10% 12%;
+    --background: 20 10% 8%; /* Very dark charcoal/desaturated brown */
+    --foreground: 30 60% 92%; /* Light, warm off-white */
+    --card: 10 10% 12%; /* Slightly lighter dark with subtle red tint */
     --card-foreground: 30 50% 90%;
     --popover: 10 10% 10%;
     --popover-foreground: 30 50% 90%;
     --primary: 15 100% 55%; /* Fiery Orange-Red */
-    --primary-foreground: 30 100% 95%;
-    --secondary: 30 100% 60%;
-    --secondary-foreground: 20 20% 10%;
-    --accent: 35 100% 60%; /* Brighter Orange/Yellow for Accent */
-    --accent-foreground: 20 20% 5%;
+    --primary-foreground: 0 0% 100%; /* White for contrast */
+    --secondary: 30 100% 60%; /* Brighter orange */
+    --secondary-foreground: 20 20% 10%; /* Dark for contrast on bright orange */
+    --accent: 35 100% 60%; /* Bright Yellow-Orange for accents */
+    --accent-foreground: 20 20% 5%; /* Very dark for contrast on yellow-orange */
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
     --border: 15 40% 30%; /* Darker, warm border */
     --input: 15 15% 15%;
     --ring: 15 100% 60%; /* Primary fiery color for rings */
+  }
+
+  /* Modern Shinra Theme */
+  html[data-theme="modern-shinra"] {
+    --background: 220 15% 12%; /* Deep, slightly cool grey */
+    --foreground: 210 30% 96%; /* Clean, bright off-white */
+    --card: 220 15% 15%;       /* Slightly lighter than background, solid matte */
+    --card-foreground: 210 30% 96%;
+    --popover: 220 15% 14%;    /* Similar to card, perhaps with more translucency */
+    --popover-foreground: 210 30% 96%;
+    --primary: 220 80% 60%;    /* Sophisticated, vibrant blue */
+    --primary-foreground: 0 0% 100%; /* White */
+    --secondary: 220 10% 40%;  /* Muted, elegant grey */
+    --secondary-foreground: 210 30% 90%; /* Light grey/off-white */
+    --accent: 180 40% 50%;     /* Refined teal or subtle gold */
+    --accent-foreground: 210 40% 98%; /* Contrasting color for the accent */
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 15% 20%;     /* Very subtle, slightly lighter than card */
+    --input: 220 15% 18%;      /* Clean, dark input fields */
+    --ring: 220 80% 65%;       /* Uses the primary blue, slightly lighter for rings */
   }
 
   /* Netflix Theme */
@@ -179,20 +200,41 @@ body {
    }
 
     .active-nav-item {
-       color: hsl(var(--primary)); /* This will use the current theme's primary color */
+       color: hsl(var(--primary)) !important; /* Ensure active item uses theme's primary color */
+    }
+    
+    /* Modern Shinra specific card style */
+    html[data-theme="modern-shinra"] .modern-shinra-card {
+      @apply bg-card text-card-foreground border border-border shadow-md rounded-lg;
+      /* Add any other specific base styles for cards in this theme */
+    }
+    html[data-theme="modern-shinra"] .modern-shinra-card-hover:hover {
+      @apply shadow-lg border-primary/60; /* Example hover for modern theme */
     }
 
-    html[data-theme="shinra-fire"] .active-nav-item svg.neon-glow-icon-shinra,
-    html[data-theme="shinra-fire"] .sf-bansho-button svg {
+     /* Netflix specific card style */
+    html[data-theme="hypercharge-netflix"] .netflix-card {
+      @apply bg-card text-card-foreground border border-border/30 rounded-sm;
+    }
+     html[data-theme="hypercharge-netflix"] .netflix-card-hover:hover {
+       @apply border-primary/70 shadow-lg shadow-primary/20;
+    }
+
+    /* Default theme card active/hover (ensure it doesn't use Shinra Fire's glows) */
+    html:not([data-theme="shinra-fire"]):not([data-theme="modern-shinra"]):not([data-theme="hypercharge-netflix"]) .nav-item-base:hover,
+    html:not([data-theme="shinra-fire"]):not([data-theme="modern-shinra"]):not([data-theme="hypercharge-netflix"]) .nav-item-base:focus-visible {
+      @apply text-primary bg-primary/10; /* Subtle background for default themes */
+    }
+    html[data-theme="shinra-fire"] .nav-item-base.active-nav-item svg {
         filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.8)) drop-shadow(0 0 8px hsl(var(--primary) / 0.5));
     }
-
-    /* Default themes no special icon glow for active */
-    html[data-theme="dark"] .active-nav-item svg,
-    html[data-theme="light"] .active-nav-item svg,
-    html[data-theme="hypercharge-netflix"] .active-nav-item svg {
-        filter: none;
+    html[data-theme="modern-shinra"] .nav-item-base.active-nav-item {
+        @apply text-primary bg-primary/10 rounded-md;
     }
+     html[data-theme="modern-shinra"] .nav-item-base:hover:not(.active-nav-item) {
+        @apply bg-card/60 text-foreground/80; /* More subtle hover for modern theme */
+    }
+
 
 }
 
@@ -215,18 +257,46 @@ body {
 
     /* General Neon Glow (uses --primary) */
     .neon-glow { box-shadow: 0 0 5px hsl(var(--primary) / 0.4), 0 0 10px hsl(var(--primary) / 0.2); border-color: hsl(var(--primary) / 0.4) !important; }
-    .neon-glow-hover:hover { box-shadow: 0 0 7px hsl(var(--primary) / 0.6), 0 0 14px hsl(var(--primary) / 0.3); }
+    .neon-glow-hover:hover:not([data-theme="modern-shinra"] .nav-item-base):not([data-theme="hypercharge-netflix"] .nav-item-base) {
+      box-shadow: 0 0 7px hsl(var(--primary) / 0.6), 0 0 14px hsl(var(--primary) / 0.3);
+    }
     .neon-glow-focus:focus-visible { box-shadow: 0 0 7px hsl(var(--ring) / 0.7), 0 0 14px hsl(var(--ring) / 0.5); border-color: hsl(var(--ring) / 0.7) !important; outline: 2px solid transparent; outline-offset: 2px; }
+    
+    /* Subtle glow for non-Shinra Fire themes on cards (if needed) */
+    .neon-glow-subtle-hover:hover:not([data-theme="shinra-fire"]):not([data-theme="modern-shinra"]):not([data-theme="hypercharge-netflix"]) {
+        box-shadow: 0 0 8px hsl(var(--primary) / 0.2), 0 0 15px hsl(var(--primary) / 0.1);
+    }
 
-    /* Fiery Glow (uses --accent from Shinra Fire, or current theme's --accent) */
+
+    /* Fiery Glow (uses --accent from Shinra Fire, or current theme's --accent for others) */
     .fiery-glow { box-shadow: 0 0 6px hsl(var(--accent) / 0.7), 0 0 12px hsl(var(--accent) / 0.5); border-color: hsl(var(--accent) / 0.7) !important; }
     .fiery-glow-hover:hover { box-shadow: 0 0 8px hsl(var(--accent) / 0.9), 0 0 16px hsl(var(--accent) / 0.6); }
     .fiery-glow-focus:focus-visible { box-shadow: 0 0 8px hsl(var(--ring) / 0.8), 0 0 16px hsl(var(--ring) / 0.6); border-color: hsl(var(--ring) / 0.8) !important; outline: 2px solid transparent; outline-offset: 2px; }
-    html[data-theme="shinra-fire"] .fiery-glow-text { text-shadow: 0 0 5px hsl(var(--primary)/0.8), 0 0 10px hsl(var(--accent)/0.6); }
-    html[data-theme="shinra-fire"] .fiery-glow-icon { filter: drop-shadow(0 0 5px hsl(var(--primary)/0.8)) drop-shadow(0 0 10px hsl(var(--accent)/0.5)); }
 
-    .data-\[state=active\]\:.neon-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--primary) / 0.6), 0 0 10px hsl(var(--primary) / 0.4); color: hsl(var(--primary)); background-color: hsl(var(--card)) !important; }
-    .data-\[state=active\]\:.fiery-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--accent) / 0.6), 0 0 10px hsl(var(--accent) / 0.4); color: hsl(var(--accent)); background-color: hsl(var(--card)) !important; }
+    .fiery-glow-text {
+        text-shadow: 0 0 5px hsl(var(--accent)/0.8), 0 0 10px hsl(var(--accent)/0.6);
+    }
+    html[data-theme="shinra-fire"] .fiery-glow-text {
+        text-shadow: 0 0 6px hsl(var(--primary)/0.8), 0 0 12px hsl(var(--primary)/0.6), 0 0 18px hsl(var(--accent)/0.5);
+    }
+
+    .fiery-glow-icon { filter: drop-shadow(0 0 5px hsl(var(--accent)/0.8)) drop-shadow(0 0 10px hsl(var(--accent)/0.5)); }
+     html[data-theme="shinra-fire"] .fiery-glow-icon {
+        filter: drop-shadow(0 0 5px hsl(var(--primary)/0.8)) drop-shadow(0 0 10px hsl(var(--accent)/0.5));
+    }
+
+    /* Tab Glows - Corrected based on Tailwind data attribute variant usage */
+    .neon-glow-tab {
+      box-shadow: 0 0 5px hsl(var(--primary) / 0.6), 0 0 10px hsl(var(--primary) / 0.4);
+      color: hsl(var(--primary));
+      background-color: hsl(var(--card)) !important; /* Important to override default active tab styles */
+    }
+
+    .fiery-glow-tab {
+      box-shadow: 0 0 5px hsl(var(--accent) / 0.6), 0 0 10px hsl(var(--accent) / 0.4);
+      color: hsl(var(--accent));
+      background-color: hsl(var(--card)) !important; /* Important to override default active tab styles */
+    }
 
     .shadow-top-md { box-shadow: 0 -3px 12px -1px hsl(var(--background) / 0.3), 0 -2px 8px -2px hsl(var(--background) / 0.25); }
     .tier-card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); }
@@ -250,7 +320,7 @@ body {
 
     html[data-theme="shinra-fire"] .sf-glitch-intense {
       position: relative;
-      --glitch-intensity: 2px;
+      --glitch-intensity: 2px; /* Define glitch intensity as a CSS variable */
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::before,
     html[data-theme="shinra-fire"] .sf-glitch-intense[data-text]::after {
@@ -264,12 +334,12 @@ body {
       background: hsl(var(--background)); /* Or transparent if you want bg to show through */
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense::before {
-      color: hsl(var(--primary));
+      color: hsl(var(--primary)); /* Fiery color */
       text-shadow: -1.5px 0 hsl(var(--accent)/0.7);
       animation: sf-glitch-anim-1 3s infinite steps(2, end) alternate-reverse;
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense::after {
-      color: hsl(var(--accent));
+      color: hsl(var(--accent)); /* Another fiery color */
       text-shadow: 1.5px 0 hsl(var(--primary)/0.7);
       animation: sf-glitch-anim-2 2.5s infinite steps(2, end) alternate-reverse;
     }
@@ -321,3 +391,5 @@ body {
     .neon-glow-event { box-shadow: 0 0 7px hsl(var(--rarity-event-glow) / 0.7), 0 0 14px hsl(var(--rarity-event-glow) / 0.5), 0 0 20px hsl(var(--rarity-event-glow) / 0.2); border-color: hsl(var(--rarity-event-glow) / 0.8) !important; }
 
 }
+
+    
