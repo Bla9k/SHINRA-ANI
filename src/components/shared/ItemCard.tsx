@@ -1,10 +1,11 @@
 
-import React, { useRef } from 'react'; // Added useRef
+import React, { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button'; // Added this import
 import { Star, CalendarDays, Tv, BookText, ArrowRight, Film, Layers, Info } from 'lucide-react';
 import type { DisplayItem } from '@/app/page';
 import { cn, } from '@/lib/utils';
@@ -14,7 +15,7 @@ interface ItemCardProps {
   item: DisplayItem;
   className?: string;
   viewMode?: 'grid' | 'list';
-  onEngageFocusMode?: (item: DisplayItem) => void; // New prop for focus mode
+  onEngageFocusMode?: (item: DisplayItem) => void;
 }
 
 export const ItemCard: React.FC<ItemCardProps> = ({ item, className, viewMode = 'grid', onEngageFocusMode }) => {
@@ -24,11 +25,11 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, className, viewMode = 
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = () => {
-    if (onEngageFocusMode && viewMode === 'grid') { // Only for grid view on homepage typically
+    if (onEngageFocusMode && viewMode === 'grid') {
       clearTimeout(hoverTimerRef.current!);
       hoverTimerRef.current = setTimeout(() => {
         onEngageFocusMode(item);
-      }, 700); // 700ms delay for long hover
+      }, 700);
     }
   };
 
@@ -185,7 +186,7 @@ export const SkeletonItemCard: React.FC<{ className?: string; viewMode?: 'grid' 
 interface BannerCardProps {
   item: DisplayItem;
   className?: string;
-  onEngageFocusMode?: (item: DisplayItem) => void; // New prop for focus mode
+  onEngageFocusMode?: (item: DisplayItem) => void;
 }
 
 export const BannerCard: React.FC<BannerCardProps> = ({ item, className, onEngageFocusMode }) => {
@@ -200,7 +201,7 @@ export const BannerCard: React.FC<BannerCardProps> = ({ item, className, onEngag
       clearTimeout(hoverTimerRef.current!);
       hoverTimerRef.current = setTimeout(() => {
         onEngageFocusMode(item);
-      }, 700); // 700ms delay for long hover
+      }, 700);
     }
   };
 
