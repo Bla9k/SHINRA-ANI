@@ -60,4 +60,6 @@ if (Math.abs(pityDistributionSum - 1.0) > 0.001 && PITY_TARGET_RARITIES.length >
 const baseRateSum = Object.values(GACHA_RARITY_RATES).reduce((sum, rate) => sum + rate, 0);
 if (Math.abs(baseRateSum - 1.0) > 0.001) {
     console.warn(
-        `GACHA WARNING: GACHA_RARITY_RATES do not sum to 1.0
+        `GACHA WARNING: GACHA_RARITY_RATES do not sum to 1.0 (Current sum: ${baseRateSum}). Drop rates will be normalized, but this may indicate a configuration error.`
+    );
+}
