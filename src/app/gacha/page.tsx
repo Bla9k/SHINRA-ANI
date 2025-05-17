@@ -5,19 +5,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { performGachaRoll } from '@/services/collectibles.ts';
-import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity } from '@/types/collectibles.ts'; // Import SAMPLE_COLLECTIBLES
+import { performGachaRoll } from '@/services/collectibles';
+import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity } from '@/types/collectibles';
 import Image from 'next/image';
-import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle } from 'lucide-react'; // Added Percent, Palette, Combine, XCircle
+import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAnimeDetails, type Anime } from '@/services/anime.ts';
-import { getMangaDetails, type Manga } from '@/services/manga.ts';
+import { getAnimeDetails, type Anime } from '@/services/anime';
+import { getMangaDetails, type Manga } from '@/services/manga';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/useAuth';
-import { GACHA_ROLL_SIZE, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT, GACHA_RARITY_RATES } from '@/config/gachaConfig.ts';
+import { GACHA_ROLL_SIZE, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT, GACHA_RARITY_RATES, RARITY_ORDER, RARITY_NUMERICAL_VALUE } from '@/config/gachaConfig';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -30,7 +30,7 @@ const getRarityColorClasses = (rarity: Collectible['rarity']) => {
     case 'Rare': return 'border-blue-400/60 bg-blue-600/20 text-blue-300 neon-glow-rare';
     case 'Ultra Rare': return 'border-purple-400/60 bg-purple-600/20 text-purple-300 neon-glow-ultra-rare';
     case 'Legendary': return 'border-orange-400/70 bg-orange-500/20 text-orange-300 neon-glow-legendary';
-    case 'Mythic': return 'border-red-500/70 bg-red-600/20 text-red-300 fiery-glow'; // Using fiery-glow for Mythic
+    case 'Mythic': return 'border-red-500/70 bg-red-600/20 text-red-300 fiery-glow';
     case 'Event': return 'border-yellow-400/70 bg-yellow-500/20 text-yellow-300 neon-glow-event';
     default: return 'border-muted/50 bg-muted/20 text-muted-foreground';
   }
@@ -47,7 +47,6 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
   const [realItemDetails, setRealItemDetails] = useState<Anime | Manga | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchRealDetails = async () => {
@@ -81,10 +80,12 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
 
   const rarityClasses = getRarityColorClasses(collectible.rarity);
   const detailPageUrl = collectible.originalMalId && collectible.originalType ? `/${collectible.originalType}/${collectible.originalMalId}` : '#';
+
   const cardContent = (
-    <Card className={cn(
+    <Card
+      className={cn(
         "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:shadow-2xl",
-        rarityClasses.split(' ')[0], // Use border color from rarity
+        rarityClasses.split(' ')[0], 
         isFusionMode && "cursor-pointer",
         isSelectedForFusion && "ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
@@ -108,7 +109,7 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
         <Badge
           className={cn(
             "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
-            rarityClasses // Apply full rarity class for badge background and text
+            rarityClasses
           )}
         >
           {collectible.rarity} {collectible.isEvolvedForm ? <Sparkles size={12} className="ml-1 text-yellow-300"/> : ''}
@@ -169,7 +170,6 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
 
   return (
     <motion.div
-      ref={cardRef}
       initial={{ opacity: 0, y: 50, scale: 0.8 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={{ duration: 0.5, delay: Math.random() * 0.2, type: "spring", stiffness: 100, damping: 12 }}
@@ -239,7 +239,7 @@ const cardVariants = {
     y: 0,
     scale: 1,
     transition: {
-      delay: i * 0.07, // Stagger effect
+      delay: i * 0.07,
       duration: 0.4,
       ease: "easeOut",
     },
@@ -263,7 +263,7 @@ export default function GachaPage() {
     if (user && userProfile && !authLoading) {
       setCurrentPityCount(userProfile.gachaPityCounter || 0);
     } else if (!user && !authLoading) {
-      setCurrentPityCount(0); // Reset pity for non-logged-in users or if profile is not loaded
+      setCurrentPityCount(0);
     }
   }, [user, userProfile, authLoading]);
 
@@ -271,11 +271,10 @@ export default function GachaPage() {
     if (!isClient) return;
     setIsLoading(true);
     setPulledCollectibles(null);
-    setSelectedForFusion([]); // Clear fusion selection on new roll
+    setSelectedForFusion([]);
 
     await new Promise(resolve => setTimeout(resolve, 300));
 
-    // Pass null for userId if not logged in, so pity doesn't apply
     const result = await performGachaRoll(user?.uid || null);
 
     if ('error' in result) {
@@ -287,12 +286,11 @@ export default function GachaPage() {
       setPulledCollectibles([]);
     } else {
       setPulledCollectibles(result.collectibles);
-      setFusionCandidates(result.collectibles); // Set candidates for fusion
+      setFusionCandidates(result.collectibles);
       if (user && result.newPityCounter !== undefined) {
         setCurrentPityCount(result.newPityCounter);
-        // Optimistically update profile or trigger refetch
         if (fetchUserProfile && user.uid) {
-            // fetchUserProfile(user.uid); // Could be too slow, consider optimistic update
+            // fetchUserProfile(user.uid); // Consider optimistic update
         }
       }
       toast({
@@ -317,44 +315,70 @@ export default function GachaPage() {
         if (isAlreadySelected) {
             return prev.filter(c => c.id !== collectible.id);
         }
-        if (prev.length < 2) { // Allow selecting up to 2 cards for fusion
+        if (prev.length < 2) {
             return [...prev, collectible];
         }
-        return prev; // Max 2 selected
+        return prev;
     });
   };
 
   const handleAttemptFusion = () => {
-    if (selectedForFusion.length === 2) {
-        // Basic fusion logic placeholder: if two Commons are selected, 30% chance to get a random Rare.
-        // This is highly simplified. Real fusion would have recipes.
-        const allCommons = selectedForFusion.every(c => c.rarity === 'Common');
-        if (allCommons && Math.random() < 0.3) { // 30% chance for success
-            const rareCollectibles = SAMPLE_COLLECTIBLES.filter(c => c.rarity === 'Rare' && !c.isEvolvedForm);
-            if (rareCollectibles.length > 0) {
-                const fusedCollectible = rareCollectibles[Math.floor(Math.random() * rareCollectibles.length)];
-                toast({
-                    title: "Fusion Success!",
-                    description: `Your cards fused into ${fusedCollectible.parodyTitle} (${fusedCollectible.rarity})! (This is a placeholder result)`,
-                    variant: "default",
-                    duration: 5000,
-                });
-                 // Replace one of the selected cards with the new one, remove the other.
-                setPulledCollectibles(prev => {
-                    if (!prev) return null;
-                    const remaining = prev.filter(p => p.id !== selectedForFusion[0].id && p.id !== selectedForFusion[1].id);
-                    return [fusedCollectible, ...remaining];
-                });
-
-            } else {
-                 toast({ title: "Fusion Material Missing", description: "No Rare cards available for fusion result.", variant: "destructive" });
-            }
-        } else {
-             toast({ title: "Fusion Failed", description: "The cards couldn't be fused this time. (Placeholder: needs specific recipe)", variant: "destructive" });
-        }
-    } else {
-        toast({ title: "Select Two Cards", description: "Please select exactly two cards to attempt fusion.", variant: "destructive" });
+    if (selectedForFusion.length !== 2) {
+      toast({ title: "Select Two Cards", description: "Please select exactly two cards to attempt fusion.", variant: "destructive" });
+      return;
     }
+
+    const card1 = selectedForFusion[0];
+    const card2 = selectedForFusion[1];
+
+    if (card1.rarity === 'Event' || card2.rarity === 'Event') {
+        toast({ title: "Fusion Blocked", description: "Event cards cannot be used in fusion.", variant: "destructive" });
+        return;
+    }
+
+    const rarity1Value = RARITY_NUMERICAL_VALUE[card1.rarity];
+    const rarity2Value = RARITY_NUMERICAL_VALUE[card2.rarity];
+    let outputRarityValue: number;
+
+    // Define precise fusion rules
+    if (rarity1Value === rarity2Value) { // Same rarity fusion
+        outputRarityValue = Math.min(rarity1Value + 1, RARITY_NUMERICAL_VALUE.Mythic); // Cap at Mythic
+    } else { // Different rarity fusion
+        // Example: result is the higher of the two, or one above the lower if close
+        if (Math.abs(rarity1Value - rarity2Value) === 1) { // Adjacent rarities
+            outputRarityValue = Math.max(rarity1Value, rarity2Value); // Take the higher one
+        } else { // Further apart rarities
+            outputRarityValue = Math.max(rarity1Value, rarity2Value); // Could also average, or one step above lower
+        }
+        outputRarityValue = Math.min(outputRarityValue, RARITY_NUMERICAL_VALUE.Mythic);
+    }
+    
+    const outputRarityTier = RARITY_ORDER[outputRarityValue] as CollectibleRarity;
+
+    const potentialResults = SAMPLE_COLLECTIBLES.filter(c =>
+        c.rarity === outputRarityTier &&
+        c.id !== card1.id &&
+        c.id !== card2.id &&
+        c.rarity !== 'Event' // Ensure output isn't an Event card unless specifically designed
+    );
+
+    if (potentialResults.length > 0) {
+        const fusedCollectible = potentialResults[Math.floor(Math.random() * potentialResults.length)];
+        toast({
+            title: "Fusion Success!",
+            description: `Your cards fused into ${fusedCollectible.parodyTitle} (${fusedCollectible.rarity})!`,
+            variant: "default",
+            duration: 5000,
+        });
+        setPulledCollectibles(prev => {
+            if (!prev) return null;
+            const remaining = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
+            return [fusedCollectible, ...remaining];
+        });
+    } else {
+        toast({ title: "Fusion Failed", description: `No suitable ${outputRarityTier} card found for this combination. (Or all were inputs)`, variant: "destructive" });
+    }
+
     setIsFusionModalOpen(false);
     setSelectedForFusion([]);
   };
@@ -453,7 +477,7 @@ export default function GachaPage() {
           animate="visible"
         >
           {pulledCollectibles.map((collectible, index) => (
-            <motion.div key={collectible.id + '-' + index} variants={cardVariants} custom={index}>
+            <motion.div key={`${collectible.id}-${index}`} variants={cardVariants} custom={index}>
                  <GachaCard collectible={collectible} />
             </motion.div>
           ))}
@@ -485,8 +509,7 @@ export default function GachaPage() {
                 <DialogHeader>
                     <DialogTitle>Attempt Card Fusion</DialogTitle>
                     <DialogDescription>
-                        Select 2 cards from your recent pull to attempt fusion.
-                        (Placeholder: Specific recipes coming soon!)
+                        Select 2 cards from your recent pull to attempt fusion. Event cards cannot be fused.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-2 gap-3 py-4 max-h-[50vh] overflow-y-auto scrollbar-thin">
@@ -511,10 +534,10 @@ export default function GachaPage() {
                         <Button
                             type="button"
                             onClick={handleAttemptFusion}
-                            disabled={selectedForFusion.length !== 2}
+                            disabled={selectedForFusion.length !== 2 || isLoading}
                             className="fiery-glow-hover"
                         >
-                            Fuse Cards
+                            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Fuse Cards'}
                         </Button>
                     </div>
                 </DialogFooter>
@@ -524,6 +547,3 @@ export default function GachaPage() {
     </div>
   );
 }
-
-// Sample collectibles data moved to src/types/collectibles.ts
-// Make sure SAMPLE_COLLECTIBLES is imported from there in services/collectibles.ts
