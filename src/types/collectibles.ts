@@ -18,12 +18,15 @@ export interface Collectible {
   imageUrl: string | null; // URL to the PARODY collectible's image
   genreTags?: string[]; // Parody or original genres
   moodTags?: string[]; // Associated moods
+  evolvesToId?: string; // ID of the collectible this one can evolve into
+  isEvolvedForm?: boolean; // Flag to denote if this IS an evolved version
 }
 
 // Sample data for the Gacha system
-// NOTE: This list is intended to be further expanded to reach the 500+ target.
+// NOTE: This list needs to be further expanded to reach the 500+ target.
 // The originalMalId and originalType are illustrative.
 export const SAMPLE_COLLECTIBLES: Collectible[] = [
+  // Existing Collectibles (ensure they have originalMalId and originalType)
   {
     id: 'roommate-yandere',
     parodyTitle: 'My Roommate Is a God-Level Yandere',
@@ -34,6 +37,19 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     imageUrl: 'https://placehold.co/300x400.png?text=YandereGod&font=lora',
     genreTags: ['Romance', 'Comedy', 'Horror', 'Supernatural'],
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
+    evolvesToId: 'roommate-yandere-prime', // Example evolution
+  },
+  {
+    id: 'roommate-yandere-prime',
+    parodyTitle: 'My Roommate IS the Yandere Goddess',
+    originalMalId: 20507, // Mirai Nikki
+    originalType: 'anime',
+    rarity: 'Ultra Rare', // Evolved rarity
+    parodyBlurb: "Turns out divine retribution was just her way of saying 'I love you.' Still terrifying, but now with more power.",
+    imageUrl: 'https://placehold.co/300x400.png?text=YandereGoddess&font=lora',
+    genreTags: ['Romance', 'Dark Comedy', 'Horror', 'Supernatural'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
+    isEvolvedForm: true,
   },
   {
     id: 'depression-animated',
@@ -84,11 +100,24 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyTitle: 'Truck-kun Strikes Again!',
     originalMalId: 37430, // That Time I Got Reincarnated as a Slime
     originalType: 'anime',
-    rarity: 'Rare',
+    rarity: 'Common',
     parodyBlurb: "Our hero's previous life was... short. Now he's a [random object] in a fantasy world. Standard procedure.",
     imageUrl: 'https://placehold.co/300x400.png?text=TruckKun&font=lora',
     genreTags: ['Isekai', 'Fantasy', 'Comedy'],
     moodTags: ['Epic Adventure', 'Comfy & Cozy'],
+    evolvesToId: 'isekai-truck-kun-deluxe',
+  },
+  {
+    id: 'isekai-truck-kun-deluxe',
+    parodyTitle: 'Truck-kun: Interdimensional Delivery Service',
+    originalMalId: 37430,
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "He's no longer just a harbinger of isekai; he's a full-service transportation solution for protagonists!",
+    imageUrl: 'https://placehold.co/300x400.png?text=TruckDeluxe&font=lora',
+    genreTags: ['Isekai', 'Fantasy', 'Comedy', 'Meta'],
+    moodTags: ['Epic Adventure', 'Hilarious'],
+    isEvolvedForm: true,
   },
   {
     id: 'magical-girl-despair',
@@ -101,7 +130,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Mahou Shoujo', 'Psychological', 'Dark Fantasy', 'Drama'],
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
-  // Batch 1 of 50 new collectibles
+  // Existing Batch 1
   {
     id: 'angst-teen-pilots-robot',
     parodyTitle: 'Angsty Teen Reluctantly Pilots Giant Robot Again',
@@ -600,7 +629,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'steins-gate-microwave-time-machine',
     parodyTitle: 'Steins;Gate: My Microwave is a Time Machine (and it Screws Everything Up)',
-    originalMalId: 9253, // Steins;Gate (visual novel ID, anime is 9253)
+    originalMalId: 9253, // Corrected to anime MAL ID Steins;Gate
     originalType: 'anime',
     rarity: 'Mythic',
     parodyBlurb: "El Psy Kongroo! Science, conspiracies, and a whole lot of 'tuturu~'. The choice of Steins Gate.",
@@ -685,4 +714,5 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Action', 'Award Winning', 'Fantasy', 'School', 'Shonen', 'Supernatural'],
     moodTags: ['Adrenaline Rush', 'Dark & Deep'],
   }
+  // ... (Keep previously added items, I will append new ones)
 ];

@@ -1,8 +1,7 @@
-
 // src/services/collectibles.ts
 'use server';
 
-import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity } from '@/types/collectibles';
+import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity } from '@/types/collectibles.ts';
 import {
     GACHA_ROLL_SIZE,
     GACHA_RARITY_RATES,
@@ -10,10 +9,11 @@ import {
     HARD_PITY_COUNT,
     SOFT_PITY_START_COUNT,
     SOFT_PITY_INCREASE_RATE,
-    PITY_DISTRIBUTION,
-    GACHA_COST
-} from '@/config/gachaConfig';
-import { getUserProfileDocument, updateUserProfileDocument, type UserProfileData } from './profile';
+    PITY_DISTRIBUTION
+} from '@/config/gachaConfig.ts';
+import { getUserProfileDocument, updateUserProfileDocument, type UserProfileData } from './profile.ts';
+
+const GACHA_COST = 0; // Still free
 
 /**
  * Shuffles an array in place using the Fisher-Yates algorithm.
@@ -23,12 +23,11 @@ import { getUserProfileDocument, updateUserProfileDocument, type UserProfileData
 function shuffleArray<T>(array: T[]): T[] {
   for (let i = array.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]]; // Swap elements
+    [array[i], array[j]] = [array[j], array[i]];
   }
   return array;
 }
 
-// Helper to get collectibles grouped by rarity
 let rollableCollectiblesByRarity: Map<CollectibleRarity, Collectible[]> | null = null;
 
 function getRollableCollectiblesByRarityMap(): Map<CollectibleRarity, Collectible[]> {
@@ -44,35 +43,31 @@ function getRollableCollectiblesByRarityMap(): Map<CollectibleRarity, Collectibl
         if (list) {
             list.push(collectible);
         } else {
-            // This case should not happen if GACHA_RARITY_RATES includes all rarities
-            console.warn(`Collectible with unknown rarity found: ${collectible.rarity}`);
+            console.warn(`[GachaService] Collectible with unknown rarity found: ${collectible.rarity}`);
             const commonList = map.get('Common');
-            commonList?.push(collectible); // Add to common as a fallback
+            commonList?.push(collectible);
         }
     });
     rollableCollectiblesByRarity = map;
     return map;
 }
 
-
 function selectRarityBasedOnRates(rates: Record<CollectibleRarity, number>): CollectibleRarity {
     let sum = 0;
     const r = Math.random();
-    // Normalize rates if they don't sum to 1 (e.g., due to soft pity adjustments)
     const totalRate = Object.values(rates).reduce((acc, val) => acc + val, 0);
     const normalizedRates: Record<string, number> = {};
+
     if (Math.abs(totalRate - 1.0) > 0.001 && totalRate > 0) {
-        // console.warn(`Normalizing rates from sum ${totalRate}`);
         for (const key in rates) {
             normalizedRates[key] = rates[key as CollectibleRarity] / totalRate;
         }
-    } else if (totalRate === 0) { // Edge case: if all rates become 0 (e.g. only one target rarity was left)
-        console.warn("All rates are zero, defaulting to Common for rarity selection.");
+    } else if (totalRate === 0) {
+        console.warn("[GachaService] All effective rates are zero, defaulting to Common for rarity selection.");
         return 'Common';
     } else {
         Object.assign(normalizedRates, rates);
     }
-
 
     for (const rarity in normalizedRates) {
         sum += normalizedRates[rarity];
@@ -80,77 +75,72 @@ function selectRarityBasedOnRates(rates: Record<CollectibleRarity, number>): Col
             return rarity as CollectibleRarity;
         }
     }
-    return 'Common'; // Fallback, should ideally not be reached if rates sum to 1
+    console.warn("[GachaService] Fallback rarity selection to Common, check rate logic.");
+    return 'Common';
 }
 
+const EVOLUTION_CHANCE = 0.10; // 10% chance to evolve if possible
 
 export async function performGachaRoll(userId: string | null): Promise<{ collectibles: Collectible[]; newPityCounter?: number } | { error: string }> {
-    console.log(`[CollectiblesService] Performing Gacha roll for ${GACHA_ROLL_SIZE} items. UserID: ${userId}`);
+    console.log(`[GachaService] Performing Gacha roll for ${GACHA_ROLL_SIZE} items. UserID: ${userId}`);
 
     if (!SAMPLE_COLLECTIBLES || SAMPLE_COLLECTIBLES.length === 0) {
-        console.error('[CollectiblesService] No sample collectibles available.');
+        console.error('[GachaService] No sample collectibles available.');
         return { error: 'No collectibles available in the Gacha at this time.' };
     }
 
     let userProfile: UserProfileData | null = null;
-    let currentPity = 0;
+    let userPityCounter = 0;
 
     if (userId) {
         try {
             userProfile = await getUserProfileDocument(userId);
             if (userProfile) {
-                currentPity = userProfile.gachaPityCounter || 0;
+                userPityCounter = userProfile.gachaPityCounter || 0;
             }
         } catch (e) {
-            console.error("[CollectiblesService] Failed to fetch user profile for pity system:", e);
-            // Proceed without pity if profile fetch fails, or handle as error
+            console.error("[GachaService] Failed to fetch user profile for pity system:", e);
         }
     }
-    console.log(`[CollectiblesService] Starting roll with pity counter: ${currentPity}`);
+    console.log(`[GachaService] Starting roll with pity counter: ${userPityCounter}`);
 
     const pulledCollectiblesThisRoll: Collectible[] = [];
-    const pulledCollectibleIdsThisRoll = new Set<string>();
+    const pulledCollectibleIdsThisRoll = new Set<string>(); // To ensure uniqueness within THIS roll
     const collectiblesByRarityMap = getRollableCollectiblesByRarityMap();
 
+    let currentPityForRoll = userPityCounter; // Use user's pity for the start of the roll
+
     for (let i = 0; i < GACHA_ROLL_SIZE; i++) {
-        currentPity++; // Increment pity for this specific item in the roll
+        currentPityForRoll++; // Increment pity for this specific item in the roll
         let effectiveRates = { ...GACHA_RARITY_RATES };
         let isPityPull = false;
         let pityGuaranteedRarity: CollectibleRarity | null = null;
 
-        // 1. Apply Pity System
-        if (currentPity >= HARD_PITY_COUNT && PITY_TARGET_RARITIES.length > 0) {
+        // Apply Pity System
+        if (PITY_TARGET_RARITIES.length > 0 && currentPityForRoll >= HARD_PITY_COUNT) {
             isPityPull = true;
-            console.log(`[CollectiblesService] Hard pity hit at ${currentPity} pulls!`);
-            // Force a PITY_TARGET_RARITY
-            // Distribute 100% chance among PITY_TARGET_RARITIES based on PITY_DISTRIBUTION
-            let tempPityRates: Record<CollectibleRarity, number> = {} as Record<CollectibleRarity, number>;
+            console.log(`[GachaService] Hard pity hit at ${currentPityForRoll} pulls!`);
+            let tempPityRates: Partial<Record<CollectibleRarity, number>> = {};
             PITY_TARGET_RARITIES.forEach(r => {
-                tempPityRates[r] = PITY_DISTRIBUTION[r] || (1 / PITY_TARGET_RARITIES.length); // fallback to equal distribution
+                tempPityRates[r] = PITY_DISTRIBUTION[r] || (1 / PITY_TARGET_RARITIES.length);
             });
-            // Zero out other rates
             (Object.keys(effectiveRates) as CollectibleRarity[]).forEach(r => {
-                if (!PITY_TARGET_RARITIES.includes(r)) {
-                    tempPityRates[r] = 0;
-                }
+                if (!PITY_TARGET_RARITIES.includes(r)) tempPityRates[r] = 0;
             });
-            effectiveRates = tempPityRates;
-            pityGuaranteedRarity = selectRarityBasedOnRates(effectiveRates); // Select from target rarities
-        } else if (currentPity >= SOFT_PITY_START_COUNT && PITY_TARGET_RARITIES.length > 0) {
-            console.log(`[CollectiblesService] Soft pity active at ${currentPity} pulls.`);
-            const pullsIntoSoftPity = currentPity - SOFT_PITY_START_COUNT + 1;
-            const totalIncreaseForTargets = Math.min(1.0, pullsIntoSoftPity * SOFT_PITY_INCREASE_RATE); // Cap at 100% total for targets
-
+            effectiveRates = tempPityRates as Record<CollectibleRarity, number>;
+            pityGuaranteedRarity = selectRarityBasedOnRates(effectiveRates);
+        } else if (PITY_TARGET_RARITIES.length > 0 && currentPityForRoll >= SOFT_PITY_START_COUNT) {
+            console.log(`[GachaService] Soft pity active at ${currentPityForRoll} pulls.`);
+            const pullsIntoSoftPity = currentPityForRoll - SOFT_PITY_START_COUNT + 1;
+            const totalIncreaseForTargets = Math.min(1.0, pullsIntoSoftPity * SOFT_PITY_INCREASE_RATE);
             let currentTotalTargetRate = PITY_TARGET_RARITIES.reduce((sum, r) => sum + (GACHA_RARITY_RATES[r] || 0), 0);
-            let actualIncrease = Math.min(totalIncreaseForTargets, 1.0 - currentTotalTargetRate); // Don't exceed 100% for targets
+            let actualIncrease = Math.min(totalIncreaseForTargets, 1.0 - currentTotalTargetRate);
 
             if (actualIncrease > 0) {
                 const newTargetTotalRate = currentTotalTargetRate + actualIncrease;
                 let sumOfNonTargetRates = 0;
                 (Object.keys(effectiveRates) as CollectibleRarity[]).forEach(r => {
-                    if (!PITY_TARGET_RARITIES.includes(r)) {
-                        sumOfNonTargetRates += effectiveRates[r];
-                    }
+                    if (!PITY_TARGET_RARITIES.includes(r)) sumOfNonTargetRates += effectiveRates[r];
                 });
 
                 PITY_TARGET_RARITIES.forEach(r => {
@@ -159,75 +149,80 @@ export async function performGachaRoll(userId: string | null): Promise<{ collect
                     effectiveRates[r] = baseTargetRate + (actualIncrease * proportionOfPityChance);
                 });
                 
-                // Decrease non-target rates proportionally
                 if (sumOfNonTargetRates > 0) {
                     const reductionFactor = (1.0 - newTargetTotalRate) / sumOfNonTargetRates;
-                     (Object.keys(effectiveRates) as CollectibleRarity[]).forEach(r => {
-                        if (!PITY_TARGET_RARITIES.includes(r)) {
-                           effectiveRates[r] *= reductionFactor;
-                        }
+                    (Object.keys(effectiveRates) as CollectibleRarity[]).forEach(r => {
+                        if (!PITY_TARGET_RARITIES.includes(r)) effectiveRates[r] *= reductionFactor;
                     });
                 }
             }
         }
 
-        // 2. Select Rarity
-        const rolledRarity = pityGuaranteedRarity || selectRarityBasedOnRates(effectiveRates);
-        console.log(`[CollectiblesService] Item ${i + 1}: Rolled Rarity - ${rolledRarity} (Pity: ${currentPity}, isPityPull: ${isPityPull})`);
-
-        // 3. Select Collectible of that Rarity
+        let rolledRarity = pityGuaranteedRarity || selectRarityBasedOnRates(effectiveRates);
         let availableForRarity = collectiblesByRarityMap.get(rolledRarity) || [];
+        
+        // Fallback if no collectibles for the rolled rarity
+        if(availableForRarity.length === 0) {
+            console.warn(`[GachaService] No collectibles for rarity ${rolledRarity}. Falling back to Common.`);
+            rolledRarity = 'Common';
+            availableForRarity = collectiblesByRarityMap.get('Common') || [];
+            if (availableForRarity.length === 0) {
+                return { error: "Internal Gacha error: No Common collectibles available." };
+            }
+        }
+        
         let chosenCollectible: Collectible | undefined;
         let attempt = 0;
-        const MAX_REPICK_ATTEMPTS = 5; // To avoid infinite loops if pool is too small
+        const MAX_REPICK_ATTEMPTS = availableForRarity.length > GACHA_ROLL_SIZE ? 10 : availableForRarity.length; // Adjust attempts based on pool size
 
+        // Try to pick a unique collectible for this roll
         do {
-            if (availableForRarity.length === 0) {
-                console.warn(`[CollectiblesService] No collectibles for rarity ${rolledRarity}. Falling back to Common.`);
-                availableForRarity = collectiblesByRarityMap.get('Common') || [];
-                if (availableForRarity.length === 0) { // Should not happen if SAMPLE_COLLECTIBLES is not empty
-                    return { error: "Internal Gacha error: No Common collectibles available." };
-                }
-            }
             chosenCollectible = availableForRarity[Math.floor(Math.random() * availableForRarity.length)];
             attempt++;
-        } while (chosenCollectible && pulledCollectibleIdsThisRoll.has(chosenCollectible.id) && attempt < MAX_REPICK_ATTEMPTS && SAMPLE_COLLECTIBLES.length > pulledCollectiblesThisRoll.size);
-        // If still duplicate after attempts (or pool too small), accept it or handle differently
+        } while (
+            chosenCollectible &&
+            pulledCollectibleIdsThisRoll.has(chosenCollectible.id) && // Check against IDs already pulled in this roll
+            attempt < MAX_REPICK_ATTEMPTS &&
+            SAMPLE_COLLECTIBLES.length > pulledCollectiblesThisRoll.size // Ensure we don't loop forever if pool is tiny
+        );
         
-        if (!chosenCollectible) { // Extremely unlikely if Common has items
-             console.error("[CollectiblesService] Critical error: Could not select any collectible.");
+        if (!chosenCollectible) { // Should be extremely rare
+             console.error("[GachaService] Critical error: Could not select any collectible even after fallbacks.");
              return { error: "Gacha error: Could not select a collectible." };
         }
 
-        pulledCollectiblesThisRoll.push(chosenCollectible);
-        pulledCollectibleIdsThisRoll.add(chosenCollectible.id);
+        // Simplified "Lucky Pull" Evolution
+        if (chosenCollectible.evolvesToId && Math.random() < EVOLUTION_CHANCE) {
+            const evolvedForm = SAMPLE_COLLECTIBLES.find(c => c.id === chosenCollectible!.evolvesToId);
+            if (evolvedForm) {
+                console.log(`[GachaService] Lucky Evolution! ${chosenCollectible.parodyTitle} evolved into ${evolvedForm.parodyTitle}`);
+                chosenCollectible = evolvedForm; // Replace with the evolved version
+            }
+        }
 
-        // 4. Reset Pity if a target rarity was pulled
+        pulledCollectiblesThisRoll.push(chosenCollectible);
+        pulledCollectibleIdsThisRoll.add(chosenCollectible.id); // Add to set for uniqueness within this roll
+
         if (PITY_TARGET_RARITIES.includes(chosenCollectible.rarity)) {
-            console.log(`[CollectiblesService] Target rarity ${chosenCollectible.rarity} pulled! Pity counter reset.`);
-            currentPity = 0; // Reset for the user's profile
+            console.log(`[GachaService] Target rarity ${chosenCollectible.rarity} pulled! Pity counter reset.`);
+            currentPityForRoll = 0; // Reset pity for the user
         }
     }
 
     if (userId && userProfile) {
         try {
-            await updateUserProfileDocument(userId, { gachaPityCounter: currentPity });
-            console.log(`[CollectiblesService] User ${userId} pity counter updated to ${currentPity}`);
+            await updateUserProfileDocument(userId, { gachaPityCounter: currentPityForRoll });
+            console.log(`[GachaService] User ${userId} pity counter updated to ${currentPityForRoll}`);
         } catch (e) {
-            console.error("[CollectiblesService] Failed to update user pity counter in Firestore:", e);
+            console.error("[GachaService] Failed to update user pity counter in Firestore:", e);
         }
     }
 
-    console.log(`[CollectiblesService] Roll complete. Pulled: ${pulledCollectiblesThisRoll.map(c => c.parodyTitle).join(', ')}. Final pity: ${currentPity}`);
-    return { collectibles: pulledCollectiblesThisRoll, newPityCounter: currentPity };
+    console.log(`[GachaService] Roll complete. Pulled: ${pulledCollectiblesThisRoll.map(c => c.parodyTitle).join(', ')}. Final user pity: ${currentPityForRoll}`);
+    return { collectibles: pulledCollectiblesThisRoll, newPityCounter: currentPityForRoll };
 }
 
-// ----- No Inventory Logic -----
-// The following functions related to user inventory are removed:
-// - addCollectiblesToUserInventory
-// - getUserOwnedCollectibles
-// The UserProfileData in profile.ts will also have ownedCollectibleIds removed.
-
+// No inventory-related functions
 export async function getDisplayCollectibles(): Promise<Collectible[]> {
   return SAMPLE_COLLECTIBLES;
 }

@@ -25,16 +25,15 @@ body {
     --secondary: 270 60% 70%; /* #9B59B6 - Neon Purple (Secondary elements) */
     --secondary-foreground: 210 40% 95%; /* #F0F5FA - Very light for purple bg */
 
-    /* ACCENT FOR DEFAULT DARK THEME - Now Fiery Orange-Red */
-    --accent: 15 100% 55%;    /* hsl(15, 100%, 55%) - Fiery Orange-Red */
-    --accent-foreground: 0 0% 100%; /* White for good contrast */
+    --accent: 270 60% 70%; /* Neon Purple (Default accent for Dark theme) */
+    --accent-foreground: 210 40% 95%;
 
     --destructive: 0 70% 55%;   /* #E5484D - Vibrant but clear red */
     --destructive-foreground: 0 0% 98%; /* #FAFAFA */
 
     --border: 180 50% 30%;     /* #269999 - Cyan-based border, less prominent */
     --input: 220 15% 12%;      /* #17191F - Dark input background */
-    --ring: 15 100% 55%;       /* Fiery Orange-Red for rings */
+    --ring: 180 100% 55%;      /* Neon Cyan for rings */
 
     --chart-1: 15 100% 55%;   /* Fiery Orange-Red */
     --chart-2: 270 60% 70%;   /* Neon Purple */
@@ -63,8 +62,17 @@ body {
     --preview-border: hsl(var(--border));
     --preview-input: hsl(var(--input));
     --preview-ring: hsl(var(--ring));
+
+    /* Gacha Rarity Glow Colors */
+    --rarity-common-glow: 220 10% 40%; /* Muted Grey */
+    --rarity-rare-glow: 210 100% 60%;  /* Bright Blue */
+    --rarity-ultra-rare-glow: 270 100% 70%; /* Bright Purple */
+    --rarity-legendary-glow: 35 100% 60%; /* Bright Orange */
+    --rarity-mythic-glow: 0 100% 60%;   /* Bright Red */
+    --rarity-event-glow: 50 100% 55%;  /* Bright Yellow/Gold */
   }
 
+  /* Explicit .dark class for next-themes compatibility, matching :root */
   .dark {
     --background: 220 20% 5%;
     --foreground: 210 40% 90%;
@@ -82,7 +90,7 @@ body {
     --destructive-foreground: 0 0% 98%;
     --border: 180 50% 30%;
     --input: 220 15% 12%;
-    --ring: 180 100% 55%;
+    --ring: 180 100% 55%; /* Neon Cyan for rings */
   }
 
   html[data-theme="light"] {
@@ -112,17 +120,17 @@ body {
     --card-foreground: 30 50% 90%;
     --popover: 10 10% 10%;
     --popover-foreground: 30 50% 90%;
-    --primary: 15 100% 55%;
+    --primary: 15 100% 55%; /* Fiery Orange-Red */
     --primary-foreground: 30 100% 95%;
     --secondary: 30 100% 60%;
     --secondary-foreground: 20 20% 10%;
-    --accent: 35 100% 60%;
+    --accent: 35 100% 60%; /* Brighter Orange/Yellow for Accent */
     --accent-foreground: 20 20% 5%;
     --destructive: 0 80% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 15 40% 30%;
+    --border: 15 40% 30%; /* Darker, warm border */
     --input: 15 15% 15%;
-    --ring: 15 100% 60%;
+    --ring: 15 100% 60%; /* Primary fiery color for rings */
   }
 
   /* Netflix Theme */
@@ -151,7 +159,7 @@ body {
   * {
     @apply border-border;
   }
-  html {
+  html, body {
       @apply h-full scroll-smooth;
       transition: background-color 0.5s ease-in-out, color 0.5s ease-in-out;
   }
@@ -169,20 +177,23 @@ body {
    .transition-smooth {
       @apply transition-all duration-300 ease-in-out;
    }
+
     .active-nav-item {
-       color: hsl(var(--primary));
+       color: hsl(var(--primary)); /* This will use the current theme's primary color */
     }
-    html[data-theme="shinra-fire"] .active-nav-item svg.neon-glow-icon-shinra {
-        filter: drop-shadow(0 0 5px hsl(var(--primary) / 1)) drop-shadow(0 0 10px hsl(var(--primary) / 0.7));
+
+    html[data-theme="shinra-fire"] .active-nav-item svg.neon-glow-icon-shinra,
+    html[data-theme="shinra-fire"] .sf-bansho-button svg {
+        filter: drop-shadow(0 0 4px hsl(var(--primary) / 0.8)) drop-shadow(0 0 8px hsl(var(--primary) / 0.5));
     }
+
+    /* Default themes no special icon glow for active */
     html[data-theme="dark"] .active-nav-item svg,
-    html[data-theme="light"] .active-nav-item svg {
+    html[data-theme="light"] .active-nav-item svg,
+    html[data-theme="hypercharge-netflix"] .active-nav-item svg {
         filter: none;
     }
 
-
-    .nav-item-base:hover {
-    }
 }
 
 .scrollbar-thin {
@@ -202,13 +213,17 @@ body {
     .animate-pulse-subtle { animation: pulse-subtle 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
     @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 
+    /* General Neon Glow (uses --primary) */
     .neon-glow { box-shadow: 0 0 5px hsl(var(--primary) / 0.4), 0 0 10px hsl(var(--primary) / 0.2); border-color: hsl(var(--primary) / 0.4) !important; }
     .neon-glow-hover:hover { box-shadow: 0 0 7px hsl(var(--primary) / 0.6), 0 0 14px hsl(var(--primary) / 0.3); }
     .neon-glow-focus:focus-visible { box-shadow: 0 0 7px hsl(var(--ring) / 0.7), 0 0 14px hsl(var(--ring) / 0.5); border-color: hsl(var(--ring) / 0.7) !important; outline: 2px solid transparent; outline-offset: 2px; }
 
-    .fiery-glow { box-shadow: 0 0 6px hsl(var(--accent) / 0.5), 0 0 12px hsl(var(--accent) / 0.3); border-color: hsl(var(--accent) / 0.5) !important; }
-    .fiery-glow-hover:hover { box-shadow: 0 0 8px hsl(var(--accent) / 0.7), 0 0 16px hsl(var(--accent) / 0.4); }
+    /* Fiery Glow (uses --accent from Shinra Fire, or current theme's --accent) */
+    .fiery-glow { box-shadow: 0 0 6px hsl(var(--accent) / 0.7), 0 0 12px hsl(var(--accent) / 0.5); border-color: hsl(var(--accent) / 0.7) !important; }
+    .fiery-glow-hover:hover { box-shadow: 0 0 8px hsl(var(--accent) / 0.9), 0 0 16px hsl(var(--accent) / 0.6); }
     .fiery-glow-focus:focus-visible { box-shadow: 0 0 8px hsl(var(--ring) / 0.8), 0 0 16px hsl(var(--ring) / 0.6); border-color: hsl(var(--ring) / 0.8) !important; outline: 2px solid transparent; outline-offset: 2px; }
+    html[data-theme="shinra-fire"] .fiery-glow-text { text-shadow: 0 0 5px hsl(var(--primary)/0.8), 0 0 10px hsl(var(--accent)/0.6); }
+    html[data-theme="shinra-fire"] .fiery-glow-icon { filter: drop-shadow(0 0 5px hsl(var(--primary)/0.8)) drop-shadow(0 0 10px hsl(var(--accent)/0.5)); }
 
     .data-\[state=active\]\:.neon-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--primary) / 0.6), 0 0 10px hsl(var(--primary) / 0.4); color: hsl(var(--primary)); background-color: hsl(var(--card)) !important; }
     .data-\[state=active\]\:.fiery-glow-tab[data-state="active"] { box-shadow: 0 0 5px hsl(var(--accent) / 0.6), 0 0 10px hsl(var(--accent) / 0.4); color: hsl(var(--accent)); background-color: hsl(var(--card)) !important; }
@@ -216,6 +231,7 @@ body {
     .shadow-top-md { box-shadow: 0 -3px 12px -1px hsl(var(--background) / 0.3), 0 -2px 8px -2px hsl(var(--background) / 0.25); }
     .tier-card-hover:hover { transform: translateY(-4px) scale(1.02); box-shadow: 0 6px 20px hsl(var(--accent) / 0.3); }
 
+    /* Shinra Fire Theme Specific Effects */
     html[data-theme="shinra-fire"] .sf-text-glow {
       text-shadow: 0 0 6px hsl(var(--primary)), 0 0 12px hsl(var(--primary)/0.8), 0 0 18px hsl(var(--primary)/0.6), 0 0 24px hsl(var(--accent)/0.5);
     }
@@ -245,8 +261,7 @@ body {
       width: 100%;
       height: 100%;
       overflow: hidden;
-      background: hsl(var(--background));
-      clip-path: inset(50% 0 0 0);
+      background: hsl(var(--background)); /* Or transparent if you want bg to show through */
     }
     html[data-theme="shinra-fire"] .sf-glitch-intense::before {
       color: hsl(var(--primary));
@@ -260,8 +275,8 @@ body {
     }
     @keyframes sf-glitch-anim-1 {
       0%, 100% { transform: translate(var(--glitch-intensity), calc(var(--glitch-intensity) * -0.5)); clip-path: inset(20% 0 60% 0); }
-      10%, 30%, 50%, 70%, 90% { transform: translate(calc(-1px * var(--glitch-intensity))), calc(1px * var(--glitch-intensity))); }
-      20%, 40%, 60%, 80% { transform: translate(calc(1px * var(--glitch-intensity))), calc(-1px * var(--glitch-intensity))); clip-path: inset(40% 0 30% 0); }
+      10%, 30%, 50%, 70%, 90% { transform: translate(calc(-1px * var(--glitch-intensity)), calc(1px * var(--glitch-intensity))); }
+      20%, 40%, 60%, 80% { transform: translate(calc(1px * var(--glitch-intensity)), calc(-1px * var(--glitch-intensity))); clip-path: inset(40% 0 30% 0); }
     }
     @keyframes sf-glitch-anim-2 {
       0%, 100% { transform: translate(calc(-1px * var(--glitch-intensity))), var(--glitch-intensity)); clip-path: inset(70% 0 10% 0); }
@@ -285,7 +300,7 @@ body {
     }
     @keyframes sf-bansho-burst {
       0% {
-        box-shadow: 0 0 3px 1px hsl(var(--primary)/0.7), 0 0 6px 3px hsl(var(--accent)/0.5);
+        box-shadow: 0 0 3px 1px hsl(var(--primary)/0.7), 0 0 6px 3px hsl(var(--accent)/0.5), 0 0 0 0 transparent;
         transform: scale(1);
       }
       50% {
@@ -293,8 +308,16 @@ body {
         transform: scale(1.03);
       }
       100% {
-        box-shadow: 0 0 5px 2px hsl(var(--primary)/0.7), 0 0 10px 5px hsl(var(--accent)/0.5);
+        box-shadow: 0 0 5px 2px hsl(var(--primary)/0.7), 0 0 10px 5px hsl(var(--accent)/0.5), 0 0 0 0 transparent; /* Fade out the large glows */
         transform: scale(1);
       }
     }
+
+    /* Gacha Rarity Glows */
+    .neon-glow-rare { box-shadow: 0 0 6px hsl(var(--rarity-rare-glow) / 0.6), 0 0 12px hsl(var(--rarity-rare-glow) / 0.4); border-color: hsl(var(--rarity-rare-glow) / 0.7) !important; }
+    .neon-glow-ultra-rare { box-shadow: 0 0 7px hsl(var(--rarity-ultra-rare-glow) / 0.7), 0 0 14px hsl(var(--rarity-ultra-rare-glow) / 0.5); border-color: hsl(var(--rarity-ultra-rare-glow) / 0.8) !important; }
+    .neon-glow-legendary { box-shadow: 0 0 8px hsl(var(--rarity-legendary-glow) / 0.8), 0 0 16px hsl(var(--rarity-legendary-glow) / 0.6), 0 0 24px hsl(var(--rarity-legendary-glow) / 0.2); border-color: hsl(var(--rarity-legendary-glow) / 0.9) !important; }
+    .fiery-glow { /* Re-purposing for Mythic */ box-shadow: 0 0 9px hsl(var(--rarity-mythic-glow) / 0.9), 0 0 18px hsl(var(--rarity-mythic-glow) / 0.7), 0 0 28px hsl(var(--rarity-mythic-glow) / 0.3); border-color: hsl(var(--rarity-mythic-glow)) !important; }
+    .neon-glow-event { box-shadow: 0 0 7px hsl(var(--rarity-event-glow) / 0.7), 0 0 14px hsl(var(--rarity-event-glow) / 0.5), 0 0 20px hsl(var(--rarity-event-glow) / 0.2); border-color: hsl(var(--rarity-event-glow) / 0.8) !important; }
+
 }
