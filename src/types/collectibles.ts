@@ -1,3 +1,4 @@
+
 // src/types/collectibles.ts
 
 export type CollectibleRarity =
@@ -129,7 +130,6 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Mahou Shoujo', 'Psychological', 'Dark Fantasy', 'Drama'],
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
-  // Batch 1
   {
     id: 'angsty-teen-reluctantly-pilots-giant-robot-again',
     parodyTitle: 'Angsty Teen Reluctantly Pilots Giant Robot Again',
@@ -1036,7 +1036,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'noragami:-your-friendly-neighborhood-homeless-god-(5-yen-per-wish)',
     parodyTitle: 'Noragami: Your Friendly Neighborhood Homeless God (5 Yen Per Wish)',
-    originalMalId: 20507, // Corrected ID for Noragami is 20507
+    originalMalId: 20507, // Noragami
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He's trying to get a shrine, she's a half-phantom, and his regalia is a sassy teenage boy. Godhood is tough.",
@@ -1223,7 +1223,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'elf-archer:-my-tsundere-level-is-over-9000!',
     parodyTitle: 'Elf Archer: My Tsundere Level Is Over 9000!',
-    originalMalId: 26297, // Goblin Slayer (Plausible source for elf archer trope, MAL ID 37180 for anime)
+    originalMalId: 37180, // Goblin Slayer (anime, which features an elf archer)
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "It's not like she LIKES shooting arrows with you or anything, b-baka! Highly skilled, highly flustered.",
@@ -1463,9 +1463,462 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     imageUrl: 'https://placehold.co/300x400.png?text=AbsurdistLife&font=lora',
     genreTags: ['Comedy', 'School', 'Slice of Life', 'Gag Humor'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
+  },
+  // Batch 3 (New Additions)
+  {
+    id: 'the-saga-of-tanya-the-evil:-corporate-drone-reincarnated-as-magical-nazi-loli',
+    parodyTitle: 'The Saga of Tanya the Evil: Corporate Drone Reincarnated as Magical Nazi Loli',
+    originalMalId: 32615, // Youjo Senki
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "He was a salaryman. Now she's a ruthless child soldier in an alternate WWI with magic. Being X is a jerk.",
+    imageUrl: 'https://placehold.co/300x400.png?text=NaziLoliMagic&font=lora',
+    genreTags: ['Action', 'Isekai', 'Military', 'Magic'],
+    moodTags: ['Dark & Deep', 'Adrenaline Rush'],
+  },
+  {
+    id: 'acchi-kocchi:-tiny-tsundere,-giant-gentle-guy,-much-fluff',
+    parodyTitle: 'Acchi Kocchi: Tiny Tsundere, Giant Gentle Guy, Much Fluff',
+    originalMalId: 12327, // Acchi Kocchi (TV)
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "She's smol and easily flustered. He's tall and oblivious. Their friends ship it. Peak moe.",
+    imageUrl: 'https://placehold.co/300x400.png?text=TinyTsundereFluff&font=lora',
+    genreTags: ['Comedy', 'Romance', 'School', 'Slice of Life'],
+    moodTags: ['Heartwarming', 'Comfy & Cozy', 'Hilarious'],
+  },
+  {
+    id: 'angel-beats!:-afterlife-high-school-with-more-guns-and-sad-backstories',
+    parodyTitle: 'Angel Beats!: Afterlife High School with More Guns and Sad Backstories',
+    originalMalId: 6547, // Angel Beats!
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "They died with regrets, now they fight an angel in purgatory high school. Get ready for tears and bangers.",
+    imageUrl: 'https://placehold.co/300x400.png?text=AfterlifeGuns&font=lora',
+    genreTags: ['Action', 'Comedy', 'Drama', 'School', 'Supernatural'],
+    moodTags: ['Emotional Rollercoaster', 'Heartwarming', 'Adrenaline Rush'],
+  },
+  {
+    id: 'anohana:-the-ghost-girl-who-made-everyone-cry-for-11-episodes',
+    parodyTitle: 'Anohana: The Ghost Girl Who Made Everyone Cry for 11 Episodes',
+    originalMalId: 9989, // Ano Hi Mita Hana no Namae wo Bokutachi wa Mada Shiranai.
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Childhood friends reunite to grant their dead friend's wish. It's an emotional freight train.",
+    imageUrl: 'https://placehold.co/300x400.png?text=GhostTears&font=lora',
+    genreTags: ['Drama', 'Slice of Life', 'Supernatural', 'Romance'],
+    moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
+  },
+  {
+    id: 'baccano!:-immortal-gangsters-and-a-very-confusing-timeline',
+    parodyTitle: 'Baccano!: Immortal Gangsters and a Very Confusing Timeline',
+    originalMalId: 2251, // Baccano!
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Multiple storylines, a train heist, alchemists, and a whole lot of chaos. You'll need a flowchart.",
+    imageUrl: 'https://placehold.co/300x400.png?text=ConfusingGangsters&font=lora',
+    genreTags: ['Action', 'Adventure', 'Comedy', 'Historical', 'Mystery', 'Supernatural', 'Thriller'],
+    moodTags: ['Dark & Deep', 'Adrenaline Rush'],
+  },
+  {
+    id: 'barakamon:-calligrapher-has-an-existential-crisis-on-a-rural-island',
+    parodyTitle: 'Barakamon: Calligrapher Has an Existential Crisis on a Rural Island',
+    originalMalId: 22789, // Barakamon
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "He punched a critic, got exiled, and now kids are teaching him about life. Surprisingly wholesome.",
+    imageUrl: 'https://placehold.co/300x400.png?text=IslandCalligraphy&font=lora',
+    genreTags: ['Comedy', 'Slice of Life', 'Iyashikei'],
+    moodTags: ['Heartwarming', 'Comfy & Cozy', 'Hilarious'],
+  },
+  {
+    id: 'black-butler:-demon-butler-serves-tea-and-deals-with-the-occult',
+    parodyTitle: 'Black Butler: Demon Butler Serves Tea and Deals with the Occult',
+    originalMalId: 4898, // Kuroshitsuji
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "He's one hell of a butler. Literally. Victorian England, contracts, and questionable fashion.",
+    imageUrl: 'https://placehold.co/300x400.png?text=DemonTeaTime&font=lora',
+    genreTags: ['Action', 'Comedy', 'Fantasy', 'Historical', 'Shonen', 'Supernatural'],
+    moodTags: ['Dark & Deep', 'Adrenaline Rush'],
+  },
+  {
+    id: 'black-clover:-i-m-gonna-be-the-wizard-king-(by-shouting-a-lot)',
+    parodyTitle: 'Black Clover: I\'m Gonna Be the Wizard King! (By Shouting A Lot)',
+    originalMalId: 34572, // Black Clover
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "He has no magic in a world of magic, but he has anti-magic and a very loud voice. Never give up!",
+    imageUrl: 'https://placehold.co/300x400.png?text=LoudWizardKing&font=lora',
+    genreTags: ['Action', 'Comedy', 'Fantasy', 'Magic', 'Shonen'],
+    moodTags: ['Adrenaline Rush', 'Epic Adventure'],
+  },
+  {
+    id: 'blue-exorcist:-satan-s-son-wants-to-be-an-exorcist-(it-s-ironic)',
+    parodyTitle: 'Blue Exorcist: Satan\'s Son Wants To Be An Exorcist (It\'s Ironic)',
+    originalMalId: 9919, // Ao no Exorcist
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "He's got blue flames and daddy issues. Now he's fighting demons with his twin brother. School for exorcists!",
+    imageUrl: 'https://placehold.co/300x400.png?text=SatanSonExorcist&font=lora',
+    genreTags: ['Action', 'Demons', 'Fantasy', 'Shonen', 'Supernatural'],
+    moodTags: ['Adrenaline Rush'],
+  },
+  {
+    id: 'bocchi-the-rock!:-socially-anxious-guitar-hero-(in-her-closet)',
+    parodyTitle: 'Bocchi the Rock!: Socially Anxious Guitar Hero (In Her Closet)',
+    originalMalId: 47917, // Bocchi the Rock!
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "She shreds online, but in real life, she turns into a pixelated mess. Relatable content for introverts.",
+    imageUrl: 'https://placehold.co/300x400.png?text=AnxiousGuitar&font=lora',
+    genreTags: ['Award Winning', 'Comedy', 'Music', 'Slice of Life', 'CGDCT'],
+    moodTags: ['Hilarious', 'Heartwarming', 'Comfy & Cozy'],
+  },
+  {
+    id: 'cowboy-bebop:-space-jazz-and-existential-dread',
+    parodyTitle: 'Cowboy Bebop: Space Jazz and Existential Dread',
+    originalMalId: 1, // Cowboy Bebop
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "Bounty hunters in space, trying to make a buck and escape their pasts. See you, space cowboy...",
+    imageUrl: 'https://placehold.co/300x400.png?text=SpaceJazzDread&font=lora',
+    genreTags: ['Action', 'Adventure', 'Award Winning', 'Drama', 'Sci-Fi', 'Space'],
+    moodTags: ['Dark & Deep', 'Epic Adventure', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'daily-lives-of-high-school-boys:-boys-will-be-idiots',
+    parodyTitle: 'Daily Lives of High School Boys: Boys Will Be Idiots',
+    originalMalId: 11843, // Danshi Koukousei no Nichijou
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Pure, unadulterated high school boy shenanigans. The wind is troubled today.",
+    imageUrl: 'https://placehold.co/300x400.png?text=IdiotBoys&font=lora',
+    genreTags: ['Comedy', 'School', 'Shonen', 'Slice of Life'],
+    moodTags: ['Hilarious', 'Comfy & Cozy'],
+  },
+  {
+    id: 'dorohedoro:-magic-lizard-man-wants-his-face-back',
+    parodyTitle: 'Dorohedoro: Magic Lizard Man Wants His Face Back',
+    originalMalId: 1133, // Dorohedoro (Manga MAL ID)
+    originalType: 'manga',
+    rarity: 'Legendary',
+    parodyBlurb: "In a bizarre, violent world, a guy with a reptile head hunts sorcerers with his gyoza-loving best friend. It's weird, it's gory, it's great.",
+    imageUrl: 'https://placehold.co/300x400.png?text=LizardFaceMagic&font=lora',
+    genreTags: ['Action', 'Adventure', 'Comedy', 'Fantasy', 'Horror', 'Mystery', 'Seinen'],
+    moodTags: ['Dark & Deep', 'Adrenaline Rush', 'Hilarious'],
+  },
+  {
+    id: 'ergo-proxy:-post-apocalyptic-philosophy-with-a-goth-aesthetic',
+    parodyTitle: 'Ergo Proxy: Post-Apocalyptic Philosophy with a Goth Aesthetic',
+    originalMalId: 790, // Ergo Proxy
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "A domed city, androids gaining self-awareness, and a lot of brooding. What is the nature of consciousness?",
+    imageUrl: 'https://placehold.co/300x400.png?text=GothPhilosophy&font=lora',
+    genreTags: ['Adventure', 'Mystery', 'Psychological', 'Sci-Fi'],
+    moodTags: ['Dark & Deep'],
+  },
+  {
+    id: 'fairy-tail:-the-power-of-friendship-can-solve-anything-(even-dragons)',
+    parodyTitle: 'Fairy Tail: The Power of Friendship Can Solve Anything (Even Dragons)',
+    originalMalId: 6702, // Fairy Tail
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Natsu eats fire, Lucy summons spirits, and everyone is NAKAMA. Logic is optional.",
+    imageUrl: 'https://placehold.co/300x400.png?text=FriendshipDragons&font=lora',
+    genreTags: ['Action', 'Adventure', 'Comedy', 'Fantasy', 'Magic', 'Shonen'],
+    moodTags: ['Adrenaline Rush', 'Heartwarming', 'Hilarious'],
+  },
+  {
+    id: 'food-wars-the-clothes-explosion-simulator',
+    parodyTitle: 'Food Wars: The Clothes Explosion Simulator',
+    originalMalId: 28171, // Shokugeki no Souma (duplicate original, but different parody)
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "Their cooking is so good, it literally blows your clothes off. Culinary battles have never been so... stimulating.",
+    imageUrl: 'https://placehold.co/300x400.png?text=ClothesExplodeFood&font=lora',
+    genreTags: ['Ecchi', 'Gourmet', 'School', 'Shonen'],
+    moodTags: ['Hilarious', 'Adrenaline Rush'],
+    evolvesToId: 'food-wars:-extra-salty-edition'
+  },
+  {
+    id: 'free!:-pretty-boys-swim-competitively-(mostly-shirtless)',
+    parodyTitle: 'Free!: Pretty Boys Swim Competitively (Mostly Shirtless)',
+    originalMalId: 18507, // Free!
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Friendship, rivalry, and a whole lot of water. For Haru, it's always about the water.",
+    imageUrl: 'https://placehold.co/300x400.png?text=ShirtlessSwimmers&font=lora',
+    genreTags: ['Comedy', 'Drama', 'School', 'Slice of Life', 'Sports'],
+    moodTags: ['Heartwarming', 'Comfy & Cozy'],
+  },
+  {
+    id: 'fruits-basket:-everyone-needs-therapy-(and-a-hug-from-tohru)',
+    parodyTitle: 'Fruits Basket: Everyone Needs Therapy (and a Hug from Tohru)',
+    originalMalId: 120, // Fruits Basket (Original Manga MAL ID - 120) (Anime remake ID is 38680)
+    originalType: 'manga',
+    rarity: 'Legendary',
+    parodyBlurb: "A sweet orphan girl lives with a cursed family that turns into zodiac animals when hugged. Trauma, healing, and so many tears.",
+    imageUrl: 'https://placehold.co/300x400.png?text=TherapyBasket&font=lora',
+    genreTags: ['Award Winning', 'Drama', 'Fantasy', 'Romance', 'School', 'Shojo', 'Slice of Life', 'Supernatural'],
+    moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
+  },
+  {
+    id: 'hellsing-ultimate:-alucard-is-a-f---mother-vampire',
+    parodyTitle: 'Hellsing Ultimate: Alucard is a F---Mother Vampire',
+    originalMalId: 777, // Hellsing Ultimate
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Nazi vampires, Catholic super-soldiers, and Alucard just enjoying the carnage. Bloody, stylish, and over-the-top.",
+    imageUrl: 'https://placehold.co/300x400.png?text=AlucardBadass&font=lora',
+    genreTags: ['Action', 'Fantasy', 'Horror', 'Military', 'Seinen', 'Supernatural', 'Vampire'],
+    moodTags: ['Adrenaline Rush', 'Dark & Deep'],
+  },
+  {
+    id: 'higurashi:-cute-kids-in-a-time-loop-of-murder-and-madness',
+    parodyTitle: 'Higurashi: Cute Kids in a Time Loop of Murder and Madness',
+    originalMalId: 934, // Higurashi no Naku Koro ni
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "Don't let the moe art fool you. This village is cursed, and you're going to watch these kids suffer. Repeatedly.",
+    imageUrl: 'https://placehold.co/300x400.png?text=MurderLoliLoop&font=lora',
+    genreTags: ['Horror', 'Mystery', 'Psychological', 'Supernatural', 'Suspense', 'Thriller'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'love,-chunibyo-&-other-delusions:-my-girlfriend-thinks-she-s-a-magical-girl',
+    parodyTitle: 'Love, Chunibyo & Other Delusions: My Girlfriend Thinks She\'s a Magical Girl',
+    originalMalId: 14741, // Chuunibyou demo Koi ga Shitai!
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "He's trying to escape his embarrassing past, but she's deep in her 8th-grade syndrome. Adorable and awkward.",
+    imageUrl: 'https://placehold.co/300x400.png?text=ChuniGirlfriend&font=lora',
+    genreTags: ['Comedy', 'Drama', 'Romance', 'School', 'Slice of Life'],
+    moodTags: ['Heartwarming', 'Hilarious', 'Comfy & Cozy'],
+  },
+  {
+    id: 'no-game-no-life:-everything-is-decided-by-games-(even-world-domination)',
+    parodyTitle: 'No Game No Life: Everything is Decided by Games (Even World Domination)',
+    originalMalId: 19815, // No Game No Life
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "NEET siblings get isekai'd to a world where all conflict is resolved through games. They're pretty good at games.",
+    imageUrl: 'https://placehold.co/300x400.png?text=GameWorldDomination&font=lora',
+    genreTags: ['Adventure', 'Comedy', 'Ecchi', 'Fantasy', 'Game', 'Isekai', 'Supernatural'],
+    moodTags: ['Epic Adventure', 'Hilarious', 'Adrenaline Rush'],
+  },
+  {
+    id: 'ouran-high-school-host-club:-rich-boys-entertain-commoner-girl-(who-s-disguised-as-a-boy)',
+    parodyTitle: 'Ouran High School Host Club: Rich Boys Entertain Commoner Girl (Who\'s Disguised as a Boy)',
+    originalMalId: 853, // Ouran Koukou Host Club
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "She broke a vase, now she has to work off the debt by being a pretty boy host. Reverse harem shenanigans ensue.",
+    imageUrl: 'https://placehold.co/300x400.png?text=RichBoyHostClub&font=lora',
+    genreTags: ['Comedy', 'Harem', 'Reverse Harem', 'Romance', 'School', 'Shojo'],
+    moodTags: ['Hilarious', 'Heartwarming'],
+  },
+  {
+    id: 'princess-mononoke:-environmentalism,-but-with-gods-and-cursed-boars',
+    parodyTitle: 'Princess Mononoke: Environmentalism, But With Gods and Cursed Boars',
+    originalMalId: 164, // Mononoke Hime
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "A cursed prince, a wolf girl, and a battle between industrialization and nature. Miyazaki at his finest.",
+    imageUrl: 'https://placehold.co/300x400.png?text=EnviroGods&font=lora',
+    genreTags: ['Action', 'Adventure', 'Award Winning', 'Fantasy'],
+    moodTags: ['Epic Adventure', 'Dark & Deep', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'school-live!:-cute-girls-survive-the-zombie-apocalypse-(mostly-by-ignoring-it)',
+    parodyTitle: 'School-Live!: Cute Girls Survive the Zombie Apocalypse (Mostly by Ignoring It)',
+    originalMalId: 24765, // Gakkou Gurashi!
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "It looks like a moe slice-of-life... until you realize what's outside the classroom window. Don't get attached.",
+    imageUrl: 'https://placehold.co/300x400.png?text=ZombieMoe&font=lora',
+    genreTags: ['Horror', 'Mystery', 'Psychological', 'School', 'Slice of Life', 'Supernatural'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'spirited-away:-girl-works-at-a-bathhouse-for-gods-(and-it-s-beautiful)',
+    parodyTitle: 'Spirited Away: Girl Works at a Bathhouse for Gods (and It\'s Beautiful)',
+    originalMalId: 199, // Sen to Chihiro no Kamikakushi
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "Her parents turn into pigs, so she gets a job in the spirit world. A whimsical, stunning masterpiece from Ghibli.",
+    imageUrl: 'https://placehold.co/300x400.png?text=GodBathhouse&font=lora',
+    genreTags: ['Adventure', 'Award Winning', 'Supernatural', 'Fantasy'],
+    moodTags: ['Epic Adventure', 'Heartwarming', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'that-time-my-little-sister-couldn-t-be-this-cute-(but-she-is,-and-it-s-weird)',
+    parodyTitle: 'That Time My Little Sister Couldn\'t Be This Cute (But She Is, And It\'s Weird)',
+    originalMalId: 8769, // Ore no Imouto ga Konnani Kawaii Wake ga Nai
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "His shut-in sister is secretly an otaku who plays eroge. Family counseling probably recommended.",
+    imageUrl: 'https://placehold.co/300x400.png?text=CuteSisterWeird&font=lora',
+    genreTags: ['Comedy', 'Drama', 'Harem', 'Romance', 'Slice of Life'],
+    moodTags: ['Hilarious', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'the-devil-is-a-part-timer!:-satan-flips-burgers-at-mgro-nalds',
+    parodyTitle: 'The Devil Is a Part-Timer!: Satan Flips Burgers at MgRonald\'s',
+    originalMalId: 15809, // Hataraku Maou-sama!
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "The Demon Lord gets isekai'd to modern Tokyo and has to work fast food to survive. The hero who defeated him also follows. Awkward.",
+    imageUrl: 'https://placehold.co/300x400.png?text=SatanBurgers&font=lora',
+    genreTags: ['Comedy', 'Demons', 'Fantasy', 'Romance', 'Supernatural', 'Workplace'],
+    moodTags: ['Hilarious', 'Comfy & Cozy', 'Heartwarming'],
+  },
+  {
+    id: 'the-melancholy-of-haruhi-suzumiya:-don-t-bore-the-god-girl,-or-else',
+    parodyTitle: 'The Melancholy of Haruhi Suzumiya: Don\'t Bore the God-Girl, or Else',
+    originalMalId: 849, // Suzumiya Haruhi no Yuuutsu
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "She can unknowingly alter reality, so her clubmates (an alien, a time traveler, and an esper) try to keep her entertained. Endless Eight forever.",
+    imageUrl: 'https://placehold.co/300x400.png?text=BoredGodGirl&font=lora',
+    genreTags: ['Comedy', 'Mystery', 'Parody', 'School', 'Sci-Fi', 'Slice of Life', 'Supernatural'],
+    moodTags: ['Hilarious', 'Dark & Deep'],
+  },
+  {
+    id: 'welcome-to-the-n.h.k.:-hikikomori-simulator-with-conspiracy-theories',
+    parodyTitle: 'Welcome to the N.H.K.: Hikikomori Simulator with Conspiracy Theories',
+    originalMalId: 467, // N・H・K ni Youkoso! (Corrected again)
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "A college dropout thinks a vast conspiracy is keeping him a shut-in. A cute girl tries to 'cure' him. It's a trip.",
+    imageUrl: 'https://placehold.co/300x400.png?text=NHKConspiracy&font=lora',
+    genreTags: ['Comedy', 'Drama', 'Psychological', 'Romance', 'Slice of Life'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Hilarious'],
+  },
+  {
+    id: 'wotakoi:-love-is-hard-for-otaku-(but-also-very-relatable)',
+    parodyTitle: 'Wotakoi: Love is Hard for Otaku (But Also Very Relatable)',
+    originalMalId: 35968, // Wotaku ni Koi wa Muzukashii
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "Two otaku start dating. It's awkward, nerdy, and surprisingly realistic for an office romance.",
+    imageUrl: 'https://placehold.co/300x400.png?text=OtakuLoveHard&font=lora',
+    genreTags: ['Comedy', 'Romance', 'Slice of Life', 'Workplace', 'Josei'],
+    moodTags: ['Heartwarming', 'Hilarious', 'Comfy & Cozy'],
+  },
+  {
+    id: 'a-place-further-than-the-universe:-antarctica-adventure-with-high-school-girls',
+    parodyTitle: 'A Place Further Than the Universe: Antarctica Adventure with High School Girls',
+    originalMalId: 35839, // Sora yori mo Tooi Basho
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Four girls with different reasons decide to go to Antarctica. An inspiring story of friendship and chasing dreams.",
+    imageUrl: 'https://placehold.co/300x400.png?text=AntarcticaGirls&font=lora',
+    genreTags: ['Adventure', 'Award Winning', 'Comedy', 'Drama', 'Slice of Life'],
+    moodTags: ['Heartwarming', 'Epic Adventure', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'aggretsuko:-red-panda-rages-against-office-life-with-death-metal-karaoke',
+    parodyTitle: 'Aggretsuko: Red Panda Rages Against Office Life with Death Metal Karaoke',
+    originalMalId: 32977, // Aggressive Retsuko (ONA)
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "She's a model employee by day, a death metal screamer by night. The perfect outlet for workplace stress.",
+    imageUrl: 'https://placehold.co/300x400.png?text=DeathMetalPanda&font=lora',
+    genreTags: ['Comedy', 'Slice of Life', 'Workplace', 'Music'],
+    moodTags: ['Hilarious', 'Comfy & Cozy'],
+  },
+  {
+    id: 'azumanga-daioh:-surreal-high-school-comedy-that-defined-a-generation',
+    parodyTitle: 'Azumanga Daioh: Surreal High School Comedy That Defined a Generation',
+    originalMalId: 66, // Azumanga Daiou The Animation
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Chiyo-chan's pigtails, Osaka's spaced-out thoughts, and Sakaki's obsession with cats. Pure, random gold.",
+    imageUrl: 'https://placehold.co/300x400.png?text=AzumangaGold&font=lora',
+    genreTags: ['Comedy', 'School', 'Slice of Life'],
+    moodTags: ['Hilarious', 'Comfy & Cozy'],
+  },
+  {
+    id: 'carole-&-tuesday:-two-girls-make-music-on-mars-(and-it-s-beautiful)',
+    parodyTitle: 'Carole & Tuesday: Two Girls Make Music on Mars (And It\'s Beautiful)',
+    originalMalId: 37435, // Carole & Tuesday
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "In a future where AI makes most music, two human girls try to make it big with their heartfelt songs. Gorgeous soundtrack.",
+    imageUrl: 'https://placehold.co/300x400.png?text=MarsMusicGirls&font=lora',
+    genreTags: ['Drama', 'Music', 'Sci-Fi', 'Slice of Life'],
+    moodTags: ['Heartwarming', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'devilman-crybaby:-demons,-sex,-drugs,-and-a-whole-lot-of-crying',
+    parodyTitle: 'Devilman Crybaby: Demons, Sex, Drugs, and a Whole Lot of Crying',
+    originalMalId: 35120, // Devilman: Crybaby
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "A pure-hearted boy merges with a demon to fight other demons. It's incredibly violent, hyper-stylized, and deeply tragic. NSFW.",
+    imageUrl: 'https://placehold.co/300x400.png?text=DevilmanCries&font=lora',
+    genreTags: ['Action', 'Avant Garde', 'Demons', 'Drama', 'Horror', 'Supernatural'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Adrenaline Rush'],
+  },
+  {
+    id: 'elfen-lied:-cute-girl-with-horns-murders-everyone-(with-invisible-hands)',
+    parodyTitle: 'Elfen Lied: Cute Girl with Horns Murders Everyone (With Invisible Hands)',
+    originalMalId: 226, // Elfen Lied
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "She's an amnesiac, horned mutant with deadly invisible vectors. Also, there's some romance. It's a lot.",
+    imageUrl: 'https://placehold.co/300x400.png?text=HornMurderLoli&font=lora',
+    genreTags: ['Action', 'Drama', 'Ecchi', 'Horror', 'Psychological', 'Romance', 'Supernatural'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
+  },
+  {
+    id: 'FLCL:-coming-of-age-with-robots,-aliens,-and-vespas',
+    parodyTitle: 'FLCL: Coming-of-Age with Robots, Aliens, and Vespas',
+    originalMalId: 227, // FLCL
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Nothing makes sense, but it's stylish, iconic, and the soundtrack by The Pillows is god-tier. RICKENBACKER!",
+    imageUrl: 'https://placehold.co/300x400.png?text=FLCLvespa&font=lora',
+    genreTags: ['Action', 'Avant Garde', 'Comedy', 'Mecha', 'Psychological', 'Sci-Fi'],
+    moodTags: ['Hilarious', 'Adrenaline Rush', 'Dark & Deep'],
+  },
+  {
+    id: 'flying-witch:-a-witch-moves-to-the-countryside-(and-it-s-very-chill)',
+    parodyTitle: 'Flying Witch: A Witch Moves to the Countryside (And It\'s Very Chill)',
+    originalMalId: 31376, // Flying Witch
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Makoto is a trainee witch living with her cousins. Expect gentle magic, gardening, and lots of naps. Peak iyashikei.",
+    imageUrl: 'https://placehold.co/300x400.png?text=ChillWitch&font=lora',
+    genreTags: ['Comedy', 'Iyashikei', 'Shonen', 'Slice of Life', 'Supernatural'],
+    moodTags: ['Comfy & Cozy', 'Heartwarming'],
+  },
+  {
+    id: 'girls-und-panzer:-cute-girls-drive-tanks-(competitively!)',
+    parodyTitle: 'Girls und Panzer: Cute Girls Drive Tanks (Competitively!)',
+    originalMalId: 14131, // Girls und Panzer
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "Tankery is a traditional martial art for high school girls. It's absurd, it's fun, and the tank battles are surprisingly well-done. PANZER VOR!",
+    imageUrl: 'https://placehold.co/300x400.png?text=TankGirls&font=lora',
+    genreTags: ['Action', 'Military', 'School', 'Sports'],
+    moodTags: ['Adrenaline Rush', 'Hilarious', 'Heartwarming'],
+  },
+  {
+    id: 'himouto!-umaru-chan:-my-perfect-little-sister-is-a-cola-guzzling-gremlin-at-home',
+    parodyTitle: 'Himouto! Umaru-chan: My Perfect Little Sister is a Cola-Guzzling Gremlin at Home',
+    originalMalId: 28825, // Himouto! Umaru-chan
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Publicly, she's a flawless beauty. Privately, she's a hamster-hooded, game-obsessed, junk-food-eating menace. The duality of Umaru.",
+    imageUrl: 'https://placehold.co/300x400.png?text=GremlinSister&font=lora',
+    genreTags: ['Comedy', 'School', 'Seinen', 'Slice of Life'],
+    moodTags: ['Hilarious', 'Comfy & Cozy'],
   }
+  // NOTE: This list is illustrative and needs to be expanded to ~500 for the full feature.
+  // The originalMalId and originalType are for potential linking/context and should be verified for accuracy if used for such.
 ];
 
-// NOTE: The validation logic for GACHA_RARITY_RATES and PITY_DISTRIBUTION
-// should be in src/config/gachaConfig.ts, not here.
-// I am removing the misplaced validation logic from this file.
+    
