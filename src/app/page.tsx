@@ -70,12 +70,12 @@ export default function Home() {
         try {
             const response = await fetchFunction(...params);
 
-            if (response && typeof response === 'object' && response.status && response.status !== 200 && response.message) {
+            if (response && typeof response === 'object' && response.status && response.status !== 200 && (response.message || response.error)) {
                  console.warn(`[Home Page] Jikan API error for ${sectionKey}: Status ${response.status}, Message: ${response.message || response.error}`);
                  setData([]);
                  setError(prevError => prevError || `Jikan API error for ${sectionKey}: ${response.message || response.error}`);
-            } else if (response && typeof response === 'object' && 'error' in response && response.error) {
-                console.warn(`[Home Page] Jikan API error for ${sectionKey} (in 2xx response):`, response.error);
+            } else if (response && typeof response === 'object' && 'error' in response && response.error && !response.data && !response.animes && !response.mangas) { // More specific check for Jikan error structure
+                console.warn(`[Home Page] Jikan API returned an error object for ${sectionKey}:`, response.error);
                 setData([]);
                 setError(prevError => prevError || `Jikan API error for ${sectionKey}: ${response.error}`);
             }
@@ -109,7 +109,7 @@ export default function Home() {
             // For Nami's Picks, fetch highly-rated anime and manga, then combine and shuffle
             const [namiAnimeRes, namiMangaRes] = await Promise.all([
                 getAnimes(undefined, undefined, 8.5, undefined, undefined, 1, 'score', 5), // top 5 anime with score >= 8.5
-                getMangas(undefined, undefined, undefined, 8.5, 1, 'score', 5)  // top 5 manga with score >= 8.5
+                getMangas(undefined, undefined, undefined, 8.5, undefined, 1, 'score', 5)  // top 5 manga with score >= 8.5
             ]);
             const namiAnimeItems = (namiAnimeRes.animes || []).map(mapJikanDataToAnime).filter((i): i is DisplayItem => i !== null);
             const namiMangaItems = (namiMangaRes.mangas || []).map(mapJikanDataToManga).filter((i): i is DisplayItem => i !== null);
@@ -144,19 +144,23 @@ export default function Home() {
     const handleWhatNextClick = async () => {
         setLoadingSurprise(true);
         setSurpriseContent(null);
-        setError(null);
+        // setError(null); // Don't clear global error for this specific action
         try {
-            // Requesting an anime for surprise me
             const response = await surpriseMeRecommendation({ requestType: 'anime', genres: [] });
             if (response && response.mal_id) {
-                setSurpriseContent(response); // This is already the correct SurpriseMeRecommendationOutput type
+                setSurpriseContent(response);
                 setIsSurpriseModalOpen(true);
             } else {
-                setError("Nami couldn't find a surprise right now. Try again!");
+                // setError("Nami couldn't find a surprise right now. Try again!"); // Set specific error for modal if needed
+                 console.error("Surprise Me error: No item returned or mal_id missing", response);
+                 setSurpriseContent(null); // Ensure it's null
+                 setIsSurpriseModalOpen(true); // Open modal to show an error/empty state
             }
         } catch (err) {
             console.error("Surprise Me error:", err);
-            setError("Failed to get a surprise recommendation. Please check the console.");
+            // setError("Failed to get a surprise recommendation. Please check the console.");
+            setSurpriseContent(null); // Ensure it's null
+            setIsSurpriseModalOpen(true); // Open modal to show an error/empty state
         }
         setLoadingSurprise(false);
     };
@@ -215,7 +219,7 @@ export default function Home() {
         queryParams.set('q', mood.keywords.join(' '));
       }
       queryParams.set('mood_tag', mood.name);
-      queryParams.set('mood_id', mood.id); // Add mood_id for fetching specific playlist
+      queryParams.set('mood_id', mood.id);
 
       return (
         <Link href={`/anime?${queryParams.toString()}`} className="block snap-start group">
@@ -229,10 +233,10 @@ export default function Home() {
     };
 
     return (
-        <div className="py-8 md:py-10"> {/* Increased vertical padding */}
+        <div className="py-8 md:py-10">
             {error && (
-                 <div className="px-4 md:px-6 lg:px-8 mb-8"> {/* Increased bottom margin */}
-                   <Alert variant="destructive" className="glass-deep shadow-lg"> {/* Use glass-deep */}
+                 <div className="px-4 md:px-6 lg:px-8 mb-8">
+                   <Alert variant="destructive" className="glass-deep shadow-lg">
                      <AlertCircle className="h-4 w-4" />
                      <AlertTitle>Error Loading Homepage</AlertTitle>
                      <AlertDescription>{error}</AlertDescription>
@@ -258,24 +262,24 @@ export default function Home() {
               </div>
             </section>
 
-            <div className="text-center my-8 md:my-12 px-4 flex justify-center items-center gap-4"> {/* Flex container for buttons */}
+            <div className="text-center my-8 md:my-12 px-4 flex flex-col sm:flex-row justify-center items-center gap-3 sm:gap-4">
                 <Button
                     size="lg"
                     variant="outline"
                     onClick={handleWhatNextClick}
                     disabled={loadingSurprise}
-                    className="neon-glow-hover glass-deep text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-xl border-primary/50 hover:border-primary hover:bg-primary/10"
+                    className="neon-glow-hover glass-deep text-sm sm:text-base px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl border-primary/50 hover:border-primary hover:bg-primary/10 w-full sm:w-auto"
                 >
-                    {loadingSurprise ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <HelpCircle className="mr-2 h-5 w-5 text-primary" />}
-                    What's Next?
+                    {loadingSurprise ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : <HelpCircle className="mr-2 h-4 w-4 text-primary" />}
+                    What's Next? (Roulette)
                 </Button>
                 <Link href="/gacha" passHref legacyBehavior>
                     <Button
                         size="lg"
                         variant="outline"
-                        className="fiery-glow-hover glass-deep text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-xl border-accent/50 hover:border-accent hover:bg-accent/10 text-accent"
+                        className="fiery-glow-hover glass-deep text-sm sm:text-base px-5 py-2.5 sm:px-6 sm:py-3 rounded-xl border-accent/50 hover:border-accent hover:bg-accent/10 text-accent w-full sm:w-auto"
                     >
-                        <Gift className="mr-2 h-5 w-5" /> Gacha Game
+                        <Gift className="mr-2 h-4 w-4" /> Gacha Game
                     </Button>
                 </Link>
             </div>
@@ -288,15 +292,13 @@ export default function Home() {
             {renderHorizontalSection( "Upcoming Anime", CalendarDays, upcomingAnime, loadingStates.upcomingAnime, "/anime?status=upcoming", ItemCard, SkeletonItemCard)}
 
             <Footer />
-            {surpriseContent && ( // Ensure surpriseContent is truthy before rendering modal
-              <SurpriseMeModal
-                item={surpriseContent} // Pass item, not anime. Assuming SurpriseMeModal expects 'item'
+            <SurpriseMeModal
+                item={surpriseContent}
                 isOpen={isSurpriseModalOpen}
                 onClose={() => setIsSurpriseModalOpen(false)}
                 onTryAnother={handleWhatNextClick}
                 isLoading={loadingSurprise}
-              />
-            )}
+            />
             <AnimeDnaModal
                 animeId={dnaModalAnimeId}
                 isOpen={isDnaModalOpen}

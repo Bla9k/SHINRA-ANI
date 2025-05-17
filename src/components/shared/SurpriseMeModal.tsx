@@ -6,98 +6,114 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogC
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Anime } from '@/services/anime'; // Assuming Anime type is from here
+import { Anime, Manga } from '@/services'; // Using Anime/Manga types directly
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, ArrowRight, BadgeCheck, RefreshCw, Sparkles, Star, XCircle } from 'lucide-react';
+import { AlertCircle, ArrowRight, BadgeCheck, RefreshCw, Sparkles, Star, XCircle, Tv, BookText } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '../ui/scroll-area';
 import { cn } from '@/lib/utils';
+import type { SurpriseMeRecommendationOutput } from '@/ai/flows/surprise-me-recommendation';
 
 interface SurpriseMeModalProps {
-  anime: Anime | null;
+  item: SurpriseMeRecommendationOutput | null; // Item can be Anime or Manga
   isOpen: boolean;
   onClose: () => void;
   onTryAnother: () => void;
   isLoading: boolean;
 }
 
-const SurpriseMeModal: React.FC<SurpriseMeModalProps> = ({ anime, isOpen, onClose, onTryAnother, isLoading }) => {
+const SurpriseMeModal: React.FC<SurpriseMeModalProps> = ({ item, isOpen, onClose, onTryAnother, isLoading }) => {
   if (!isOpen) return null;
+
+  const isAnime = item?.type === 'anime';
+  const displayItem = item as (Anime | Manga | null); // Cast for easier access to common fields
+
+  const itemImageUrl = displayItem?.images?.jpg?.large_image_url ||
+                       displayItem?.images?.jpg?.image_url ||
+                       displayItem?.images?.webp?.large_image_url ||
+                       (isAnime ? (displayItem as Anime)?.trailer?.images?.maximum_image_url : null) ||
+                       'https://placehold.co/720x405.png?text=Shinra+Pick&font=lora';
+
+  const detailPageUrl = displayItem ? `/${displayItem.type}/${displayItem.mal_id}` : '#';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && !isLoading && onClose()}>
-      <DialogContent className="glass-deep sm:max-w-md md:max-w-lg lg:max-w-xl p-0 overflow-hidden">
-        <DialogHeader className="p-4 sm:p-6 border-b border-border/50 sticky top-0 bg-card/80 backdrop-blur-sm z-10">
-          <DialogTitle className="text-xl sm:text-2xl text-primary flex items-center gap-2">
-            <Sparkles size={22} /> Nami's Surprise Pick!
+      <DialogContent className="glass-deep sm:max-w-md md:max-w-lg lg:max-w-xl p-0 overflow-hidden shadow-xl border-primary/30 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95">
+        <DialogHeader className="p-4 sm:p-5 border-b border-border/50 sticky top-0 bg-card/80 backdrop-blur-sm z-10 flex flex-row items-center justify-between">
+          <DialogTitle className="text-lg sm:text-xl text-primary flex items-center gap-2">
+            <Sparkles size={20} /> Nami's Surprise Pick!
           </DialogTitle>
-           <DialogClose className="absolute right-4 top-1/2 -translate-y-1/2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <XCircle className="h-5 w-5" />
-            <span className="sr-only">Close</span>
+           <DialogClose asChild>
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground">
+                <XCircle className="h-5 w-5" />
+                <span className="sr-only">Close</span>
+            </Button>
           </DialogClose>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[60vh]">
-          <div className="p-4 sm:p-6">
-            {isLoading && !anime && (
+        <ScrollArea className="max-h-[calc(70vh-100px)] sm:max-h-[calc(70vh-120px)]"> {/* Adjusted max-h */}
+          <div className="p-4 sm:p-5 space-y-3 sm:space-y-4">
+            {isLoading && !displayItem && (
               <div className="space-y-4">
-                <Skeleton className="h-56 w-full rounded-lg" />
-                <Skeleton className="h-6 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-48 sm:h-56 w-full rounded-lg bg-muted/30" />
+                <Skeleton className="h-6 w-3/4 bg-muted/30" />
+                <Skeleton className="h-4 w-1/2 bg-muted/30" />
                 <div className="flex gap-2">
-                  <Skeleton className="h-5 w-16 rounded-full" />
-                  <Skeleton className="h-5 w-20 rounded-full" />
+                  <Skeleton className="h-5 w-16 rounded-full bg-muted/30" />
+                  <Skeleton className="h-5 w-20 rounded-full bg-muted/30" />
                 </div>
-                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-16 w-full bg-muted/30" />
               </div>
             )}
 
-            {!isLoading && !anime && (
+            {!isLoading && !displayItem && (
               <div className="text-center py-10 text-muted-foreground">
-                <AlertCircle className="mx-auto h-12 w-12 mb-3" />
+                <AlertCircle className="mx-auto h-10 w-10 sm:h-12 sm:w-12 mb-3 opacity-70" />
                 <p>Nami couldn't find a surprise this time. Please try again!</p>
               </div>
             )}
 
-            {anime && !isLoading && (
-              <div className="space-y-3">
-                <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden shadow-lg border border-border/30">
+            {displayItem && !isLoading && (
+              <>
+                <div className="relative aspect-[16/9] w-full rounded-lg overflow-hidden shadow-lg border border-border/20">
                   <Image
-                    src={anime.trailer?.images?.maximum_image_url || anime.images?.jpg?.large_image_url || 'https://placehold.co/720x405.png?text=No+Image'}
-                    alt={anime.title}
+                    src={itemImageUrl}
+                    alt={displayItem.title}
                     fill
                     sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover"
-                    data-ai-hint="anime scene"
+                    data-ai-hint="anime manga scene"
+                    priority
                   />
+                   <Badge variant="secondary" className="absolute top-2 left-2 text-xs capitalize backdrop-blur-sm bg-black/50 text-white px-2 py-1">
+                    {displayItem.type === 'anime' ? <Tv size={14} className="mr-1"/> : <BookText size={14} className="mr-1"/>}
+                    {displayItem.type}
+                  </Badge>
                 </div>
-                <h3 className="text-lg font-semibold text-foreground">{anime.title}</h3>
-                <div className="flex flex-wrap gap-1">
-                  {anime.genres?.slice(0, 3).map(g => <Badge key={g.mal_id} variant="secondary">{g.name}</Badge>)}
-                  {anime.score && <Badge variant="outline" className="flex items-center gap-1"><Star size={12} className="text-yellow-400"/>{anime.score.toFixed(1)}</Badge>}
+                <h3 className="text-base sm:text-lg font-semibold text-foreground">{displayItem.title}</h3>
+                <div className="flex flex-wrap gap-1.5">
+                  {displayItem.genres?.slice(0, 3).map(g => <Badge key={g.mal_id} variant="secondary" className="text-xs">{g.name}</Badge>)}
+                  {displayItem.score && <Badge variant="outline" className="flex items-center gap-1 text-xs border-yellow-500/50 text-yellow-400"><Star size={12} className="fill-yellow-400 text-yellow-500"/>{displayItem.score.toFixed(1)}</Badge>}
                 </div>
-                <p className="text-sm text-muted-foreground line-clamp-3">
-                  {anime.synopsis || 'No synopsis available.'}
+                <p className="text-xs sm:text-sm text-muted-foreground line-clamp-3 leading-relaxed">
+                  {displayItem.synopsis || 'No synopsis available.'}
                 </p>
-              </div>
+              </>
             )}
           </div>
         </ScrollArea>
 
-        <DialogFooter className="p-4 sm:p-6 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-sm flex flex-col sm:flex-row gap-2">
+        <DialogFooter className="p-3 sm:p-4 border-t border-border/50 sticky bottom-0 bg-card/80 backdrop-blur-sm z-10 flex flex-col sm:flex-row gap-2 justify-end">
           <Button variant="outline" onClick={onTryAnother} disabled={isLoading} className="w-full sm:w-auto neon-glow-hover">
             <RefreshCw size={16} className={cn("mr-2", isLoading && "animate-spin")} /> Try Another!
           </Button>
-          {anime && (
-            <Link href={`/anime/${anime.mal_id}`} passHref legacyBehavior>
+          {displayItem && (
+            <Link href={detailPageUrl} passHref legacyBehavior>
               <Button asChild className="w-full sm:w-auto fiery-glow-hover" onClick={onClose}>
                 <a>View Details <ArrowRight size={16} className="ml-2"/></a>
               </Button>
             </Link>
           )}
-           <DialogClose asChild className="sm:hidden">
-             <Button variant="ghost" className="w-full">Close</Button>
-           </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -105,3 +121,4 @@ const SurpriseMeModal: React.FC<SurpriseMeModalProps> = ({ anime, isOpen, onClos
 };
 
 export default SurpriseMeModal;
+
