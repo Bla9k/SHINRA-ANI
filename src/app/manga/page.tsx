@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation'; // Added useRouter
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,7 +18,6 @@ import Footer from '@/components/layout/Footer';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-// AnimeDnaModal is specific to anime, so not imported here unless mixed content is planned
 
 const genres = [
     { id: "1", name: "Action" }, { id: "2", name: "Adventure" }, { id: "4", name: "Comedy" },
@@ -49,7 +48,7 @@ const sortOptions = [
     { value: "favorites", label: "Follows" },
 ];
 
-const ANY_VALUE = "any"; // Reusing ANY_VALUE for consistency
+const ANY_VALUE = "any";
 const DEFAULT_SORT = "popularity";
 
 
@@ -70,13 +69,13 @@ export default function MangaPage() {
   const initialStatus = searchParams.get('status') || undefined;
   const initialSort = searchParams.get('sort') || DEFAULT_SORT;
   const initialDemographic = searchParams.get('demographic') || undefined;
-  const initialMoodTag = searchParams.get('mood_tag') || ''; // Added for mood tag
+  const initialMoodTag = searchParams.get('mood_tag') || '';
 
   const [selectedGenre, setSelectedGenre] = useState<string | undefined>(initialGenre);
   const [selectedStatus, setSelectedStatus] = useState<string | undefined>(initialStatus);
   const [selectedSort, setSelectedSort] = useState<string>(initialSort);
   const [selectedDemographic, setSelectedDemographic] = useState<string | undefined>(initialDemographic);
-  const [currentMoodTag, setCurrentMoodTag] = useState<string>(initialMoodTag); // State for mood tag display
+  const [currentMoodTag, setCurrentMoodTag] = useState<string>(initialMoodTag);
 
   const [showFilters, setShowFilters] = useState(
       !!initialGenre || !!initialStatus || !!searchTerm || !!initialDemographic || !!initialMoodTag
@@ -99,8 +98,6 @@ export default function MangaPage() {
       try {
         const genreParam = selectedGenre === ANY_VALUE ? undefined : selectedGenre;
         const statusParam = selectedStatus === ANY_VALUE ? undefined : selectedStatus;
-        // Jikan doesn't directly support demographic as a top-level filter for general manga search,
-        // but we can pass it as part of the search query if the user selects one.
         let searchParam = debouncedSearchTerm.trim() || undefined;
         if (selectedDemographic && selectedDemographic !== ANY_VALUE) {
             const demographicName = demographics.find(d => d.id === selectedDemographic)?.name;
@@ -109,12 +106,11 @@ export default function MangaPage() {
             }
         }
         
-        console.log(`[MangaPage] Fetching manga page ${page} - Filters: Genre=${genreParam}, Status=${statusParam}, Sort=${selectedSort}, Search=${searchParam}`);
         const response: MangaResponse = await getMangas(
             genreParam, statusParam, searchParam, undefined, page, selectedSort
         );
         const newManga = (response.mangas || [])
-                            .map(mapJikanDataToManga) // Use the correct map function
+                            .map(mapJikanDataToManga)
                             .filter((item): item is DisplayItem => item !== null);
         setMangaList(prev => (page === 1 || filtersOrSearchChanged) ? newManga : [...prev, ...newManga]);
         setHasNextPage(response.hasNextPage ?? false);
@@ -130,30 +126,46 @@ export default function MangaPage() {
   }, [selectedGenre, selectedStatus, selectedSort, debouncedSearchTerm, selectedDemographic]);
 
   useEffect(() => {
+    const newMoodTag = searchParams.get('mood_tag') || '';
+    const newSearchTerm = searchParams.get('q') || '';
+    const newGenre = searchParams.get('genre') || undefined;
+    const newStatus = searchParams.get('status') || undefined;
+    const newDemographic = searchParams.get('demographic') || undefined;
+    const newSort = searchParams.get('sort') || DEFAULT_SORT;
+
+    let filtersChanged = false;
+    if (newMoodTag !== currentMoodTag) { setCurrentMoodTag(newMoodTag); filtersChanged = true; }
+    if (newSearchTerm !== searchTerm) { setSearchTerm(newSearchTerm); filtersChanged = true; }
+    if (newGenre !== selectedGenre) { setSelectedGenre(newGenre); filtersChanged = true; }
+    if (newStatus !== selectedStatus) { setSelectedStatus(newStatus); filtersChanged = true; }
+    if (newDemographic !== selectedDemographic) { setSelectedDemographic(newDemographic); filtersChanged = true; }
+    if (newSort !== selectedSort) { setSelectedSort(newSort); filtersChanged = true; }
+
+    if (filtersChanged || currentPage === 1) { // Fetch on initial load or if filters change
+        fetchManga(1, true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  useEffect(() => {
       const params = new URLSearchParams();
+      if (currentMoodTag) { // If mood is active, it might override other filters from URL
+          params.set('mood_tag', currentMoodTag);
+          // Depending on desired behavior, you might clear other filters here
+          // or let mood-specific logic in fetchManga handle it.
+          // For now, we'll let fetchManga handle the mood logic primarily.
+      }
       if (debouncedSearchTerm) params.set('q', debouncedSearchTerm);
       if (selectedGenre && selectedGenre !== ANY_VALUE) params.set('genre', selectedGenre);
       if (selectedStatus && selectedStatus !== ANY_VALUE) params.set('status', selectedStatus);
       if (selectedDemographic && selectedDemographic !== ANY_VALUE) params.set('demographic', selectedDemographic);
       if (selectedSort !== DEFAULT_SORT) params.set('sort', selectedSort);
-      if (currentMoodTag) params.set('mood_tag', currentMoodTag);
       
       const newSearch = params.toString();
       router.replace(`/manga?${newSearch}`, { scroll: false });
 
-      fetchManga(1, true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearchTerm, selectedGenre, selectedStatus, selectedSort, selectedDemographic, currentMoodTag]); // Removed router from deps
-
-  // Effect to update currentMoodTag if it changes in URL
-  useEffect(() => {
-    setCurrentMoodTag(searchParams.get('mood_tag') || '');
-    setSearchTerm(searchParams.get('q') || '');
-    setSelectedGenre(searchParams.get('genre') || undefined);
-    setSelectedStatus(searchParams.get('status') || undefined);
-    setSelectedDemographic(searchParams.get('demographic') || undefined);
-    setSelectedSort(searchParams.get('sort') || DEFAULT_SORT);
-  }, [searchParams]);
+  }, [debouncedSearchTerm, selectedGenre, selectedStatus, selectedSort, selectedDemographic, currentMoodTag]);
 
 
   const loadMoreManga = () => { if (hasNextPage && !loadingMore && !loading) fetchManga(currentPage + 1, false); };
@@ -210,7 +222,7 @@ export default function MangaPage() {
                            <SelectContent className="glass">{sortOptions.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent></Select>
                     </div>
                 </div>
-                 {hasActiveFilters && <Button variant="ghost" size="sm" onClick={resetFiltersAndSearch} className="text-xs text-muted-foreground hover:text-destructive mt-4 h-auto p-1"><X size={14} className="mr-1"/> Reset Filters & Mood</Button>}
+                 {(hasActiveFilters || currentMoodTag) && <Button variant="ghost" size="sm" onClick={resetFiltersAndSearch} className="text-xs text-muted-foreground hover:text-destructive mt-4 h-auto p-1"><X size={14} className="mr-1"/> Reset Filters & Mood</Button>}
             </Card>
         )}
       <section>
@@ -234,7 +246,7 @@ export default function MangaPage() {
                  </Button>
              </div>
           )}
-          {!hasNextPage && mangaList.length > 0 && !loading && !error && (<p className="text-center text-muted-foreground mt-8 py-4">You've browsed all available manga!</p>)}
+          {!hasNextPage && mangaList.length > 0 && !loading && !error && (<p className="text-center text-muted-foreground mt-8 py-4">You've browsed all available manga for this filter!</p>)}
       </section>
       <Footer />
     </div>

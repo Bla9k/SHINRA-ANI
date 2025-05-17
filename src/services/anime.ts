@@ -1,159 +1,58 @@
 
-import { config } from '@/config';
+import { config as appConfig } from '@/config'; // Renamed import to avoid conflict
 
 /**
  * Represents an Anime based on Jikan API v4 data structure.
  */
 export interface Anime {
-  /**
-   * The MyAnimeList ID of the anime.
-   */
   mal_id: number;
-  /**
-   * The primary title of the anime.
-   */
   title: string;
-  /**
-   * The anime genres.
-   */
   genres: { mal_id: number; type: string; name: string; url: string }[];
-  /**
-   * The anime release year.
-   */
   year: number | null;
-  /**
-   * The anime score (0-10 scale).
-   */
   score: number | null;
-  /**
-   * The anime synopsis.
-   */
   synopsis: string | null;
-  /**
-   * The anime cover image URLs.
-   */
   images: {
-      jpg: {
-          image_url: string | null;
-          small_image_url: string | null;
-          large_image_url: string | null; // Use this for cards/details
-      };
-      webp: {
-          image_url: string | null;
-          small_image_url: string | null;
-          large_image_url: string | null;
-      };
+      jpg: { image_url: string | null; small_image_url: string | null; large_image_url: string | null; };
+      webp: { image_url: string | null; small_image_url: string | null; large_image_url: string | null; };
   };
-  /**
-   * The anime status (e.g., "Finished Airing", "Currently Airing").
-   */
   status: string | null;
-  /**
-   * Number of episodes.
-   */
   episodes: number | null;
-  /**
-   * URL to the MyAnimeList page.
-   */
   url: string | null;
-  /**
-   * Trailer information (YouTube).
-   */
   trailer: {
-      youtube_id: string | null;
-      url: string | null;
-      embed_url: string | null;
-      images: {
-        image_url: string | null;
-        small_image_url: string | null;
-        medium_image_url: string | null;
-        large_image_url: string | null;
-        maximum_image_url: string | null;
-      } | null;
+      youtube_id: string | null; url: string | null; embed_url: string | null;
+      images: { image_url: string | null; small_image_url: string | null; medium_image_url: string | null; large_image_url: string | null; maximum_image_url: string | null; } | null;
   } | null;
-  /**
-   * Type identifier
-   */
-  type: 'anime'; // Explicitly set type for easier differentiation
-   /**
-    * Derived image URL field for easier access
-    */
-   imageUrl: string | null; // Add this for easier access in components
-   /**
-    * Mapped ID field for component key consistency
-    */
-   id: number; // Use definite ID
-   relations?: Array<{ relation: string, entry: Array<{ mal_id: number, type: string, name: string, url: string }> }>; // For adaptation queries
-   aired?: { from: string | null; to: string | null; }; // For year calculation if not directly present
-   source?: string; // Source material (e.g., Manga, Original)
-   studios?: { mal_id: number; type: string; name: string; url: string }[];
-   themes?: { mal_id: number; type: string; name: string; url: string }[];
+  type: 'anime';
+  imageUrl: string | null;
+  id: number;
+  relations?: Array<{ relation: string, entry: Array<{ mal_id: number, type: string, name: string, url: string }> }>;
+  aired?: { from: string | null; to: string | null; };
+  source?: string;
+  studios?: { mal_id: number; type: string; name: string; url: string }[];
+  themes?: { mal_id: number; type: string; name: string; url: string }[];
 }
 
-/**
- * Represents the response structure for Jikan anime list fetch operations.
- */
 export interface JikanAnimeListResponse {
-    data?: any[]; // Optional in case of error
-    pagination?: {
-        last_visible_page: number;
-        has_next_page: boolean;
-        current_page: number;
-        items: {
-            count: number;
-            total: number;
-            per_page: number;
-        };
-    };
-     // Potential error fields
-    status?: number;
-    type?: string;
-    message?: string;
-    error?: string; // Jikan sometimes uses 'error' for messages
+    data?: any[];
+    pagination?: { last_visible_page: number; has_next_page: boolean; current_page: number; items: { count: number; total: number; per_page: number; }; };
+    status?: number; type?: string; message?: string; error?: string;
 }
 
-/**
- * Represents the response structure for Jikan single anime fetch operations.
- */
 export interface JikanSingleAnimeResponse {
-    data: any; // Single Jikan anime object
-      // Potential error fields
-    status?: number;
-    type?: string;
-    message?: string;
-    error?: string;
+    data: any;
+    status?: number; type?: string; message?: string; error?: string;
 }
 
-/**
- * Represents a single anime recommendation entry from Jikan API.
- */
 export interface JikanAnimeRecommendationEntry {
-    entry: {
-        mal_id: number;
-        url: string;
-        images: any; // Use the same images structure as Anime interface
-        title: string;
-    };
-    url: string;
-    votes: number;
+    entry: { mal_id: number; url: string; images: any; title: string; };
+    url: string; votes: number;
 }
 
-/**
- * Represents the response structure for Jikan anime recommendations fetch operations.
- */
 export interface JikanAnimeRecommendationsResponse {
     data?: JikanAnimeRecommendationEntry[];
-    // Potential error fields
-    status?: number;
-    type?: string;
-    message?: string;
-    error?: string;
+    status?: number; type?: string; message?: string; error?: string;
 }
 
-
-/**
- * Represents the response structure for anime fetch operations using our Anime interface.
- */
 export interface AnimeResponse {
     animes: Anime[];
     hasNextPage: boolean;
@@ -161,19 +60,12 @@ export interface AnimeResponse {
     lastPage?: number;
 }
 
-
-// Jikan API v4 base URL
 const JIKAN_API_URL = 'https://api.jikan.moe/v4';
-// Default items per page for Jikan API (max 25)
 const DEFAULT_JIKAN_LIMIT = 24;
-// Delay between Jikan API calls in milliseconds to avoid rate limits
-const JIKAN_DELAY = config.jikanApiDelayMs;
+// JIKAN_DELAY is now imported from appConfig
 
-// Helper function to introduce a delay
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-
-// Helper function to map Jikan API response to our Anime interface
 export const mapJikanDataToAnime = (jikanData: any): Anime | null => {
   if (!jikanData || typeof jikanData.mal_id !== 'number' || !jikanData.title) {
       console.warn("[mapJikanDataToAnime] Skipping invalid Jikan anime data:", JSON.stringify(jikanData).substring(0,100));
@@ -219,7 +111,7 @@ export async function getAnimes(
 
   if (search) params.append('q', search);
   if (genre) params.append('genres', genre.toString());
-  if (year) params.append('start_date', `${year}-01-01`); // Jikan uses start_date for year filtering
+  if (year) params.append('start_date', `${year}-01-01`);
   if (minScore && minScore > 0 && minScore <= 10) params.append('min_score', minScore.toString());
   if (status) params.append('status', status);
 
@@ -238,12 +130,12 @@ export async function getAnimes(
       case 'start_date': orderBy = 'start_date'; break;
       case 'episodes': orderBy = 'episodes'; break;
       case 'favorites': orderBy = 'favorites'; break;
-      default: if(!search) orderBy = 'members'; // Default to popularity if no specific sort and no search
+      default: if(!search) orderBy = 'members';
   }
 
   if (orderBy) {
      params.append('order_by', orderBy);
-     params.append('sort', effectiveSortDirection);
+     if (effectiveSortDirection) params.append('sort', effectiveSortDirection);
   }
 
   const url = `${JIKAN_API_URL}/anime?${params.toString()}`;
@@ -251,13 +143,13 @@ export async function getAnimes(
   let response: Response | undefined;
 
   console.log(`[getAnimes] Attempting fetch: ${url}`);
-  await delay(JIKAN_DELAY); // Maintained delay for general list fetching
+  await delay(appConfig.jikanApiDelayMs);
 
   try {
-    response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 1800 } }); // Cache for 30 mins
+    response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 1800 } });
     console.log(`[getAnimes] Response status for ${url}: ${response.status}`);
 
-    const responseBodyText = await response.text(); // Get response text first for robust error handling
+    const responseBodyText = await response.text();
 
     if (!response.ok) {
       console.error(`[getAnimes] Jikan API response not OK: ${response.status} "${response.statusText}"`);
@@ -309,8 +201,6 @@ export async function getAnimeDetails(mal_id?: number, title?: string, noDelay: 
   } else if (title) {
     const searchResult = await getAnimes(undefined, undefined, undefined, title, undefined, 1, 'rank', 1, 'asc');
     if (searchResult.animes.length > 0) {
-      // If found by title, use its MAL ID to get full details
-      // This ensures we get the most complete data for the "best" match.
       url = `${JIKAN_API_URL}/anime/${searchResult.animes[0].mal_id}`;
       queryType = `Title "${title}" (resolved to ID ${searchResult.animes[0].mal_id})`;
     } else {
@@ -327,7 +217,7 @@ export async function getAnimeDetails(mal_id?: number, title?: string, noDelay: 
 
   console.log(`[getAnimeDetails] Attempting fetch for ${queryType}: ${url}`);
   if (!noDelay) {
-    await delay(JIKAN_DELAY);
+    await delay(appConfig.jikanApiDelayMs);
   }
 
 
@@ -370,7 +260,7 @@ export async function getAnimeRecommendations(mal_id: number): Promise<Anime[]> 
     let response: Response | undefined;
 
     console.log(`[getAnimeRecommendations] Attempting fetch: ${url}`);
-    await delay(JIKAN_DELAY);
+    await delay(appConfig.jikanApiDelayMs);
 
     try {
         response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 3600 * 12 } });
@@ -412,7 +302,7 @@ export async function getSeasonAnime(
   let response: Response | undefined;
 
   console.log(`[getSeasonAnime] Attempting fetch: ${url}`);
-  await delay(JIKAN_DELAY);
+  await delay(appConfig.jikanApiDelayMs);
 
   try {
     response = await fetch(url, { method: 'GET', headers: headers, next: { revalidate: 3600 * 24 } });
@@ -447,4 +337,12 @@ export async function getSeasonAnime(
     if(response) console.error('[getSeasonAnime] Response Status on Catch:', response.status, response.statusText);
     return { animes: [], hasNextPage: false, currentPage: page, lastPage: page };
   }
+}
+// Helper function to get an anime by its MAL ID, typically for internal use or when ID is known.
+export async function getAnimeById(malId: number, noDelay: boolean = false): Promise<Anime | null> {
+    if (!malId) {
+        console.warn('[getAnimeById] MAL ID is required.');
+        return null;
+    }
+    return getAnimeDetails(malId, undefined, noDelay);
 }
