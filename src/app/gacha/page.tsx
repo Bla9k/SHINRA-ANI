@@ -16,8 +16,8 @@ import { motion } from 'framer-motion';
 import { getAnimeDetails, type Anime } from '@/services/anime';
 import { getMangaDetails, type Manga } from '@/services/manga';
 import { Skeleton } from '@/components/ui/skeleton';
-import Link from 'next/link';
-import { useAuth } from '@/hooks/useAuth'; // Import useAuth
+import Link from 'next/link'; // Import Link
+import { useAuth } from '@/hooks/useAuth';
 import { GACHA_ROLL_SIZE, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT } from '@/config/gachaConfig';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
@@ -46,9 +46,9 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
       try {
         let details: Anime | Manga | null = null;
         if (collectible.originalType === 'anime') {
-          details = await getAnimeDetails(collectible.originalMalId, undefined, true); // true for noDelay
+          details = await getAnimeDetails(collectible.originalMalId, undefined, true); // Pass true for noDelay
         } else if (collectible.originalType === 'manga') {
-          details = await getMangaDetails(collectible.originalMalId, undefined, true); // true for noDelay
+          details = await getMangaDetails(collectible.originalMalId, undefined, true); // Pass true for noDelay
         }
         setRealItemDetails(details);
         if (!details) {
@@ -70,13 +70,14 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
       case 'Rare': return 'border-blue-400/60 bg-blue-600/20 text-blue-300 neon-glow-rare';
       case 'Ultra Rare': return 'border-purple-400/60 bg-purple-600/20 text-purple-300 neon-glow-ultra-rare';
       case 'Legendary': return 'border-orange-400/70 bg-orange-500/20 text-orange-300 neon-glow-legendary';
-      case 'Mythic': return 'border-red-500/70 bg-red-600/20 text-red-300 fiery-glow'; // Use fiery-glow for Mythic
+      case 'Mythic': return 'border-red-500/70 bg-red-600/20 text-red-300 fiery-glow';
       case 'Event': return 'border-yellow-400/70 bg-yellow-500/20 text-yellow-300 neon-glow-event';
       default: return 'border-muted/50 bg-muted/20 text-muted-foreground';
     }
   };
-  
+
   const rarityColor = getRarityColorClasses(collectible.rarity);
+  const detailPageUrl = `/${collectible.originalType}/${collectible.originalMalId}`;
 
   return (
     <motion.div
@@ -86,86 +87,90 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
       transition={{ duration: 0.5, delay: Math.random() * 0.4, type: "spring", stiffness: 100, damping: 10 }}
       className="w-full group"
     >
-      <Card className={cn(
-        "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:shadow-2xl",
-        rarityColor.split(' ')[0] // Use border color from rarity
-      )}>
-        <CardHeader className="p-0 relative aspect-[3/4]">
-          {isLoadingDetails && (!realItemDetails?.imageUrl && !collectible.imageUrl) && (
-            <Skeleton className="absolute inset-0 bg-muted/30" />
-          )}
-          <Image
-            src={realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Shinra&font=lora'}
-            alt={collectible.parodyTitle}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className={cn("object-cover transition-opacity duration-500", isLoadingDetails ? "opacity-30" : "opacity-100")}
-            data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
-            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x400.png?text=Error&font=lora'; }}
-            priority={false} // Banners should be priority, not gacha cards
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
-          <Badge
-            className={cn(
-              "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
-              rarityColor // Apply full rarity class for bg and text
-            )}
-          >
-            {collectible.rarity}
-          </Badge>
-          <CardTitle className="absolute bottom-1.5 left-2 right-2 z-10 text-xs sm:text-sm font-bold text-primary-foreground line-clamp-2 shadow-text group-hover:text-primary transition-colors">
-            {collectible.parodyTitle}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-3 flex-grow flex flex-col bg-card/50">
-            <div className="flex-grow mb-1.5">
-                <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 italic line-clamp-2 sm:line-clamp-3 group-hover:line-clamp-none transition-all duration-200">
-                    "{collectible.parodyBlurb}"
-                </p>
-                {isLoadingDetails && (
-                    <div className="space-y-1 mt-1">
-                        <Skeleton className="h-3 w-3/4 bg-muted/30" />
-                        <Skeleton className="h-3 w-1/2 bg-muted/30" />
-                    </div>
+      <Link href={detailPageUrl} passHref legacyBehavior>
+        <a className="block h-full"> {/* Added anchor tag for legacyBehavior */}
+          <Card className={cn(
+            "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:shadow-2xl cursor-pointer", // Added cursor-pointer
+            rarityColor.split(' ')[0]
+          )}>
+            <CardHeader className="p-0 relative aspect-[3/4]">
+              {isLoadingDetails && (!realItemDetails?.imageUrl && !collectible.imageUrl) && (
+                <Skeleton className="absolute inset-0 bg-muted/30" />
+              )}
+              <Image
+                src={realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Shinra&font=lora'}
+                alt={collectible.parodyTitle}
+                fill
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className={cn("object-cover transition-opacity duration-500", isLoadingDetails ? "opacity-30" : "opacity-100")}
+                data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
+                onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x400.png?text=Error&font=lora'; }}
+                priority={false}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
+              <Badge
+                className={cn(
+                  "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
+                  rarityColor
                 )}
-                {errorDetails && !isLoadingDetails && (
-                    <p className="text-[10px] text-destructive mt-1">{errorDetails}</p>
-                )}
-                {realItemDetails && !isLoadingDetails && (
-                    <div className="mt-1 border-t border-border/30 pt-1.5 space-y-0.5">
-                        <p className="text-[10px] text-muted-foreground font-semibold line-clamp-1">
-                            Original: <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior><a target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{realItemDetails.title}</a></Link>
-                        </p>
-                        <div className="flex items-center gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground/80 flex-wrap">
-                            {realItemDetails.score !== null && realItemDetails.score !== undefined && <span className="flex items-center gap-0.5"><Star size={10} className="text-yellow-400"/>{realItemDetails.score.toFixed(1)}</span>}
-                            {realItemDetails.year && <span className="flex items-center gap-0.5"><CalendarDays size={10}/>{realItemDetails.year}</span>}
-                            {collectible.originalType === 'anime' && (realItemDetails as Anime).episodes && <span className="flex items-center gap-0.5"><Film size={10}/>{(realItemDetails as Anime).episodes} eps</span>}
-                            {collectible.originalType === 'manga' && (realItemDetails as Manga).chapters && <span className="flex items-center gap-0.5"><Layers size={10}/>{(realItemDetails as Manga).chapters} ch</span>}
-                            {collectible.originalType === 'manga' && (realItemDetails as Manga).volumes && <span className="flex items-center gap-0.5"><Library size={10}/>{(realItemDetails as Manga).volumes} vol</span>}
-                        </div>
-                    </div>
-                )}
-            </div>
-            {(collectible.genreTags || collectible.moodTags) && (
-                <div className="mt-auto pt-1.5 border-t border-border/30">
-                    {collectible.genreTags && collectible.genreTags.length > 0 && (
-                        <div className="flex items-center gap-1 text-[9px] mb-0.5">
-                            <Tag size={10} className="text-muted-foreground/70 flex-shrink-0" />
-                            <span className="text-muted-foreground/70 flex-shrink-0 mr-1">Parody Genres:</span>
-                            <span className="text-foreground/80 line-clamp-1">{collectible.genreTags.join(', ')}</span>
+              >
+                {collectible.rarity}
+              </Badge>
+              <CardTitle className="absolute bottom-1.5 left-2 right-2 z-10 text-xs sm:text-sm font-bold text-primary-foreground line-clamp-2 shadow-text group-hover:text-primary transition-colors">
+                {collectible.parodyTitle}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 sm:p-3 flex-grow flex flex-col bg-card/50">
+                <div className="flex-grow mb-1.5">
+                    <p className="text-[10px] sm:text-xs text-muted-foreground mb-1 italic line-clamp-2 sm:line-clamp-3 group-hover:line-clamp-none transition-all duration-200">
+                        "{collectible.parodyBlurb}"
+                    </p>
+                    {isLoadingDetails && (
+                        <div className="space-y-1 mt-1">
+                            <Skeleton className="h-3 w-3/4 bg-muted/30" />
+                            <Skeleton className="h-3 w-1/2 bg-muted/30" />
                         </div>
                     )}
-                    {collectible.moodTags && collectible.moodTags.length > 0 && (
-                        <div className="flex items-center gap-1 text-[9px]">
-                            <Info size={10} className="text-muted-foreground/70 flex-shrink-0" />
-                            <span className="text-muted-foreground/70 flex-shrink-0 mr-1">Feels Like:</span>
-                            <span className="text-foreground/80 line-clamp-1">{collectible.moodTags.join(', ')}</span>
+                    {errorDetails && !isLoadingDetails && (
+                        <p className="text-[10px] text-destructive mt-1">{errorDetails}</p>
+                    )}
+                    {realItemDetails && !isLoadingDetails && (
+                        <div className="mt-1 border-t border-border/30 pt-1.5 space-y-0.5">
+                            <p className="text-[10px] text-muted-foreground font-semibold line-clamp-1">
+                                Original: <span className="text-primary hover:underline">{realItemDetails.title}</span>
+                            </p>
+                            <div className="flex items-center gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground/80 flex-wrap">
+                                {realItemDetails.score !== null && realItemDetails.score !== undefined && <span className="flex items-center gap-0.5"><Star size={10} className="text-yellow-400"/>{realItemDetails.score.toFixed(1)}</span>}
+                                {realItemDetails.year && <span className="flex items-center gap-0.5"><CalendarDays size={10}/>{realItemDetails.year}</span>}
+                                {collectible.originalType === 'anime' && (realItemDetails as Anime).episodes && <span className="flex items-center gap-0.5"><Film size={10}/>{(realItemDetails as Anime).episodes} eps</span>}
+                                {collectible.originalType === 'manga' && (realItemDetails as Manga).chapters && <span className="flex items-center gap-0.5"><Layers size={10}/>{(realItemDetails as Manga).chapters} ch</span>}
+                                {collectible.originalType === 'manga' && (realItemDetails as Manga).volumes && <span className="flex items-center gap-0.5"><Library size={10}/>{(realItemDetails as Manga).volumes} vol</span>}
+                            </div>
                         </div>
                     )}
                 </div>
-            )}
-        </CardContent>
-      </Card>
+                {(collectible.genreTags || collectible.moodTags) && (
+                    <div className="mt-auto pt-1.5 border-t border-border/30">
+                        {collectible.genreTags && collectible.genreTags.length > 0 && (
+                            <div className="flex items-center gap-1 text-[9px] mb-0.5">
+                                <Tag size={10} className="text-muted-foreground/70 flex-shrink-0" />
+                                <span className="text-muted-foreground/70 flex-shrink-0 mr-1">Parody Genres:</span>
+                                <span className="text-foreground/80 line-clamp-1">{collectible.genreTags.join(', ')}</span>
+                            </div>
+                        )}
+                        {collectible.moodTags && collectible.moodTags.length > 0 && (
+                            <div className="flex items-center gap-1 text-[9px]">
+                                <Info size={10} className="text-muted-foreground/70 flex-shrink-0" />
+                                <span className="text-muted-foreground/70 flex-shrink-0 mr-1">Feels Like:</span>
+                                <span className="text-foreground/80 line-clamp-1">{collectible.moodTags.join(', ')}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </CardContent>
+          </Card>
+        </a>
+      </Link>
     </motion.div>
   );
 };
@@ -183,17 +188,16 @@ export default function GachaPage() {
     setIsClient(true);
     if (user && userProfile) {
       setCurrentPityCount(userProfile.gachaPityCounter || 0);
-    } else if (!user && !authLoading) { // If not logged in and auth check is done
-      setCurrentPityCount(0); // Reset for non-logged-in users
+    } else if (!user && !authLoading) {
+      setCurrentPityCount(0);
     }
   }, [user, userProfile, authLoading]);
 
   const handleRoll = async () => {
     if (!isClient) return;
     setIsLoading(true);
-    setPulledCollectibles(null); // Clear previous for animation
+    setPulledCollectibles(null);
 
-    // Simulate a short delay for UX before API call
     await new Promise(resolve => setTimeout(resolve, 300));
 
     const result = await performGachaRoll(user?.uid || null);
@@ -204,26 +208,25 @@ export default function GachaPage() {
         description: result.error,
         variant: 'destructive',
       });
-      setPulledCollectibles([]); // Set to empty array to clear skeletons
+      setPulledCollectibles([]);
     } else {
       setPulledCollectibles(result.collectibles);
       if(result.newPityCounter !== undefined) {
         setCurrentPityCount(result.newPityCounter);
-        // If user is logged in, optimistic update of local profile pity (or refetch)
         if(user && fetchUserProfile) {
-            // Optimistically update for now, or trigger full refetch:
+            // Optimistic update for now, or trigger full refetch:
             // await fetchUserProfile(user.uid);
         }
       }
       toast({
         title: 'Gacha Roll Success!',
-        description: `You pulled ${result.collectibles.length} new collectibles!`,
+        description: `You pulled ${GACHA_ROLL_SIZE} new collectibles!`,
         variant: "default",
       });
     }
     setIsLoading(false);
   };
-  
+
   const pityTooltipContent = user ? (
     <>
         Current Pity: {currentPityCount}/{HARD_PITY_COUNT} <br />
@@ -246,7 +249,7 @@ export default function GachaPage() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4, duration: 0.5 }}
-            className="text-3xl sm:text-4xl font-bold text-primary sf-text-glow" // Added Shinra Fire text glow
+            className="text-3xl sm:text-4xl font-bold text-primary sf-text-glow"
         >
             Shinra-Ani Gacha
         </motion.h1>
@@ -330,3 +333,4 @@ export default function GachaPage() {
     </div>
   );
 }
+
