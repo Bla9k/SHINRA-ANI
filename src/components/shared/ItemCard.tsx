@@ -2,14 +2,16 @@
 import React, { useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button'; // Added this import
+import { Button } from '@/components/ui/button';
 import { Star, CalendarDays, Tv, BookText, ArrowRight, Film, Layers, Info } from 'lucide-react';
 import type { DisplayItem } from '@/app/page';
 import { cn, } from '@/lib/utils';
 import { useTheme } from 'next-themes';
+
+const CardTitle = CardTitlePrimitive; // Alias to avoid conflict if CardTitle is used elsewhere
 
 interface ItemCardProps {
   item: DisplayItem;
@@ -24,12 +26,16 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, className, viewMode = 
   const { theme } = useTheme();
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const FOCUS_MODE_HOVER_DELAY = 1250; // 1.25 seconds
+
   const handleMouseEnter = () => {
     if (onEngageFocusMode && viewMode === 'grid') {
       clearTimeout(hoverTimerRef.current!);
       hoverTimerRef.current = setTimeout(() => {
-        onEngageFocusMode(item);
-      }, 700);
+        if (onEngageFocusMode) {
+            onEngageFocusMode(item);
+        }
+      }, FOCUS_MODE_HOVER_DELAY);
     }
   };
 
@@ -44,7 +50,9 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, className, viewMode = 
     "overflow-hidden transition-all duration-300 ease-in-out group rounded-lg shadow-md",
     theme === 'hypercharge-netflix'
       ? 'bg-card text-card-foreground border border-border/30 hover:border-primary/70 hover:shadow-primary/20 hover:shadow-lg rounded-sm'
-      : 'glass-deep neon-glow-subtle-hover group-hover:border-primary/40',
+      : theme === 'modern-shinra'
+        ? 'bg-card text-card-foreground border border-border/50 hover:border-primary/60 shadow-lg hover:shadow-primary/20 rounded-lg' // Ensure rounded-lg for modern-shinra
+        : 'glass-deep neon-glow-subtle-hover group-hover:border-primary/40 rounded-lg', // Default/Dark/Shinra Fire
     viewMode === 'list' ? 'h-28 flex flex-row' : 'h-full flex flex-col'
   );
 
@@ -90,11 +98,21 @@ export const ItemCard: React.FC<ItemCardProps> = ({ item, className, viewMode = 
               )}
               {viewMode === 'grid' && (
                 <>
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+                  <div className={cn(
+                      "absolute inset-0 bg-gradient-to-t pointer-events-none",
+                      theme === 'modern-shinra' ? "from-card/80 via-card/20 to-transparent" : "from-black/80 via-black/30 to-transparent"
+                    )}
+                  />
                   <div className="absolute bottom-1.5 left-2 right-2 z-10">
-                    <CardTitle className="text-xs sm:text-sm font-semibold text-primary-foreground line-clamp-2 shadow-text group-hover:text-primary transition-colors duration-200">{item.title}</CardTitle>
+                    <CardTitle className={cn(
+                        "text-xs sm:text-sm font-semibold line-clamp-2 shadow-text group-hover:text-primary transition-colors duration-200",
+                        theme === 'modern-shinra' ? "text-foreground group-hover:text-primary" : "text-primary-foreground"
+                      )}>{item.title}</CardTitle>
                   </div>
-                  <Badge variant={item.status?.toLowerCase().includes('finished') || item.status?.toLowerCase().includes('complete') ? "secondary" : "default"} className="absolute top-1.5 right-1.5 text-[10px] capitalize backdrop-blur-sm bg-background/70 px-1.5 py-0.5 shadow-sm border border-border/50">
+                  <Badge variant={item.status?.toLowerCase().includes('finished') || item.status?.toLowerCase().includes('complete') ? "secondary" : "default"} className={cn(
+                      "absolute top-1.5 right-1.5 text-[10px] capitalize backdrop-blur-sm shadow-sm border",
+                      theme === 'modern-shinra' ? "bg-card/80 border-border/70 text-foreground/90" : "bg-background/70 border-border/50 text-foreground"
+                    )}>
                     {item.status ? item.status.replace("Currently Airing", "Airing").replace("Finished Airing", "Finished") : item.type}
                   </Badge>
                 </>
@@ -141,7 +159,11 @@ export const SkeletonItemCard: React.FC<{ className?: string; viewMode?: 'grid' 
   const { theme } = useTheme();
     if (viewMode === 'list') {
         return (
-            <Card className={cn("overflow-hidden w-full h-28 flex flex-row animate-pulse", theme === 'hypercharge-netflix' ? 'bg-card border-border/30 rounded-sm' : 'glass-deep', className)}>
+            <Card className={cn("overflow-hidden w-full h-28 flex flex-row animate-pulse",
+              theme === 'hypercharge-netflix' ? 'bg-card border-border/30 rounded-sm' :
+              theme === 'modern-shinra' ? 'bg-card border-border/50 rounded-lg' : 'glass-deep rounded-lg',
+              className
+            )}>
                 <CardHeader className="p-0 relative w-20 flex-shrink-0">
                     <Skeleton className="h-full w-full" />
                 </CardHeader>
@@ -154,7 +176,7 @@ export const SkeletonItemCard: React.FC<{ className?: string; viewMode?: 'grid' 
                     <div className="flex justify-start items-center mt-auto gap-2">
                         <Skeleton className="h-3 w-10" />
                         <Skeleton className="h-3 w-12" />
-                        <Skeleton className="h-3 w-10" />
+                         <Skeleton className="h-3 w-10" />
                     </div>
                 </CardContent>
             </Card>
@@ -163,7 +185,12 @@ export const SkeletonItemCard: React.FC<{ className?: string; viewMode?: 'grid' 
 
     // Default Grid Skeleton
     return (
-        <Card className={cn("overflow-hidden w-36 sm:w-40 md:w-44 lg:w-48 flex-shrink-0 h-full flex flex-col snap-start rounded-lg shadow-md animate-pulse", theme === 'hypercharge-netflix' ? 'bg-card border-border/30 rounded-sm' : 'glass-deep', className)}>
+        <Card className={cn(
+            "overflow-hidden w-36 sm:w-40 md:w-44 lg:w-48 flex-shrink-0 h-full flex flex-col snap-start shadow-md animate-pulse",
+            theme === 'hypercharge-netflix' ? 'bg-card border-border/30 rounded-sm' :
+            theme === 'modern-shinra' ? 'bg-card border-border/50 rounded-lg' : 'glass-deep rounded-lg',
+            className
+            )}>
             <CardHeader className="p-0 relative aspect-[5/7] w-full">
                 <Skeleton className="h-full w-full" />
             </CardHeader>
@@ -196,12 +223,16 @@ export const BannerCard: React.FC<BannerCardProps> = ({ item, className, onEngag
   const { theme } = useTheme();
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const FOCUS_MODE_HOVER_DELAY = 1250; // 1.25 seconds
+
   const handleMouseEnter = () => {
     if (onEngageFocusMode) {
       clearTimeout(hoverTimerRef.current!);
       hoverTimerRef.current = setTimeout(() => {
-        onEngageFocusMode(item);
-      }, 700);
+         if (onEngageFocusMode) {
+            onEngageFocusMode(item);
+         }
+      }, FOCUS_MODE_HOVER_DELAY);
     }
   };
 
@@ -227,7 +258,9 @@ export const BannerCard: React.FC<BannerCardProps> = ({ item, className, onEngag
               "overflow-hidden transition-all duration-300 ease-in-out group-hover:scale-[1.02] h-full w-full shadow-xl",
               theme === 'hypercharge-netflix'
                 ? 'border border-border/20 hover:border-primary/50 rounded-md'
-                : 'glass-deep neon-glow-hover group-hover:border-primary/50'
+                : theme === 'modern-shinra'
+                  ? 'bg-card border-border/30 hover:border-primary/50 shadow-lg hover:shadow-primary/20 rounded-xl' // Ensure rounded-xl for modern-shinra
+                  : 'glass-deep neon-glow-hover group-hover:border-primary/50 rounded-xl' // Default/Dark/Shinra Fire
             )}>
             <div className="absolute inset-0">
               {bannerImageUrl ? (
@@ -247,14 +280,30 @@ export const BannerCard: React.FC<BannerCardProps> = ({ item, className, onEngag
                 </div>
               )}
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none"></div>
-            <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-transparent to-transparent pointer-events-none md:w-1/2"></div>
+             <div className={cn(
+                "absolute inset-0 bg-gradient-to-t pointer-events-none",
+                theme === 'modern-shinra' ? "from-card/90 via-card/30 to-transparent" : "from-black/80 via-black/40 to-transparent"
+              )}></div>
+             <div className={cn(
+                "absolute inset-0 bg-gradient-to-r pointer-events-none md:w-1/2",
+                theme === 'modern-shinra' ? "from-card/70 via-card/10 to-transparent" : "from-black/50 via-transparent to-transparent"
+              )}></div>
+
 
             <CardContent className="absolute bottom-0 left-0 right-0 p-4 md:p-6 z-10 flex flex-col sm:flex-row justify-between items-end sm:items-center gap-3">
               <div className="space-y-1.5 max-w-full sm:max-w-[65%]">
-                <Badge variant="secondary" className="capitalize text-xs backdrop-blur-sm bg-background/70 border-border/50 shadow-sm">{item.type}</Badge>
-                <CardTitle className="text-xl md:text-2xl lg:text-3xl font-bold text-primary-foreground line-clamp-1 shadow-text group-hover:text-primary transition-colors duration-200">{item.title}</CardTitle>
-                <CardDescription className="text-md md:text-lg text-muted-foreground line-clamp-2 shadow-text group-hover:text-foreground/90 transition-colors duration-200">{item.synopsis || 'Discover more about this title.'}</CardDescription>
+                <Badge variant="secondary" className={cn(
+                    "capitalize text-xs backdrop-blur-sm shadow-sm border",
+                    theme === 'modern-shinra' ? "bg-card/80 border-border/70 text-foreground/90" : "bg-background/70 border-border/50 text-foreground"
+                  )}>{item.type}</Badge>
+                <CardTitle className={cn(
+                    "text-xl md:text-2xl lg:text-3xl font-bold line-clamp-1 shadow-text group-hover:text-primary transition-colors duration-200",
+                    theme === 'modern-shinra' ? "text-foreground group-hover:text-primary" : "text-primary-foreground"
+                  )}>{item.title}</CardTitle>
+                <CardDescription className={cn(
+                    "text-md md:text-lg text-muted-foreground line-clamp-2 shadow-text group-hover:text-foreground/90 transition-colors duration-200",
+                     theme === 'modern-shinra' ? "text-muted-foreground group-hover:text-foreground" : "text-muted-foreground"
+                  )}>{item.synopsis || 'Discover more about this title.'}</CardDescription>
               </div>
               <Button
                 variant="outline"
@@ -263,7 +312,9 @@ export const BannerCard: React.FC<BannerCardProps> = ({ item, className, onEngag
                   "shrink-0 group-hover:text-primary-foreground transition-all duration-200 ease-in-out group-hover:scale-105 rounded-lg text-base",
                    theme === 'hypercharge-netflix'
                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                     : 'glass-deep neon-glow-hover group-hover:bg-primary group-hover:border-primary'
+                     : theme === 'modern-shinra'
+                       ? 'bg-primary text-primary-foreground hover:bg-primary/90 border-primary hover:border-primary/80' // Modern Shinra button
+                       : 'glass-deep neon-glow-hover group-hover:bg-primary group-hover:border-primary' // Default/Dark/Shinra Fire
                 )}
               >
                 View Details <ArrowRight size={18} className="ml-2 group-hover:translate-x-1.5 transition-transform duration-200" />
@@ -280,8 +331,9 @@ export const SkeletonBannerCard: React.FC<{ className?: string }> = ({ className
     const { theme } = useTheme();
     return (
     <Card className={cn(
-        "overflow-hidden w-[88vw] sm:w-[80vw] md:w-[70vw] lg:w-[60vw] xl:w-[50vw] flex-shrink-0 relative aspect-video sm:aspect-[16/7] md:aspect-[16/6] h-auto snap-center rounded-xl shadow-xl animate-pulse",
-         theme === 'hypercharge-netflix' ? 'bg-card border-border/30 rounded-md' : 'glass-deep',
+        "overflow-hidden w-[88vw] sm:w-[80vw] md:w-[70vw] lg:w-[60vw] xl:w-[50vw] flex-shrink-0 relative aspect-video sm:aspect-[16/7] md:aspect-[16/6] h-auto snap-center shadow-xl animate-pulse",
+         theme === 'hypercharge-netflix' ? 'bg-card border-border/30 rounded-md' :
+         theme === 'modern-shinra' ? 'bg-card border-border/50 rounded-xl' : 'glass-deep rounded-xl',
          className
         )}>
          <Skeleton className="absolute inset-0" />
@@ -296,3 +348,23 @@ export const SkeletonBannerCard: React.FC<{ className?: string }> = ({ className
          </CardContent>
     </Card>
 )};
+    
+// The following comment block was at the end of the file,
+// indicating the file might have been inadvertently emptied or corrupted.
+// This should be removed if the above code is the intended full content.
+//
+// // This component's content has been merged into ItemCard.tsx
+// // This file can be deleted.
+// // For safety, I am leaving it empty.
+// // You can manually delete this file from your project structure.
+// //
+// ```
+
+// Ensure no trailing backticks if they were part of an accidental paste
+// For example, if the file ended with a stray ```
+// ```
+
+// Final check: No actual code/component definition was present after the comments in the error.
+// Assuming the structure above is the complete and correct ItemCard.tsx.
+
+  
