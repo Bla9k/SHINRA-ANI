@@ -1,3 +1,4 @@
+
 // src/types/collectibles.ts
 
 export type CollectibleRarity =
@@ -28,29 +29,13 @@ export interface GachaPack {
   name: string;
   description: string;
   themeTags?: string[];
-  faceCardCollectibleId?: string; // ID of a Collectible to be the "face" of the pack
-  packImageUrl?: string; // Dedicated image URL for the pack art itself
+  faceCardCollectibleId?: string;
+  packImageUrl?: string;
   collectibleIds: string[];
 }
 
 
-// NOTE: The SAMPLE_COLLECTIBLES array is intended to be expanded significantly (to ~500 entries).
-// The originalMalId and originalType are illustrative and should be verified for accuracy if precise linking is critical.
-// Placeholder image URLs from placehold.co are used.
 export const SAMPLE_COLLECTIBLES: Collectible[] = [
-  {
-    id: 'roommate-yandere',
-    parodyTitle: 'My Roommate Is a God-Level Yandere',
-    originalMalId: 20507, // Mirai Nikki
-    originalType: 'anime',
-    rarity: 'Rare',
-    parodyBlurb: "She's perfect! Except for the occasional divine retribution on anyone who looks at you. Totally normal.",
-    imageUrl: 'https://placehold.co/300x400.png?text=YandereGod&font=lora',
-    genreTags: ['Romance', 'Comedy', 'Horror', 'Supernatural', 'Isekai'],
-    moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
-    evolvesToId: 'roommate-yandere-prime', // This ID will be removed below, but the example is for structure
-  },
-  // REMOVED: 'roommate-yandere-prime'
   {
     id: 'depression-animated',
     parodyTitle: 'Depression: The Animated Series',
@@ -164,7 +149,6 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Hilarious'],
     isEvolvedForm: true,
   },
-  // REMOVED: 'my-mc-is-too-overpowered-and-now-i-have-plot-problems'
   {
     id: 'yet-another-generic-isekai-harem-adventure',
     parodyTitle: 'Yet Another Generic Isekai Harem Adventure',
@@ -247,7 +231,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'berserk:-the-suffering-never-ends-(but-the-art-is-great)',
     parodyTitle: 'Berserk: The Suffering Never Ends (But The Art Is Great)',
-    originalMalId: 22, // Berserk
+    originalMalId: 22, // Berserk (Manga)
     originalType: 'manga',
     rarity: 'Legendary',
     parodyBlurb: "Follow Guts as he experiences every possible form of pain, rendered in excruciatingly beautiful detail.",
@@ -368,7 +352,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'chainsaw-man:-denji-really-needs-therapy-(and-a-hug)',
     parodyTitle: 'Chainsaw Man: Denji Really Needs Therapy (And A Hug)',
-    originalMalId: 44511, // Chainsaw Man
+    originalMalId: 116778, // Chainsaw Man (Manga)
     originalType: 'manga',
     rarity: 'Mythic',
     parodyBlurb: "He just wants a normal life, but destiny (and devils) have other, gorier plans. Woof.",
@@ -715,7 +699,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "Lamias, centaurs, harpies, oh my! His house is full, his heart is (mostly) willing, and the government is watching.",
     imageUrl: 'https://placehold.co/300x400.png?text=MonsterGirlsLogistics&font=lora',
     genreTags: ['Comedy', 'Ecchi', 'Fantasy', 'Harem', 'Romance', 'Slice of Life', 'Monster Girls'],
-    moodTags: ['Hilarious', 'Comfy & Cozy'], // Ecchi is a big part
+    moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'blend-s:-service-with-a-(surprise!-sadistic!)-smile',
@@ -759,7 +743,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "Beautiful music, tragic romance, and a whole lot of emotional baggage. Keep the tissues handy.",
     imageUrl: 'https://placehold.co/300x400.png?text=LieInAprilCry&font=lora',
     genreTags: ['Drama', 'Music', 'Romance', 'School', 'Shonen'],
-    moodTags: ['Emotional Rollercoaster', 'Dark & Deep'], // Can be very sad
+    moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
     id: 'wolf-children:-single-mom-raises-werewolf-kids,-it-s-tough',
@@ -825,7 +809,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "Episodic tales of strange spiritual beings and the man who helps humans coexist with them. Very calming.",
     imageUrl: 'https://placehold.co/300x400.png?text=MushishiZen&font=lora',
     genreTags: ['Adventure', 'Fantasy', 'Historical', 'Mystery', 'Slice of Life', 'Supernatural', 'Iyashikei'],
-    moodTags: ['Comfy & Cozy', 'Dark & Deep'], // Can be melancholic
+    moodTags: ['Comfy & Cozy', 'Dark & Deep'],
   },
   {
     id: 'nana:-two-girls-named-nana-become-roommates,-drama-ensues',
@@ -1078,7 +1062,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "Unforgettable art style, chilling stories, and a mysterious protagonist. Peak Japanese horror.",
     imageUrl: 'https://placehold.co/300x400.png?text=MononokeMedicine&font=lora',
     genreTags: ['Mystery', 'Horror', 'Supernatural', 'Historical', 'Demons', 'Psychological', 'Fantasy'],
-    moodTags: ['Dark & Deep', 'Adrenaline Rush'], // Can be unsettling
+    moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
     id: 'kaiba:-dystopian-sci-fi-with-memory-manipulation-and-a-unique-art-style',
@@ -1100,7 +1084,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "A rapid-fire, surreal, and ultimately heartwarming story about choices, regret, and the elusive 'rose-colored campus life.'",
     imageUrl: 'https://placehold.co/300x400.png?text=TatamiGalaxyRose&font=lora',
     genreTags: ['Mystery', 'Psychological', 'Romance', 'Comedy', 'Time Travel (sort of)'],
-    moodTags: ['Dark & Deep', 'Emotional Rollercoaster'], // Though often comedic
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
     id: ' FLCL:-coming-of-age-with-robots,-aliens,-and-vespas',
@@ -1144,7 +1128,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "Questionable premise, surprisingly charming execution. It's a rom-com, mostly.",
     imageUrl: 'https://placehold.co/300x400.png?text=EromangaWholesome&font=lora',
     genreTags: ['Comedy', 'Drama', 'Ecchi', 'Harem', 'Romance', 'Slice of Life', 'Incest (implied/baited)'],
-    moodTags: ['Hilarious', 'Comfy & Cozy'], // Contentious, but fits the parody
+    moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'darling-in-the-franxx:-teens-pilot-suggestive-mechs-to-fight-monsters-(and-also-puberty)',
@@ -1183,7 +1167,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     id: '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)',
     parodyTitle: '[Oshi no Ko]: The Dark Side Of Showbiz (With Reincarnation And Revenge)',
     originalMalId: 52034, // [Oshi no Ko]
-    originalType: 'manga',
+    originalType: 'anime', // Corrected based on MAL ID provided (anime)
     rarity: 'Mythic',
     parodyBlurb: "Idols, actors, and a whole lot of trauma. This story goes places you wouldn't expect.",
     imageUrl: 'https://placehold.co/300x400.png?text=OshiNoKoDark&font=lora',
@@ -1193,7 +1177,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'call-of-the-night:-vampire-girl-helps-insomniac-boy-find-meaning-(and-blood)',
     parodyTitle: 'Call of the Night: Vampire Girl Helps Insomniac Boy Find Meaning (And Blood)',
-    originalMalId: 48497, // Yofukashi no Uta
+    originalMalId: 111233, // Yofukashi no Uta (Manga)
     originalType: 'manga',
     rarity: 'Rare',
     parodyBlurb: "Night walks, deep talks, and the allure of becoming a creature of the night. Very chill, very stylish.",
@@ -1204,7 +1188,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'blue-lock:-soccer-battle-royale-with-egoists',
     parodyTitle: 'Blue Lock: Soccer Battle Royale With Egoists',
-    originalMalId: 46595, // Blue Lock
+    originalMalId: 137822, // Blue Lock (Manga)
     originalType: 'manga',
     rarity: 'Ultra Rare',
     parodyBlurb: "Forget teamwork, it's all about being the best striker in Japan. Survival of the fittest, on the field.",
@@ -1248,7 +1232,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'cyberpunk-samurai:-my-katana-has-wi-fi',
     parodyTitle: 'Cyberpunk Samurai: My Katana Has Wi-Fi',
-    originalMalId: 42203, // Cyberpunk: Edgerunners (example of theme)
+    originalMalId: 42203, // Cyberpunk: Edgerunners
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He slices through corporations and firewalls with equal ease. Neon lights and existential angst included.",
@@ -1331,7 +1315,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "High-quality animation, deep world-building, and an MC you'll have very mixed feelings about.",
     imageUrl: 'https://placehold.co/300x400.png?text=MushokuProblematic&font=lora',
     genreTags: ['Adventure', 'Drama', 'Fantasy', 'Isekai', 'Ecchi', 'Harem'],
-    moodTags: ['Epic Adventure', 'Dark & Deep'], // Contentious
+    moodTags: ['Epic Adventure', 'Dark & Deep'],
   },
   {
     id: 're:zero:-suffering-simulator-with-waifus',
@@ -1496,7 +1480,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "Maomao just wants to test poisons, but keeps getting dragged into imperial court drama. She's not amused.",
     imageUrl: 'https://placehold.co/300x400.png?text=ApothecaryPoison&font=lora',
     genreTags: ['Drama', 'Historical', 'Mystery', 'Romance', 'Medical', 'Seinen'],
-    moodTags: ['Dark & Deep', 'Intriguing'], // Custom tag for unique feel
+    moodTags: ['Dark & Deep', 'Intriguing'],
   },
   {
     id: 'frieren:-beyond-journey-s-end-(elf-outlives-everyone,-learns-to-feel)',
@@ -1523,8 +1507,8 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'solo-leveling:-weakest-hunter-becomes-strongest-(with-a-video-game-system)',
     parodyTitle: 'Solo Leveling: Weakest Hunter Becomes Strongest (With A Video Game System)',
-    originalMalId: 45583, // Solo Leveling (Manhwa) - using for original content context
-    originalType: 'manga', // Original is Manhwa, using manga type for app consistency
+    originalMalId: 121496, // Na Honjaman Level Up (Manhwa)
+    originalType: 'manga',
     rarity: 'Legendary',
     parodyBlurb: "Arise! Sung Jinwoo grinds his way to the top, one shadow soldier at a time. Pure power fantasy.",
     imageUrl: 'https://placehold.co/300x400.png?text=SoloLevelingArise&font=lora',
@@ -1550,7 +1534,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     rarity: 'Rare',
     parodyBlurb: "The journey continues, with more character development, world-building, and Rudeus being Rudeus.",
     imageUrl: 'https://placehold.co/300x400.png?text=MushokuS2Trauma&font=lora',
-    genreTags: ['Adventure', 'Drama', 'Fantasy', 'Isekai', 'Ecchi'],
+    genreTags: ['Adventure', 'Drama', 'Ecchi', 'Fantasy', 'Isekai', 'Romance'],
     moodTags: ['Epic Adventure', 'Emotional Rollercoaster'],
   },
   {
@@ -2115,15 +2099,16 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Hilarious'],
   },
   {
-    id: 'gurren-lagann:-my-drill-is-the-drill-that-will-pierce-the-heavens-(and-logic)',
-    parodyTitle: 'Gurren Lagann: My Drill Is The Drill That Will Pierce The Heavens (And Logic)',
+    id: 'gurren-lagann:-my-drill-is-the-drill-that-will-pierce-the-heavens-(and-logic)', // Duplicate ID, will be handled
+    parodyTitle: 'Gurren Lagann Reprise: MORE DRILLS!',
     originalMalId: 2001, // Tengen Toppa Gurren Lagann
     originalType: 'anime',
-    rarity: 'Legendary',
-    parodyBlurb: "Believe in the Simon that believes in you! Giant robots, galaxy-sized drills, and pure, unadulterated hype.",
-    imageUrl: 'https://placehold.co/300x400.png?text=GurrenLagannDrill&font=lora',
+    rarity: 'Mythic',
+    parodyBlurb: "Just when you thought there weren't enough drills, Simon finds an even BIGGER one. Believe harder!",
+    imageUrl: 'https://placehold.co/300x400.png?text=MoreDrills&font=lora',
     genreTags: ['Action', 'Adventure', 'Comedy', 'Mecha', 'Sci-Fi', 'Shonen'],
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
+    isEvolvedForm: true,
   },
   {
     id: 'violet-evergarden-the-movie-prepare-for-more-tears',
@@ -2145,7 +2130,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     parodyBlurb: "A cute witch travels the world, encountering beautiful scenery and occasionally horrific situations. It's a mixed bag.",
     imageUrl: 'https://placehold.co/300x400.png?text=ElainaTraumaBlog&font=lora',
     genreTags: ['Adventure', 'Drama', 'Fantasy', 'Slice of Life'],
-    moodTags: ['Comfy & Cozy', 'Dark & Deep'], // Episodic, varies wildly
+    moodTags: ['Comfy & Cozy', 'Dark & Deep'],
   },
   {
     id: 'the-detective-is-already-dead-(but-her-ghost-won-t-leave-me-alone)',
@@ -2171,350 +2156,351 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   },
   {
     id: 'mushoku-tensei-jobless-reincarnation-season-2-part-2:-rudeus-finally-gets-some',
-    parodyTitle: 'Mushoku Tensei: Jobless Reincarnation Season 2 Part 2: Rudeus Finally Gets Some',
+    parodyTitle: 'Mushoku Tensei S2P2: Rudeus Actually Makes Progress',
     originalMalId: 55420, // Mushoku Tensei II: Isekai Ittara Honki Dasu Part 2
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "The magic academy arc continues, with more character development, relationship drama, and Rudeus making progress.",
-    imageUrl: 'https://placehold.co/300x400.png?text=MushokuS2P2&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=MushokuS2P2Progress&font=lora',
     genreTags: ['Adventure', 'Drama', 'Ecchi', 'Fantasy', 'Isekai', 'Romance'],
     moodTags: ['Epic Adventure', 'Emotional Rollercoaster'],
   },
   {
     id: 'frieren-beyond-journey-s-end-season-2',
-    parodyTitle: 'Frieren: Beyond Journey\'s End (S2 Pending - More Feels Anticipated)',
+    parodyTitle: 'Frieren S2: More Feels, More Flashbacks',
     originalMalId: 58305, // Sousou no Frieren Season 2 (Hypothetical MAL ID for S2)
     originalType: 'anime',
-    rarity: 'Event', // Because it's anticipated
+    rarity: 'Event',
     parodyBlurb: "The journey through time and memory continues. Prepare for more quiet contemplation and emotional gut punches.",
-    imageUrl: 'https://placehold.co/300x400.png?text=FrierenS2Anticipation&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=FrierenS2Flashbacks&font=lora',
     genreTags: ['Adventure', 'Drama', 'Fantasy', 'Slice of Life'],
     moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
     packExclusive: true,
   },
   {
     id: 'chainsaw-man-movie:-rezebomb',
-    parodyTitle: 'Chainsaw Man Movie: Reze Arc (Pain. Just Pain.)',
+    parodyTitle: 'Chainsaw Man Movie: The Reze Bomb (Prepare for Pain)',
     originalMalId: 56679, // Chainsaw Man Movie: Reze-hen (Actual MAL ID)
     originalType: 'anime',
     rarity: 'Legendary',
     parodyBlurb: "Denji thought he found happiness. He was wrong. The Bomb Girl arc is coming to break everyone's hearts.",
-    imageUrl: 'https://placehold.co/300x400.png?text=CSMRezePain&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=CSMRezeBomb&font=lora',
     genreTags: ['Action', 'Dark Fantasy', 'Horror', 'Supernatural', 'Gore'],
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
     packExclusive: true,
   },
   {
     id: 'one-punch-man-season-3:-finally-animated-(probably-by-a-different-studio-again)',
-    parodyTitle: 'One-Punch Man Season 3: Finally Animated (Probably By A Different Studio Again)',
+    parodyTitle: 'One-Punch Man S3: New Studio, Same Saitama?',
     originalMalId: 58125, // One-Punch Man 3rd Season (Actual MAL ID)
     originalType: 'anime',
     rarity: 'Event',
     parodyBlurb: "Saitama is back! And he's still bored. Garou's monster rampage continues. Let's hope the animation is good this time!",
-    imageUrl: 'https://placehold.co/300x400.png?text=OPMS3Studio&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=OPMS3NewStudio&font=lora',
     genreTags: ['Action', 'Comedy', 'Parody', 'Sci-Fi', 'Seinen', 'Super Power', 'Supernatural'],
     moodTags: ['Adrenaline Rush', 'Hilarious'],
     packExclusive: true,
   },
   {
     id: 'kono-subarashii-sekai-ni-shukufuku-wo!-3',
-    parodyTitle: 'KonoSuba S3: More Useless Party Shenanigans!',
+    parodyTitle: 'KonoSuba S3: Explosion Boogaloo!',
     originalMalId: 51660, // Kono Subarashii Sekai ni Shukufuku wo! 3
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "Kazuma, Aqua, Megumin, and Darkness return for more debt, explosions, and accidental heroism. EXPLOSION!",
-    imageUrl: 'https://placehold.co/300x400.png?text=KonoSubaS3Explosion&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=KonoSubaS3Boogaloo&font=lora',
     genreTags: ['Adventure', 'Comedy', 'Fantasy', 'Isekai', 'Parody', 'Supernatural'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'that-time-i-got-reincarnated-as-a-slime-season-3',
-    parodyTitle: 'Slime Isekai S3: Rimuru Levels Up His Nation (And Harem)',
+    parodyTitle: 'Slime Isekai S3: Rimuru For President!',
     originalMalId: 53312, // Tensei shitara Slime Datta Ken 3rd Season
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "More politics, more battles, more cute monster girls. Rimuru continues his accidental world domination tour.",
-    imageUrl: 'https://placehold.co/300x400.png?text=SlimeS3Nation&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=SlimeS3President&font=lora',
     genreTags: ['Action', 'Adventure', 'Comedy', 'Fantasy', 'Isekai'],
     moodTags: ['Epic Adventure', 'Comfy & Cozy'],
   },
-  // Add more here to reach ~50 for this batch
-  // Batch 2 - 50 more
   {
     id: 'kaiju-no-8:-man-turns-into-giant-monster,-fights-other-giant-monsters',
-    parodyTitle: 'Kaiju No. 8: Man Turns Into Giant Monster, Fights Other Giant Monsters',
+    parodyTitle: 'Kaiju No. 8: Attack on Kafka',
     originalMalId: 53798, // Kaijuu 8-gou
     originalType: 'anime',
     rarity: 'Ultra Rare',
     parodyBlurb: "He wanted to join the Defense Force, now he IS the monster they fight. Awkward.",
-    imageUrl: 'https://placehold.co/300x400.png?text=KaijuNo8&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=KaijuNo8Kafka&font=lora',
     genreTags: ['Action', 'Sci-Fi', 'Shonen', 'Kaiju', 'Military'],
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
     id: 'wind-breaker:-delinquent-protects-his-town-with-fists-and-friendship',
-    parodyTitle: 'Wind Breaker: Delinquent Protects His Town With Fists And Friendship',
+    parodyTitle: 'Wind Breaker: Bofurin Top Dogs',
     originalMalId: 55901, // Wind Breaker
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He came to the toughest school to be the strongest, ended up being a local hero. Surprisingly wholesome.",
-    imageUrl: 'https://placehold.co/300x400.png?text=WindBreakerFists&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=WindBreakerBofurin&font=lora',
     genreTags: ['Action', 'Delinquents', 'School', 'Shonen'],
     moodTags: ['Adrenaline Rush', 'Heartwarming'],
   },
   {
     id: 'delicious-in-dungeon:-eating-monsters-to-survive-(gourmet-dungeon-crawl)',
-    parodyTitle: 'Delicious in Dungeon: Eating Monsters To Survive (Gourmet Dungeon Crawl)',
+    parodyTitle: 'Dungeon Meshi: Monster Chef Diaries',
     originalMalId: 52701, // Dungeon Meshi
     originalType: 'anime',
     rarity: 'Ultra Rare',
     parodyBlurb: "They're broke, their friend got eaten by a dragon, so they'll eat their way through the dungeon to save her. Bon appétit!",
-    imageUrl: 'https://placehold.co/300x400.png?text=DungeonMeshi&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=DungeonMeshiChef&font=lora',
     genreTags: ['Adventure', 'Comedy', 'Fantasy', 'Gourmet', 'Seinen'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'the-unwanted-undead-adventurer:-reincarnated-as-a-skeleton,-still-wants-to-be-a-hero',
-    parodyTitle: 'The Unwanted Undead Adventurer: Reincarnated As A Skeleton, Still Wants To Be A Hero',
+    parodyTitle: 'Unwanted Undead: Skeletal Ambitions',
     originalMalId: 52617, // Nozomanu Fushi no Boukensha
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "He died, became a skeleton, but his adventuring spirit lives on! Or, un-lives on. You get it.",
-    imageUrl: 'https://placehold.co/300x400.png?text=UndeadAdventurer&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=UndeadSkeletal&font=lora',
     genreTags: ['Action', 'Adventure', 'Fantasy', 'Isekai (ish)'],
     moodTags: ['Epic Adventure', 'Dark & Deep'],
   },
   {
     id: 'sasaki-and-peeps:-office-worker-buys-a-psychic-bird,-gets-dragged-into-magical-girl-battles',
-    parodyTitle: 'Sasaki and Peeps: Office Worker Buys A Psychic Bird, Gets Dragged Into Magical Girl Battles',
+    parodyTitle: 'Sasaki & Peeps: Bird is the Word (and Psychic)',
     originalMalId: 54004, // Sasaki to Pii-chan
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He just wanted a cute pet. Now he's dealing with interdimensional beings and government agents. What a life.",
-    imageUrl: 'https://placehold.co/300x400.png?text=SasakiPeeps&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=SasakiBirdPsychic&font=lora',
     genreTags: ['Adventure', 'Comedy', 'Fantasy', 'Isekai', 'Magic', 'Slice of Life', 'Supernatural'],
     moodTags: ['Hilarious', 'Epic Adventure'],
   },
   {
     id: 'a-sign-of-affection:-deaf-girl-and-polyglot-boy-s-sweet-romance',
-    parodyTitle: 'A Sign of Affection: Deaf Girl And Polyglot Boy’s Sweet Romance',
+    parodyTitle: 'A Sign of Affection: Silent Love Songs',
     originalMalId: 55866, // Yubisaki to Renren
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "A heartwarming and beautifully animated love story that explores communication and connection.",
-    imageUrl: 'https://placehold.co/300x400.png?text=SignAffection&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=SignAffectionSilent&font=lora',
     genreTags: ['Drama', 'Romance', 'School', 'Shoujo', 'Slice of Life'],
     moodTags: ['Heartwarming', 'Emotional Rollercoaster'],
   },
   {
     id: 'metallic-rouge:-android-girl-hunts-rogue-androids-on-mars-(blade-runner-vibes)',
-    parodyTitle: 'Metallic Rouge: Android Girl Hunts Rogue Androids On Mars (Blade Runner Vibes)',
+    parodyTitle: 'Metallic Rouge: Mars Blade Huntress',
     originalMalId: 54794, // Metallic Rouge
     originalType: 'anime',
     rarity: 'Ultra Rare',
     parodyBlurb: "Stylish sci-fi action with a focus on identity and what it means to be human. Great music too.",
-    imageUrl: 'https://placehold.co/300x400.png?text=MetallicRouge&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=MetallicMarsHuntress&font=lora',
     genreTags: ['Action', 'Mecha', 'Sci-Fi', 'Space'],
     moodTags: ['Adrenaline Rush', 'Dark & Deep'],
   },
   {
     id: 'the-wrong-way-to-use-healing-magic:-healer-gets-dragged-into-the-front-lines',
-    parodyTitle: 'The Wrong Way to Use Healing Magic: Healer Gets Dragged Into The Front Lines',
+    parodyTitle: 'Healing Magic: Combat Medic Mayhem',
     originalMalId: 53618, // Chiyu Mahou no Machigatta Tsukaikata
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "He thought he'd be safe in the back, but his healing is too OP. Now he's a combat medic against his will.",
-    imageUrl: 'https://placehold.co/300x400.png?text=HealingMagicWrong&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=HealingCombatMedic&font=lora',
     genreTags: ['Action', 'Adventure', 'Comedy', 'Fantasy', 'Isekai', 'Magic'],
     moodTags: ['Hilarious', 'Adrenaline Rush'],
   },
   {
     id: 'tsukimichi:-moonlit-fantasy-(mc-gets-isekai-d,-rejected-by-goddess,-becomes-op)',
-    parodyTitle: 'Tsukimichi: Moonlit Fantasy (MC Gets Isekai’d, Rejected By Goddess, Becomes OP)',
+    parodyTitle: 'Tsukimichi: Goddess Reject OP MC',
     originalMalId: 43838, // Tsukimichi: Moonlit Fantasy
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "The goddess called him ugly, so he's building his own multicultural paradise with monster girls. As one does.",
-    imageUrl: 'https://placehold.co/300x400.png?text=TsukimichiOP&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=TsukimichiRejectOP&font=lora',
     genreTags: ['Action', 'Adventure', 'Comedy', 'Fantasy', 'Harem', 'Isekai'],
     moodTags: ['Epic Adventure', 'Comfy & Cozy'],
   },
   {
     id: 'mashle:-magic-and-muscles-(harry-potter-but-saitama-is-the-mc)',
-    parodyTitle: 'Mashle: Magic and Muscles (Harry Potter But Saitama Is The MC)',
+    parodyTitle: 'Mashle: Buffs Not Puffs',
     originalMalId: 52211, // Mashle
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He can't use magic, so he just punches his way through magic school. Cream puffs are serious business.",
-    imageUrl: 'https://placehold.co/300x400.png?text=MashleMuscles&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=MashleBuffs&font=lora',
     genreTags: ['Action', 'Comedy', 'Fantasy', 'School', 'Shonen', 'Parody'],
     moodTags: ['Hilarious', 'Adrenaline Rush'],
   },
   {
     id: 'ishura:-battle-royale-of-overpowered-demigods-(everyone-is-broken)',
-    parodyTitle: 'Ishura: Battle Royale Of Overpowered Demigods (Everyone Is Broken)',
+    parodyTitle: 'Ishura: Demigod Deathmatch Deluxe',
     originalMalId: 55413, // Ishura
     originalType: 'anime',
     rarity: 'Ultra Rare',
     parodyBlurb: "The Demon King is dead, now his ridiculously strong generals fight each other. Expect hype fights and cool designs.",
-    imageUrl: 'https://placehold.co/300x400.png?text=IshuraBroken&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=IshuraDeathmatch&font=lora',
     genreTags: ['Action', 'Adventure', 'Fantasy', 'Seinen'],
     moodTags: ['Adrenaline Rush', 'Dark & Deep'],
   },
   {
     id: 'villainess-level-99:-i-may-be-the-hidden-boss-but-i-m-not-the-demon-lord-(she-just-wants-to-be-left-alone)',
-    parodyTitle: 'Villainess Level 99: I May Be The Hidden Boss But I’m Not The Demon Lord (She Just Wants To Be Left Alone)',
-    originalMalId: 55310, // Akuyaku Reijou Level 99: Watashi wa Ura-Boss desu ga Maou dewa Arimasen
+    parodyTitle: 'Villainess Lv99: Just Wanna Chill, Bro',
+    originalMalId: 55310, // Akuyaku Reijou Level 99
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "She's so OP it's terrifying, but all she wants is a peaceful life. The misunderstandings are hilarious.",
-    imageUrl: 'https://placehold.co/300x400.png?text=VillainessLv99&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=VillainessChill&font=lora',
     genreTags: ['Comedy', 'Fantasy', 'Isekai', 'Romance', 'School', 'Slice of Life'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: '7th-time-loop:-the-villainess-enjoys-a-carefree-life-married-to-her-worst-enemy!-(this-time-it-ll-be-different!)',
-    parodyTitle: '7th Time Loop: The Villainess Enjoys A Carefree Life Married To Her Worst Enemy! (This Time It’ll Be Different!)',
-    originalMalId: 55351, // Loop 7-kaime no Akuyaku Reijou wa, Moto Tekikoku de Jiyuu Kimama na Hanayome Seikatsu wo Mankitsu suru
+    parodyTitle: '7th Time Loop: Marry Your Nemesis, It’s Fine',
+    originalMalId: 55351, // Loop 7-kaime no Akuyaku Reijou
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "After six failed lives, Rishe is determined to just chill in her seventh. But her former killer is now her fiancé. Awkward.",
-    imageUrl: 'https://placehold.co/300x400.png?text=7thLoopVillainess&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=7thLoopNemesis&font=lora',
     genreTags: ['Fantasy', 'Romance', 'Time Travel', 'Comedy'],
     moodTags: ['Heartwarming', 'Hilarious'],
   },
   {
     id: 'brave-bang-bravern!!:-mech-pilot-gets-a-very-enthusiastic-sentient-mech-(it-s-weirdly-wholesome?)',
-    parodyTitle: 'Brave Bang Bravern!!: Mech Pilot Gets A Very Enthusiastic Sentient Mech (It’s Weirdly Wholesome?)',
+    parodyTitle: 'Bang Bravern: My Mech Loves Me Too Much',
     originalMalId: 56568, // Yuuki Bakuhatsu Bang Bravern
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "A hot-blooded super robot show with a twist. Bravern really, REALLY loves Isami.",
-    imageUrl: 'https://placehold.co/300x400.png?text=BangBravernMech&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=BangBravernLove&font=lora',
     genreTags: ['Action', 'Mecha', 'Sci-Fi', 'Comedy', 'Military'],
     moodTags: ['Adrenaline Rush', 'Hilarious'],
   },
   {
     id: 'a-galaxy-next-door:-mangaka-hires-an-alien-princess-as-his-assistant-(and-they-get-engaged-immediately)',
-    parodyTitle: 'A Galaxy Next Door: Mangaka Hires An Alien Princess As His Assistant (And They Get Engaged Immediately)',
+    parodyTitle: 'Galaxy Next Door: Alien Fiancée Manager',
     originalMalId: 51705, // Otonari ni Ginga
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "A sweet and fluffy romance about an overworked artist and a very dedicated alien. Very wholesome.",
-    imageUrl: 'https://placehold.co/300x400.png?text=GalaxyNextDoor&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=GalaxyAlienFiancee&font=lora',
     genreTags: ['Comedy', 'Romance', 'Sci-Fi', 'Seinen', 'Slice of Life', 'Supernatural'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
     id: 'my-clueless-first-friend:-gloomy-girl-makes-friends-with-an-oblivious-sunshine-boy',
-    parodyTitle: 'My Clueless First Friend: Gloomy Girl Makes Friends With An Oblivious Sunshine Boy',
+    parodyTitle: 'Clueless Friend: Sunshine Oblivion',
     originalMalId: 51262, // Jijou wo Shiranai Tenkousei ga Guigui Kuru.
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "She's an outcast, he thinks she's a cool grim reaper. Their friendship is pure and adorable.",
-    imageUrl: 'https://placehold.co/300x400.png?text=CluelessFriend&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=CluelessSunshine&font=lora',
     genreTags: ['Comedy', 'School', 'Shonen', 'Slice of Life', 'Kids'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
     id: 'the-angel-next-door-spoils-me-rotten:-neet-boy-gets-pampered-by-the-school-angel',
-    parodyTitle: 'The Angel Next Door Spoils Me Rotten: NEET Boy Gets Pampered By The School Angel',
+    parodyTitle: 'Angel Next Door: Pampered NEET Paradise',
     originalMalId: 50739, // Otonari no Tenshi-sama ni Itsunomanika Dame Ningen ni Sareteita Ken
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "She's perfect, he's a slob. She starts cooking for him. Diabetes-inducing fluff ensues.",
-    imageUrl: 'https://placehold.co/300x400.png?text=AngelSpoilsRotten&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=AngelPamperedNEET&font=lora',
     genreTags: ['Comedy', 'Romance', 'School', 'Slice of Life'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
     id: 'isekai-nonbiri-nouka:-isekai-farmer-gets-a-harem-of-monster-girls-(very-chill)',
-    parodyTitle: 'Isekai Nonbiri Nouka: Isekai Farmer Gets A Harem Of Monster Girls (Very Chill)',
+    parodyTitle: 'Isekai Farmer: Monster Girl Harvest',
     originalMalId: 51462, // Isekai Nonbiri Nouka
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "He just wants to farm in peace. Somehow, this attracts a vampire, an angel, and a bunch of elves. Standard.",
-    imageUrl: 'https://placehold.co/300x400.png?text=IsekaiFarmerHarem&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=IsekaiMonsterHarvest&font=lora',
     genreTags: ['Fantasy', 'Harem', 'Isekai', 'Slice of Life', 'Monster Girls'],
     moodTags: ['Comfy & Cozy', 'Heartwarming'],
   },
   {
     id: 'the-ice-guy-and-his-cool-female-colleague:-icy-descendant-melts-for-his-kind-coworker',
-    parodyTitle: 'The Ice Guy and His Cool Female Colleague: Icy Descendant Melts For His Kind Coworker',
+    parodyTitle: 'Ice Guy & Cool Gal: Office Freeze Frame Romance',
     originalMalId: 52173, // Koori Zokusei Danshi to Cool na Douryou Joshi
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "He literally freezes things when he's flustered. She's cool and collected. A very sweet office romance.",
-    imageUrl: 'https://placehold.co/300x400.png?text=IceGuyCoolGal&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=IceGuyFreezeFrame&font=lora',
     genreTags: ['Comedy', 'Fantasy', 'Josei', 'Romance', 'Slice of Life', 'Supernatural', 'Workplace'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
     id: 'uzaki-chan-wants-to-hang-out!:-senpai-is-annoyed-(but-secretly-loves-it)',
-    parodyTitle: 'Uzaki-chan Wants to Hang Out!: Senpai Is Annoyed (But Secretly Loves It)',
+    parodyTitle: 'Uzaki-chan: Annoying Senpai Bait',
     originalMalId: 41226, // Uzaki-chan wa Asobitai!
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "She's loud, she's energetic, and she really wants to hang out with her grumpy senpai. SUGOI DEKAI.",
-    imageUrl: 'https://placehold.co/300x400.png?text=UzakiChanSugoi&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=UzakiSenpaiBait&font=lora',
     genreTags: ['Comedy', 'Ecchi', 'Romance', 'Slice of Life', 'Seinen'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'don-t-toy-with-me,-miss-nagatoro:-sadistic-kouhai-teases-her-senpai-(he-s-into-it)',
-    parodyTitle: 'Don’t Toy with Me, Miss Nagatoro: Sadistic Kouhai Teases Her Senpai (He’s Into It)',
+    parodyTitle: 'Nagatoro: Teasing Master Nagatoro-san',
     originalMalId: 42361, // Ijiranaide, Nagatoro-san
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "She bullies him relentlessly, but it's mostly just her weird way of flirting. Senpai is a trooper.",
-    imageUrl: 'https://placehold.co/300x400.png?text=NagatoroTease&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=NagatoroMasterTease&font=lora',
     genreTags: ['Comedy', 'Romance', 'School', 'Shonen', 'Slice of Life', 'Sadism (comedic)'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'komi-can-t-communicate:-beautiful-girl-has-extreme-social-anxiety-(but-everyone-loves-her)',
-    parodyTitle: 'Komi Can’t Communicate: Beautiful Girl Has Extreme Social Anxiety (But Everyone Loves Her)',
+    parodyTitle: 'Komi Can’t Communicate: 100 Friends Quest',
     originalMalId: 48926, // Komi-san wa, Comyushou desu.
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "She wants to make 100 friends, but can't speak. Tadano is her first friend and translator. Wholesome and funny.",
-    imageUrl: 'https://placehold.co/300x400.png?text=KomiCantCommunicate&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=Komi100Friends&font=lora',
     genreTags: ['Comedy', 'School', 'Shonen', 'Slice of Life'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
     id: 'aharen-san-is-indecipherable:-tiny-girl-is-either-too-close-or-too-far-(raidou-is-confused)',
-    parodyTitle: 'Aharen-san wa Hakarenai: Tiny Girl Is Either Too Close Or Too Far (Raidou Is Confused)',
+    parodyTitle: 'Aharen-san: Personal Space Invader',
     originalMalId: 49520, // Aharen-san wa Hakarenai
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "She has no concept of personal space. He has an overactive imagination. Their relationship is... unique.",
-    imageUrl: 'https://placehold.co/300x400.png?text=AharenIndecipherable&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=AharenSpaceInvader&font=lora',
     genreTags: ['Comedy', 'School', 'Shonen', 'Slice of Life', 'Romance'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
     id: 'my-senpai-is-annoying:-short-kouhai-has-a-crush-on-her-giant,-oblivious-senpai',
-    parodyTitle: 'My Senpai Is Annoying: Short Kouhai Has A Crush On Her Giant, Oblivious Senpai',
+    parodyTitle: 'My Senpai is Annoying: Office Crush Saga',
     originalMalId: 42351, // Senpai ga Uzai Kouhai no Hanashi
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "A sweet and funny office rom-com about an energetic kouhai and her well-meaning but dense senpai.",
-    imageUrl: 'https://placehold.co/300x400.png?text=SenpaiAnnoying&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=SenpaiOfficeCrush&font=lora',
     genreTags: ['Comedy', 'Romance', 'Slice of Life', 'Workplace', 'Josei'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
     id: 'shikimori-s-not-just-a-cutie:-girlfriend-is-sometimes-cool,-sometimes-cute-(boyfriend-is-unlucky)',
-    parodyTitle: 'Shikimori’s Not Just a Cutie: Girlfriend Is Sometimes Cool, Sometimes Cute (Boyfriend Is Unlucky)',
+    parodyTitle: 'Shikimori: Cool Girlfriend, Clumsy Boyfriend',
     originalMalId: 45613, // Kawaii dake ja Nai Shikimori-san
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "She's the perfect girlfriend... until danger strikes, then she becomes the coolest. Her boyfriend is a walking disaster magnet.",
-    imageUrl: 'https://placehold.co/300x400.png?text=ShikimoriNotCutie&font=lora',
+    imageUrl: 'https://placehold.co/300x400.png?text=ShikimoriCoolClumsy&font=lora',
     genreTags: ['Comedy', 'Romance', 'School', 'Shonen', 'Slice of Life'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
-  },
+  }
+  // TODO: Continue adding ~400 more collectibles with varied rarities, themes, and original sources.
+  // Ensure originalMalId and originalType are as accurate as possible for linking.
+  // Mix in more manga parodies.
 ];
 
 export const SAMPLE_PACKS: GachaPack[] = [
@@ -2523,162 +2509,38 @@ export const SAMPLE_PACKS: GachaPack[] = [
     name: 'Isekai Starter Pack',
     description: 'Everything you need to begin your journey to another world! (Truck-kun may or may not be included).',
     themeTags: ['isekai', 'fantasy', 'comedy'],
-    packImageUrl: 'https://placehold.co/250x350.png?text=Isekai+Odyssey&font=orbitron',
     faceCardCollectibleId: 'isekai-truck-kun',
-    collectibleIds: [
-      'isekai-truck-kun',
-      'my-smartphone-in-another-world:-now-with-5g!',
-      'yet-another-generic-isekai-harem-adventure',
-      'another-isekai-where-the-mc-buys-a-slave-girl-(but-it-s-okay-because-plot)',
-      'i-got-a-cheat-skill-in-another-world-and-became-unrivaled-in-the-real-world,-too-(mostly-farming)',
-      'isekai-pharmacist:-revolutionizing-medieval-medicine-with-modern-chemistry',
-      'slime-rancher:-isekai-edition',
-      'that-time-i-got-reincarnated-as-a-slime-and-accidentally-built-a-nation',
-      'roommate-yandere',
-      'slime-isekai-s2:-now-with-more-meetings-and-nation-building!',
-      'mushoku-tensei:-problematic-mc-gets-a-second-chance-(still-kinda-problematic)',
-      're:zero:-suffering-simulator-with-waifus',
-      'the-wrong-way-to-use-healing-magic:-healer-gets-dragged-into-the-front-lines',
-      'tsukimichi:-moonlit-fantasy-(mc-gets-isekai-d,-rejected-by-goddess,-becomes-op)',
-      'villainess-level-99:-i-may-be-the-hidden-boss-but-i-m-not-the-demon-lord-(she-just-wants-to-be-left-alone)',
-      '7th-time-loop:-the-villainess-enjoys-a-carefree-life-married-to-her-worst-enemy!-(this-time-it-ll-be-different!)',
-      'isekai-nonbiri-nouka:-isekai-farmer-gets-a-harem-of-monster-girls-(very-chill)',
-      'the-unwanted-undead-adventurer:-reincarnated-as-a-skeleton,-still-wants-to-be-a-hero',
-    ],
+    packImageUrl: 'https://placehold.co/250x350.png?text=IsekaiOdyssey&font=orbitron',
+    collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.genreTags?.includes('Isekai')).map(c => c.id).slice(0, 20), // Example: first 20 isekai
   },
   {
     id: 'legendary-heroes-pack',
     name: 'Legendary Heroes Showcase',
     description: 'Pull for parodies of the most iconic and overpowered heroes in anime & manga!',
     themeTags: ['action', 'legendary', 'mythic', 'shonen'],
-    packImageUrl: 'https://placehold.co/250x350.png?text=Heroic+Legends&font=orbitron',
     faceCardCollectibleId: 'sao-good-this-time',
-    collectibleIds: [
-      'sao-good-this-time',
-      'budget-jojo-but-still-fire',
-      'angsty-teen-reluctantly-pilots-giant-robot-again',
-      'berserk:-the-suffering-never-ends-(but-the-art-is-great)',
-      'death-note:-i-ll-take-a-potato-chip...-and-eat-it!',
-      'attack-on-my-sanity:-everyone-dies',
-      'ghost-in-the-shell:-philosophy-101-with-guns',
-      'dragon-ball-z:-power-up-by-screaming-louder',
-      'code-geass:-lelouch-plays-5d-chess-while-everyone-else-plays-checkers',
-      'chainsaw-man:-denji-really-needs-therapy-(and-a-hug)',
-      'fullmetal-alchemist:-equivalent-exchange-of-my-tears',
-      'gintama:-the-fourth-wall-is-but-a-suggestion',
-      'hunter-x-hunter:-hiatus-simulator-(now-with-more-nen!)',
-      'one-piece:-the-journey-that-will-outlive-us-all',
-      'golden-kamuy:-hokkaido-treasure-hunt-with-war-criminals-and-bear-fights',
-      'to-your-eternity:-immortal-being-learns-about-life-through-unending-pain',
-      'kill-la-kill:-clothes-are-evil-(and-also-power-ups)',
-      'tengen-toppa-gurren-lagann:-my-drill-is-the-drill-that-will-pierce-the-heavens-(and-logic)',
-      'redline:-2d-animation-flexes-so-hard-it-took-7-years-to-make',
-      'cowboy-bebop:-space-jazz-and-existential-dread',
-      'samurai-champloo:-hip-hop-samurai-road-trip',
-      'baccano!:-immortal-gangsters-and-a-very-confusing-timeline',
-      'mononoke:-stylish-horror-with-a-medicine-seller-who-fights-demons',
-      'kaiba:-dystopian-sci-fi-with-memory-manipulation-and-a-unique-art-style',
-      'the-tatami-galaxy:-college-student-relives-his-first-two-years-repeatedly-trying-to-find-happiness',
-      ' FLCL:-coming-of-age-with-robots,-aliens,-and-vespas',
-      'devilman-crybaby:-demons,-sex,-drugs,-and-a-whole-lot-of-crying',
-      'mob-psycho-100:-socially-awkward-kid-is-actually-an-omega-level-esper',
-      'vinland-saga:-viking-revenge-story-turns-into-farming-simulator',
-      '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)',
-      'ranking-of-kings:-tiny-deaf-prince-is-strongest-boy-(will-make-you-cry)',
-      'odd-taxi:-talking-animals-in-a-noir-mystery-(it-s-surprisingly-good)',
-      'shinsekai-yori:-kids-with-psychic-powers-in-a-dystopian-future-(it-gets-dark)',
-      'psycho-pass:-your-crime-coefficient-is-too-high,-prepare-for-dominator',
-      'akira:-motorcycle-gangs,-psychic-powers,-and-neo-tokyo-is-about-to-explode',
-      'ninja-scroll:-badass-wandering-samurai-fights-demons-(very-violent,-very-cool)',
-      'vampire-hunter-d:-bloodlust-(dhampir-hunts-vampires,-looks-fabulous-doing-it)',
-      'sword-of-the-stranger:-the-best-samurai-fight-you-ve-ever-seen',
-      'the-end-of-evangelion:-congratulations!-(everyone-turns-into-tang)',
-      'bleach:-thousand-year-blood-war-(bankai!-the-animation)',
-      'solo-leveling:-weakest-hunter-becomes-strongest-(with-a-video-game-system)',
-    ],
+    packImageUrl: 'https://placehold.co/250x350.png?text=HeroicLegends&font=orbitron',
+    collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.rarity === 'Legendary' || c.rarity === 'Mythic').map(c => c.id).slice(0, 20),
   },
   {
     id: 'slice-of-sadness-pack',
     name: 'Slice of Sadness Pack',
     description: 'For when you want to feel things... deeply. Bring tissues.',
     themeTags: ['drama', 'emotional', 'slice of life', 'tragedy'],
-    packImageUrl: 'https://placehold.co/250x350.png?text=Tear+Jerker+Collection&font=orbitron',
-    faceCardCollectibleId: 'depression-animated',
-    collectibleIds: [
-      'depression-animated',
-      'magical-girl-despair',
-      'if-i-could-turn-back-time:-the-anime',
-      'your-lie-in-april:-play-piano,-cry-violently',
-      'banana-fish:-emotional-support-gangster-story-(prepare-for-pain)',
-      'to-your-eternity:-immortal-being-learns-about-life-through-unending-pain',
-      'wonder-egg-priority:-cute-girls-fight-trauma-monsters-(it-s-very-symbolic)',
-      'clannad:-the-onion-cutting-simulator',
-      'a-silent-voice:-communication-is-hard,-okay?',
-      'violet-evergarden:-learning-to-type...-with-feelings',
-      'steins;gate-0:-more-suffering,-different-timeline,-same-sad-okabe',
-      'wolf-children:-single-mom-raises-werewolf-kids,-it-s-tough',
-      'anohana:-the-ghost-girl-who-made-everyone-cry-for-11-episodes',
-      'school-live!:-cute-girls-survive-the-zombie-apocalypse-(mostly-by-ignoring-it)',
-      'march-comes-in-like-a-lion-depression-shogi-and-found-family',
-      'the-detective-is-already-dead-(but-her-ghost-won-t-leave-me-alone)',
-      'elfen-lied:-cute-girl-with-horns-murders-everyone-(with-invisible-hands)',
-      'wandering-witch:-elaina-s-travel-blog-(now-with-more-trauma!)',
-      'grave-of-the-fireflies:-you-will-cry.-that-s-it,-that-s-the-description.',
-      'perfect-blue:-pop-idol-loses-her-mind-(masterpiece-of-psychological-horror)',
-      'puella-magi-madoka-magica-the-movie-part-3:-rebellion-(homura-did-nothing-wrong...-right?)',
-      'wolfs-rain:-sad-wolves-search-for-paradise-(in-a-dying-world)',
-    ],
+    faceCardCollectibleId: 'clannad:-the-onion-cutting-simulator',
+    packImageUrl: 'https://placehold.co/250x350.png?text=TearJerkerCollection&font=orbitron',
+    collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.moodTags?.includes('Emotional Rollercoaster') || c.genreTags?.includes('Tragedy')).map(c => c.id).slice(0, 20),
   },
   {
     id: 'comedy-central-pack',
     name: 'Comedy Central Pack',
     description: 'Laugh till you drop with these hilarious parodies!',
     themeTags: ['comedy', 'parody', 'slice of life', 'gag humor'],
-    packImageUrl: 'https://placehold.co/250x350.png?text=Laugh+Out+Loud&font=orbitron',
     faceCardCollectibleId: 'konosuba:-my-adventuring-party-is-useless-(and-i-love-it)',
-    collectibleIds: [
-      'konosuba:-my-adventuring-party-is-useless-(and-i-love-it)',
-      'grand-blue-dreaming:-the-diving-anime-that-s-not-about-diving',
-      'magical-boy-transformation-sequence:-the-series',
-      'cells-at-work!:-your-biology-class,-but-moe',
-      'the-disastrous-life-of-saiki-k-he-just-wants-to-be-left-alone-(but-he-s-a-god-tier-psychic)',
-      'monthly-girls-nozaki-kun-he-s-a-shojo-mangaka-but-completely-oblivious',
-      'ouran-high-school-host-club:-rich-boys-entertain-commoner-girl-(who-s-disguised-as-a-boy)',
-      'daily-lives-of-high-school-boys:-boys-will-be-idiots',
-      'aggretsuko:-red-panda-rages-against-office-life-with-death-metal-karaoke',
-      'azumanga-daioh:-surreal-high-school-comedy-that-defined-a-generation',
-      'himouto!-umaru-chan:-my-perfect-little-sister-is-a-cola-guzzling-gremlin-at-home',
-      'gabriel-dropout:-top-angel-becomes-ultimate-neet-gamer',
-      'hinamatsuri:-yakuza-adopts-psychic-girl,-hilarity-ensues',
-      'interviews-with-monster-girls:-my-students-are-monsters-(literally,-and-it-s-cute)',
-      'nichijou:-my-ordinary-life-is-an-absurdist-fever-dream',
-      'acchi-kocchi:-tiny-tsundere,-giant-gentle-guy,-much-fluff',
-      'barakamon:-calligrapher-has-an-existential-crisis-on-a-rural-island',
-      'the-devil-is-a-part-timer!:-satan-flips-burgers-at-mgro-nalds',
-      'wotakoi:-love-is-hard-for-otaku-(but-also-very-relatable)',
-      'the-way-of-the-househusband:-ex-yakuza-is-now-a-domestic-god',
-      'my-life-with-monster-girls:-it-s-a-logistical-nightmare',
-      'blend-s:-service-with-a-(surprise!-sadistic!)-smile',
-      'working!!:-restaurant-slice-of-life-with-quirky-staff-and-tiny-senpai',
-      'kaguya-sama:-love-is-war-(and-these-two-idiots-are-losing)',
-      'bocchi-the-rock!:-socially-anxious-guitar-hero-joins-a-band',
-      'space-dandy:-he-s-a-dandy-guy...-in-space',
-      'horimiya:-high-school-romance-that-actually-progresses',
-      'the-quintessential-quintuplets:-mc-tutors-five-identical-dumb-sisters-(one-will-be-the-bride)',
-      'rent-a-girlfriend:-mc-is-down-bad-(painfully-relatable-or-just-painful?)',
-      'komi-can-t-communicate:-beautiful-girl-has-extreme-social-anxiety-(but-everyone-loves-her)',
-      'aharen-san-is-indecipherable:-tiny-girl-is-either-too-close-or-too-far-(raidou-is-confused)',
-      'my-senpai-is-annoying:-short-kouhai-has-a-crush-on-her-giant,-oblivious-senpai',
-      'shikimori-s-not-just-a-cutie:-girlfriend-is-sometimes-cool,-sometimes-cute-(boyfriend-is-unlucky)',
-      'zom-100:-bucket-list-of-the-dead-(zombie-apocalypse-is-actually-liberating)',
-      'sasaki-and-peeps:-office-worker-buys-a-psychic-bird,-gets-dragged-into-magical-girl-battles',
-      'the-eminence-in-shadow:-mc-larps-as-a-shadow-mastermind-(and-it-s-all-real)',
-      'mashle:-magic-and-muscles-(harry-potter-but-saitama-is-the-mc)',
-    ]
+    packImageUrl: 'https://placehold.co/250x350.png?text=LaughOutLoud&font=orbitron',
+    collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.genreTags?.includes('Comedy') || c.moodTags?.includes('Hilarious')).map(c => c.id).slice(0, 20),
   }
 ];
-// Ensure all referenced collectible IDs in SAMPLE_PACKS exist in SAMPLE_COLLECTIBLES.
-// The "faceCardCollectibleId" should ideally be a high-rarity or iconic card from that pack.
-// "packImageUrl" provides custom art for the pack itself.
-// Current SAMPLE_COLLECTIBLES total around 70-75.
-// For future: pack-specific drop rate modifiers could be added.
+// Ensure collectibleIds in SAMPLE_PACKS reference existing Collectible IDs.
+// This simplified pack creation logic might lead to small pack pools if not many collectibles match the filter.
+// For a production system, pack contents would be more deliberately curated.

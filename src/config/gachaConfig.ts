@@ -1,3 +1,4 @@
+
 // src/config/gachaConfig.ts
 import type { CollectibleRarity } from '@/types/collectibles';
 
@@ -16,20 +17,21 @@ export const GACHA_RARITY_RATES: Record<CollectibleRarity, number> = {
 
 // Pity System Parameters
 // Rarity tiers that trigger pity reset and are guaranteed by hard pity
-export const PITY_TARGET_RARITIES: CollectibleRarity[] = ['Legendary', 'Mythic', 'Event'];
+export const PITY_TARGET_RARITIES: CollectibleRarity[] = ['Legendary', 'Mythic']; // Removed 'Event' for simplicity if not actively managed
 
 export const HARD_PITY_COUNT = 90; // Guaranteed target rarity at this many pulls without one
 export const SOFT_PITY_START_COUNT = 75; // Chance for target rarities starts increasing significantly
 
 // How much the combined chance of PITY_TARGET_RARITIES increases per pull during soft pity.
-export const SOFT_PITY_INCREASE_RATE = 0.06; // 6% increase per pull in soft pity for target rarities sum
+// This is an absolute increase to the sum of target rarities, distributed proportionally.
+export const SOFT_PITY_INCREASE_RATE = 0.06; // e.g. 6% increase added to the sum of target rarities chances
 
 // How to distribute the pity chance among target rarities if hard pity is hit,
 // or how to distribute the increased soft pity chance.
 export const PITY_DISTRIBUTION: Partial<Record<CollectibleRarity, number>> = {
-  Legendary: 0.70,
-  Mythic: 0.28,
-  Event: 0.02,
+  Legendary: 0.70, // 70% of the pity chance goes to Legendary
+  Mythic: 0.30,    // 30% of the pity chance goes to Mythic
+  // Event: 0.02, // Ensure this sums to 1 with other PITY_TARGET_RARITIES if Event is included
 };
 
 // For precise fusion
@@ -49,10 +51,9 @@ const pityDistributionSum = PITY_TARGET_RARITIES.reduce((sum, rarity) => {
     return sum + (PITY_DISTRIBUTION[rarity] || 0);
 }, 0);
 
-if (Math.abs(pityDistributionSum - 1.0) > 0.001 && PITY_TARGET_RARITIES.length > 0 && PITY_TARGET_RARITIES.some(r => PITY_DISTRIBUTION[r] && PITY_DISTRIBUTION[r]! > 0) ) {
+if (Math.abs(pityDistributionSum - 1.0) > 0.001 && PITY_TARGET_RARITIES.some(r => (PITY_DISTRIBUTION[r] ?? 0) > 0) ) {
     console.warn(
-        `GACHA WARNING: PITY_DISTRIBUTION values for PITY_TARGET_RARITIES do not sum to 1.0 (Current sum: ${pityDistributionSum}). ` +
-        `This may lead to unexpected behavior during pity pulls. Please adjust PITY_DISTRIBUTION for [${PITY_TARGET_RARITIES.join(', ')}].`
+        `GACHA WARNING: PITY_DISTRIBUTION values for PITY_TARGET_RARITIES [${PITY_TARGET_RARITIES.join(', ')}] do not sum to 1.0 (Current sum: ${pityDistributionSum}). This may lead to unexpected behavior during pity pulls.`
     );
 }
 
