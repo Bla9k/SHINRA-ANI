@@ -1,3 +1,4 @@
+
 // src/app/gacha/page.tsx
 'use client';
 
@@ -6,9 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { performGachaRoll } from '@/services/collectibles';
-import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity } from '@/types/collectibles';
+import { SAMPLE_COLLECTIBLES, SAMPLE_PACKS, type Collectible, type CollectibleRarity, type GachaPack } from '@/types/collectibles.ts';
 import Image from 'next/image';
-import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle } from 'lucide-react';
+import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle, Package } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,6 +22,7 @@ import { GACHA_ROLL_SIZE, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const CardTitle = CardTitlePrimitive;
 
@@ -52,7 +54,7 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
     const fetchRealDetails = async () => {
       if (!collectible.originalMalId || !collectible.originalType) {
         setIsLoadingDetails(false);
-        setErrorDetails('Missing original item ID or type.');
+        setErrorDetails('Missing original item ID or type for linking.');
         return;
       }
       setIsLoadingDetails(true);
@@ -60,13 +62,13 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
       try {
         let details: Anime | Manga | null = null;
         if (collectible.originalType === 'anime') {
-          details = await getAnimeDetails(collectible.originalMalId, undefined, true);
+          details = await getAnimeDetails(collectible.originalMalId, undefined, true); // No delay for Gacha cards
         } else if (collectible.originalType === 'manga') {
-          details = await getMangaDetails(collectible.originalMalId, undefined, true);
+          details = await getMangaDetails(collectible.originalMalId, undefined, true); // No delay for Gacha cards
         }
         setRealItemDetails(details);
         if (!details) {
-            setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
+            setErrorDetails(`Details not found for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
         }
       } catch (err) {
         console.error(`Error fetching details for collectible ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
@@ -86,30 +88,31 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
       className={cn(
         "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group-hover:scale-105 group-hover:shadow-2xl",
         rarityClasses.split(' ')[0], 
-        isFusionMode && "cursor-pointer",
+        isFusionMode && "cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-primary",
         isSelectedForFusion && "ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
       onClick={isFusionMode && onSelectForFusion ? () => onSelectForFusion(collectible) : undefined}
     >
       <CardHeader className="p-0 relative aspect-[3/4]">
-        {isLoadingDetails && (!realItemDetails?.imageUrl && !collectible.imageUrl) && (
+        {(isLoadingDetails && (!realItemDetails?.imageUrl && !collectible.imageUrl)) || !collectible.imageUrl && !realItemDetails?.imageUrl ? (
           <Skeleton className="absolute inset-0 bg-muted/30" />
+        ) : (
+          <Image
+            src={collectible.isEvolvedForm && collectible.imageUrl ? collectible.imageUrl : realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Shinra&font=lora'}
+            alt={collectible.parodyTitle}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className={cn("object-cover transition-opacity duration-500", isLoadingDetails ? "opacity-30" : "opacity-100", collectible.isEvolvedForm ? 'filter hue-rotate-15 saturate-150' : '')}
+            data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x400.png?text=Error&font=lora'; }}
+            priority={false}
+          />
         )}
-        <Image
-          src={collectible.isEvolvedForm && collectible.imageUrl ? collectible.imageUrl : realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Shinra&font=lora'}
-          alt={collectible.parodyTitle}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-          className={cn("object-cover transition-opacity duration-500", isLoadingDetails ? "opacity-30" : "opacity-100", collectible.isEvolvedForm ? 'filter hue-rotate-15 saturate-150' : '')}
-          data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
-          onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x400.png?text=Error&font=lora'; }}
-          priority={false}
-        />
         <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
         <Badge
           className={cn(
             "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
-            rarityClasses
+            rarityClasses // This applies all classes from the helper including glow
           )}
         >
           {collectible.rarity} {collectible.isEvolvedForm ? <Sparkles size={12} className="ml-1 text-yellow-300"/> : ''}
@@ -170,20 +173,13 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 50, scale: 0.8 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 0.5, delay: Math.random() * 0.2, type: "spring", stiffness: 100, damping: 12 }}
       className="w-full group"
     >
-      {isFusionMode ? (
-        cardContent
-      ) : (
-        <Link href={detailPageUrl} passHref legacyBehavior>
-          <a className="block h-full cursor-pointer">
-            {cardContent}
-          </a>
-        </Link>
-      )}
+      <Link href={detailPageUrl} passHref legacyBehavior={isFusionMode ? undefined : true} >
+         <a className="block h-full" target={isFusionMode ? '_self' : '_blank'} rel={isFusionMode ? undefined : "noopener noreferrer"}>
+           {cardContent}
+         </a>
+      </Link>
     </motion.div>
   );
 };
@@ -246,6 +242,42 @@ const cardVariants = {
   }),
 };
 
+interface PackCardProps {
+  pack: GachaPack;
+  onOpenPack: (packId: string) => void;
+  isLoading: boolean;
+}
+
+const PackCard: React.FC<PackCardProps> = ({ pack, onOpenPack, isLoading }) => {
+  return (
+    <Card className="glass-deep shadow-lg border-border/50 flex flex-col overflow-hidden hover:border-primary/50 transition-all">
+      <CardHeader className="p-4 border-b border-border/30">
+        <CardTitle className="text-md font-semibold text-primary flex items-center gap-2">
+          <Package size={18} /> {pack.name}
+        </CardTitle>
+        {pack.themeTags && pack.themeTags.length > 0 && (
+          <div className="flex flex-wrap gap-1 mt-1">
+            {pack.themeTags.map(tag => <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>)}
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="p-4 text-sm text-muted-foreground flex-grow">
+        <p className="line-clamp-3">{pack.description}</p>
+      </CardContent>
+      <div className="p-4 border-t border-border/30 mt-auto">
+        <Button
+          onClick={() => onOpenPack(pack.id)}
+          disabled={isLoading}
+          className="w-full fiery-glow-hover"
+        >
+          {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Open Pack'}
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+
 export default function GachaPage() {
   const [pulledCollectibles, setPulledCollectibles] = useState<Collectible[] | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -257,25 +289,30 @@ export default function GachaPage() {
   const [isFusionModalOpen, setIsFusionModalOpen] = useState(false);
   const [fusionCandidates, setFusionCandidates] = useState<Collectible[]>([]);
   const [selectedForFusion, setSelectedForFusion] = useState<Collectible[]>([]);
+  const [openingPackName, setOpeningPackName] = useState<string | null>(null);
+
 
   useEffect(() => {
     setIsClient(true);
     if (user && userProfile && !authLoading) {
       setCurrentPityCount(userProfile.gachaPityCounter || 0);
     } else if (!user && !authLoading) {
-      setCurrentPityCount(0);
+      setCurrentPityCount(0); // Reset if user logs out or no profile
     }
   }, [user, userProfile, authLoading]);
 
-  const handleRoll = async () => {
+  const handleRoll = async (packId?: string) => {
     if (!isClient) return;
     setIsLoading(true);
     setPulledCollectibles(null);
     setSelectedForFusion([]);
+    setOpeningPackName(packId ? (SAMPLE_PACKS.find(p=>p.id === packId)?.name || 'Selected Pack') : 'General Pool');
 
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 700)); // Simulate pack opening animation delay
 
-    const result = await performGachaRoll(user?.uid || null);
+    const result = await performGachaRoll(user?.uid || null, packId);
+
+    setOpeningPackName(null);
 
     if ('error' in result) {
       toast({
@@ -286,11 +323,12 @@ export default function GachaPage() {
       setPulledCollectibles([]);
     } else {
       setPulledCollectibles(result.collectibles);
-      setFusionCandidates(result.collectibles);
+      setFusionCandidates(result.collectibles); // Update fusion candidates with the new pull
       if (user && result.newPityCounter !== undefined) {
         setCurrentPityCount(result.newPityCounter);
+        // Optimistically update profile or trigger refetch
         if (fetchUserProfile && user.uid) {
-            // fetchUserProfile(user.uid); // Consider optimistic update
+            // fetchUserProfile(user.uid); // Consider if this is too chatty or if optimistic update is enough
         }
       }
       toast({
@@ -315,9 +353,12 @@ export default function GachaPage() {
         if (isAlreadySelected) {
             return prev.filter(c => c.id !== collectible.id);
         }
-        if (prev.length < 2) {
+        if (prev.length < 2) { // Allow selecting up to 2
             return [...prev, collectible];
         }
+        // If 2 are already selected, replace the first one (or handle as per desired UX)
+        // For now, just block more than 2.
+        toast({title:"Max Selection", description:"Select only two cards for fusion.", variant: "default"});
         return prev;
     });
   };
@@ -340,30 +381,32 @@ export default function GachaPage() {
     const rarity2Value = RARITY_NUMERICAL_VALUE[card2.rarity];
     let outputRarityValue: number;
 
-    // Define precise fusion rules
-    if (rarity1Value === rarity2Value) { // Same rarity fusion
-        outputRarityValue = Math.min(rarity1Value + 1, RARITY_NUMERICAL_VALUE.Mythic); // Cap at Mythic
-    } else { // Different rarity fusion
-        // Example: result is the higher of the two, or one above the lower if close
-        if (Math.abs(rarity1Value - rarity2Value) === 1) { // Adjacent rarities
-            outputRarityValue = Math.max(rarity1Value, rarity2Value); // Take the higher one
-        } else { // Further apart rarities
-            outputRarityValue = Math.max(rarity1Value, rarity2Value); // Could also average, or one step above lower
+    if (rarity1Value === rarity2Value && rarity1Value < RARITY_NUMERICAL_VALUE.Mythic) {
+        outputRarityValue = rarity1Value + 1;
+    } else if (rarity1Value === RARITY_NUMERICAL_VALUE.Mythic && rarity2Value === RARITY_NUMERICAL_VALUE.Mythic) {
+        outputRarityValue = RARITY_NUMERICAL_VALUE.Mythic; // Mythic + Mythic = Mythic
+    } else {
+        // For mixed rarities, or if one is Mythic, generally default to the higher of the two or one step above lower.
+        // This can be more complex. For now, let's do: higher of the two, or one above the lower one if they are adjacent.
+        if (Math.abs(rarity1Value - rarity2Value) <= 1) { // Adjacent or same (covered above)
+             outputRarityValue = Math.min(Math.max(rarity1Value, rarity2Value) + (rarity1Value !== rarity2Value ? 0 : 1), RARITY_NUMERICAL_VALUE.Mythic) ;
+        } else { // Further apart
+            outputRarityValue = Math.min(Math.max(rarity1Value, rarity2Value), RARITY_NUMERICAL_VALUE.Mythic);
         }
-        outputRarityValue = Math.min(outputRarityValue, RARITY_NUMERICAL_VALUE.Mythic);
     }
     
-    const outputRarityTier = RARITY_ORDER[outputRarityValue] as CollectibleRarity;
+    const outputRarityTier = RARITY_ORDER.find((_, index) => index === outputRarityValue) || 'Common';
 
     const potentialResults = SAMPLE_COLLECTIBLES.filter(c =>
         c.rarity === outputRarityTier &&
         c.id !== card1.id &&
         c.id !== card2.id &&
-        c.rarity !== 'Event' // Ensure output isn't an Event card unless specifically designed
+        c.rarity !== 'Event'
     );
 
     if (potentialResults.length > 0) {
-        const fusedCollectible = potentialResults[Math.floor(Math.random() * potentialResults.length)];
+        const fusedCollectible = { ...potentialResults[Math.floor(Math.random() * potentialResults.length)] };
+        // Ensure fused is a new object instance for React state
         toast({
             title: "Fusion Success!",
             description: `Your cards fused into ${fusedCollectible.parodyTitle} (${fusedCollectible.rarity})!`,
@@ -371,12 +414,12 @@ export default function GachaPage() {
             duration: 5000,
         });
         setPulledCollectibles(prev => {
-            if (!prev) return null;
+            if (!prev) return [fusedCollectible];
             const remaining = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
-            return [fusedCollectible, ...remaining];
+            return [fusedCollectible, ...remaining.slice(0, GACHA_ROLL_SIZE -1)]; // Keep GACHA_ROLL_SIZE items
         });
     } else {
-        toast({ title: "Fusion Failed", description: `No suitable ${outputRarityTier} card found for this combination. (Or all were inputs)`, variant: "destructive" });
+        toast({ title: "Fusion Fizzled...", description: `No suitable ${outputRarityTier} card could be formed from this combination. Better luck next time!`, variant: "destructive" });
     }
 
     setIsFusionModalOpen(false);
@@ -408,30 +451,26 @@ export default function GachaPage() {
             transition={{ delay: 0.6, duration: 0.5 }}
             className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base"
         >
-          Roll for unique, parody collectibles! All free during Beta.
+          Roll for unique, parody collectibles! Free during Beta.
         </motion.p>
       </div>
 
-      <div className="flex items-center gap-3 mb-6 sm:mb-8">
+      <div className="flex items-center gap-3 mb-4 sm:mb-6">
         <Button
-            onClick={handleRoll}
+            onClick={() => handleRoll()} // General Roll
             disabled={isLoading || !isClient}
             size="lg"
-            className="px-6 py-4 sm:px-8 sm:py-6 text-md sm:text-lg fiery-glow-hover sf-bansho-button rounded-xl relative overflow-hidden"
+            className="px-5 py-3 sm:px-6 sm:py-4 text-sm sm:text-md fiery-glow-hover sf-bansho-button rounded-xl relative overflow-hidden"
             aria-label={`Roll for ${GACHA_ROLL_SIZE} collectibles`}
         >
-            {isLoading ? (
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-            ) : (
-            <Sparkles className="mr-2 h-5 w-5" />
-            )}
-            Roll for {GACHA_ROLL_SIZE} Collectibles!
+            {(isLoading && !openingPackName) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+            General Roll
         </Button>
         <TooltipProvider delayDuration={100}>
             <Tooltip>
                 <TooltipTrigger asChild>
-                    <Button variant="outline" size="icon" className="rounded-full glass h-10 w-10 sm:h-12 sm:w-12">
-                        <HelpCircle size={20} className="text-muted-foreground"/>
+                    <Button variant="outline" size="icon" className="rounded-full glass h-10 w-10 sm:h-11 sm:w-11">
+                        <HelpCircle size={18} className="text-muted-foreground"/>
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent className="glass-deep max-w-xs text-xs p-2" side="bottom">
@@ -442,8 +481,28 @@ export default function GachaPage() {
         </TooltipProvider>
       </div>
 
+      {/* Gacha Packs Section */}
+      <section className="w-full max-w-4xl mb-6 sm:mb-8">
+          <h2 className="text-xl sm:text-2xl font-semibold text-center mb-3 sm:mb-4 text-primary sf-text-glow">Featured Packs</h2>
+          {SAMPLE_PACKS.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {SAMPLE_PACKS.map(pack => (
+                      <PackCard key={pack.id} pack={pack} onOpenPack={() => handleRoll(pack.id)} isLoading={isLoading && openingPackName === pack.name} />
+                  ))}
+              </div>
+          ) : (
+              <p className="text-center text-muted-foreground">No special packs available right now. Check back later!</p>
+          )}
+      </section>
 
-      {pulledCollectibles && pulledCollectibles.length > 0 && !isLoading && (
+      {openingPackName && isLoading && (
+          <div className="w-full text-center my-6">
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+              <p className="text-muted-foreground">Shuffling the {openingPackName}...</p>
+          </div>
+      )}
+
+      {pulledCollectibles && pulledCollectibles.length > 0 && !isLoading && !openingPackName && (
         <div className="mb-6">
             <Button onClick={() => setIsFusionModalOpen(true)} variant="outline" className="neon-glow-hover glass">
                 <Combine size={18} className="mr-2"/> Attempt Card Fusion
@@ -451,8 +510,7 @@ export default function GachaPage() {
         </div>
       )}
 
-
-      {isLoading && (
+      {!openingPackName && isLoading && ( // General loading for non-pack rolls
         <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
           {Array.from({ length: GACHA_ROLL_SIZE }).map((_, index) => (
             <Card key={`skel-${index}`} className="glass-deep aspect-[3/4] animate-pulse">
@@ -469,7 +527,7 @@ export default function GachaPage() {
         </div>
       )}
 
-      {pulledCollectibles && !isLoading && (
+      {pulledCollectibles && !isLoading && !openingPackName && (
         <motion.div
           className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4"
           variants={{ visible: { transition: { staggerChildren: 0.07 } } }}
@@ -477,14 +535,14 @@ export default function GachaPage() {
           animate="visible"
         >
           {pulledCollectibles.map((collectible, index) => (
-            <motion.div key={`${collectible.id}-${index}`} variants={cardVariants} custom={index}>
+            <motion.div key={`${collectible.id}-${index}-${Date.now()}`} variants={cardVariants} custom={index}> {/* Added Date.now() for true unique key on re-roll */}
                  <GachaCard collectible={collectible} />
             </motion.div>
           ))}
         </motion.div>
       )}
 
-       {!pulledCollectibles && !isLoading && isClient && (
+       {!pulledCollectibles && !isLoading && !openingPackName && isClient && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -492,7 +550,7 @@ export default function GachaPage() {
             className="text-center text-muted-foreground mt-8 p-6 border border-dashed border-border/50 rounded-lg glass max-w-md w-full"
           >
             <p className="text-lg">Your next legendary (or hilariously common) pulls await!</p>
-            <p className="text-sm mt-1">Click the button above to try your luck.</p>
+            <p className="text-sm mt-1">Click a Roll button above to try your luck.</p>
           </motion.div>
         )}
         
@@ -503,26 +561,27 @@ export default function GachaPage() {
             <RarityVisualGuide />
         </div>
 
-        {/* Fusion Modal */}
         <Dialog open={isFusionModalOpen} onOpenChange={setIsFusionModalOpen}>
-            <DialogContent className="glass-deep sm:max-w-md md:max-w-lg">
+            <DialogContent className="glass-deep sm:max-w-md md:max-w-lg lg:max-w-2xl">
                 <DialogHeader>
                     <DialogTitle>Attempt Card Fusion</DialogTitle>
                     <DialogDescription>
                         Select 2 cards from your recent pull to attempt fusion. Event cards cannot be fused.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="grid grid-cols-2 gap-3 py-4 max-h-[50vh] overflow-y-auto scrollbar-thin">
-                    {fusionCandidates.map(collectible => (
-                        <GachaCard
-                            key={`fusion-${collectible.id}`}
-                            collectible={collectible}
-                            onSelectForFusion={handleSelectForFusion}
-                            isSelectedForFusion={selectedForFusion.some(c => c.id === collectible.id)}
-                            isFusionMode={true}
-                        />
-                    ))}
-                </div>
+                <ScrollArea className="max-h-[50vh] -mx-2 px-2"> {/* Negative margin for scrollbar with padding */}
+                    <div className="grid grid-cols-2 gap-3 py-4">
+                        {fusionCandidates.map(collectible => (
+                            <GachaCard
+                                key={`fusion-${collectible.id}`}
+                                collectible={collectible}
+                                onSelectForFusion={handleSelectForFusion}
+                                isSelectedForFusion={selectedForFusion.some(c => c.id === collectible.id)}
+                                isFusionMode={true}
+                            />
+                        ))}
+                    </div>
+                </ScrollArea>
                 <DialogFooter className="sm:justify-between gap-2">
                     <div className="text-xs text-muted-foreground">
                         Selected: {selectedForFusion.length}/2
@@ -543,7 +602,6 @@ export default function GachaPage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
-
     </div>
   );
 }
