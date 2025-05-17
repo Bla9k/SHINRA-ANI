@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { performGachaRoll } from '@/services/collectibles.ts';
-import type { Collectible, CollectibleRarity } from '@/types/collectibles.ts';
+import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity } from '@/types/collectibles.ts'; // Import SAMPLE_COLLECTIBLES
 import Image from 'next/image';
 import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle } from 'lucide-react'; // Added Percent, Palette, Combine, XCircle
 import { Badge } from '@/components/ui/badge';
@@ -71,7 +71,7 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
         }
       } catch (err) {
         console.error(`Error fetching details for collectible ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
-        setErrorDetails(`Failed to load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
+        setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
       } finally {
         setIsLoadingDetails(false);
       }
@@ -524,3 +524,6 @@ export default function GachaPage() {
     </div>
   );
 }
+
+// Sample collectibles data moved to src/types/collectibles.ts
+// Make sure SAMPLE_COLLECTIBLES is imported from there in services/collectibles.ts

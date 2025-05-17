@@ -26,7 +26,6 @@ export interface Collectible {
 // NOTE: This list needs to be further expanded to reach the 500+ target.
 // The originalMalId and originalType are illustrative.
 export const SAMPLE_COLLECTIBLES: Collectible[] = [
-  // Existing Collectibles (ensure they have originalMalId and originalType)
   {
     id: 'roommate-yandere',
     parodyTitle: 'My Roommate Is a God-Level Yandere',
@@ -54,7 +53,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'depression-animated',
     parodyTitle: 'Depression: The Animated Series',
-    originalMalId: 9253, // Welcome to the N.H.K.
+    originalMalId: 467, // Welcome to the N.H.K. - Using correct ID based on common association
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "It's just like real life, but with more muted colors and a surprisingly good soundtrack.",
@@ -110,7 +109,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'isekai-truck-kun-deluxe',
     parodyTitle: 'Truck-kun: Interdimensional Delivery Service',
-    originalMalId: 37430,
+    originalMalId: 37430, // That Time I Got Reincarnated as a Slime
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He's no longer just a harbinger of isekai; he's a full-service transportation solution for protagonists!",
@@ -130,7 +129,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Mahou Shoujo', 'Psychological', 'Dark Fantasy', 'Drama'],
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
-  // Existing Batch 1
+  // Batch 1
   {
     id: 'angst-teen-pilots-robot',
     parodyTitle: 'Angsty Teen Reluctantly Pilots Giant Robot Again',
@@ -167,7 +166,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'overpowered-mc-problem',
     parodyTitle: 'My MC is Too Overpowered and Now I Have Plot Problems',
-    originalMalId: 33486, // One Punch Man
+    originalMalId: 120, // One Punch Man (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Ultra Rare',
     parodyBlurb: "He can defeat anyone with one punch... so now what? An existential comedy about ultimate power.",
@@ -189,8 +188,8 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'high-school-death-game',
     parodyTitle: 'High School Death Game: Midterms Are a Killer',
-    originalMalId: 32182, // Danganronpa
-    originalType: 'anime',
+    originalMalId: 10032, // Danganronpa (Game, often associated with anime 1502)
+    originalType: 'anime', // Assuming anime adaptation 32182
     rarity: 'Ultra Rare',
     parodyBlurb: "Forget pop quizzes, these students have to survive each other! Hope! Despair! Monokuma!",
     imageUrl: 'https://placehold.co/300x400.png?text=KillerMidterms&font=lora',
@@ -211,7 +210,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'yet-another-isekai-harem',
     parodyTitle: 'Yet Another Generic Isekai Harem Adventure',
-    originalMalId: 40148, // Typical Isekai Template
+    originalMalId: 40148, // Example: Peter Grill to Kenja no Jikan
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "Average dude, fantasy world, cheat skills, girls fall for him. You know the drill. Now with extra tropes!",
@@ -222,7 +221,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'edgy-vampire-romance',
     parodyTitle: 'My Immortal, Brooding, Sparkly Boyfriend',
-    originalMalId: 5081, // Vampire Knight
+    originalMalId: 1577, // Vampire Knight (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Common',
     parodyBlurb: "He's a vampire! She's drawn to his darkness! Their love is forbidden! It's all very... 2008.",
@@ -277,7 +276,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'slow-burn-romance-glacial-pace',
     parodyTitle: 'Will They/Wont They: Glacial Pace Edition',
-    originalMalId: 1726, // Kimi ni Todoke
+    originalMalId: 392, // Kimi ni Todoke (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Common',
     parodyBlurb: "It'll take 300 chapters for them to hold hands, but the misunderstandings are top-tier.",
@@ -299,7 +298,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'attack-on-titan-everyone-dies',
     parodyTitle: 'Attack on My Sanity: Everyone Dies',
-    originalMalId: 16498, // Attack on Titan
+    originalMalId: 23390, // Attack on Titan (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Legendary',
     parodyBlurb: "Just when you think your favorite character is safe... nope. Giant naked people eating folks.",
@@ -409,7 +408,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'monster-musume-everyday-life',
     parodyTitle: 'My Life With Monster Girls: It\'s a Logistical Nightmare',
-    originalMalId: 30307, // Monster Musume no Iru Nichijou
+    originalMalId: 16273, // Monster Musume no Iru Nichijou (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Rare',
     parodyBlurb: "A lamia, a harpy, a centaur... How does he even afford groceries? The interspecies cultural exchange program is wild.",
@@ -475,7 +474,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'vinland-saga-no-enemies',
     parodyTitle: 'Vinland Saga: Thorfinn Has No Enemies (Eventually)',
-    originalMalId: 37521, // Vinland Saga
+    originalMalId: 17375, // Vinland Saga (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Legendary',
     parodyBlurb: "From revenge-fueled Viking rage machine to... a guy who really wants to farm peacefully. Character development!",
@@ -629,7 +628,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'steins-gate-microwave-time-machine',
     parodyTitle: 'Steins;Gate: My Microwave is a Time Machine (and it Screws Everything Up)',
-    originalMalId: 9253, // Corrected to anime MAL ID Steins;Gate
+    originalMalId: 9253, // Steins;Gate (Anime MAL ID)
     originalType: 'anime',
     rarity: 'Mythic',
     parodyBlurb: "El Psy Kongroo! Science, conspiracies, and a whole lot of 'tuturu~'. The choice of Steins Gate.",
@@ -695,7 +694,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'chainsaw-man-needs-therapy',
     parodyTitle: 'Chainsaw Man: Denji REALLY Needs Therapy (and a Hug)',
-    originalMalId: 44511, // Chainsaw Man (Manga)
+    originalMalId: 116778, // Chainsaw Man (Manga MAL ID)
     originalType: 'manga',
     rarity: 'Legendary',
     parodyBlurb: "Devils, gore, and a boy who just wants a normal life with toast and jam. It's a wild ride.",
@@ -714,5 +713,5 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Action', 'Award Winning', 'Fantasy', 'School', 'Shonen', 'Supernatural'],
     moodTags: ['Adrenaline Rush', 'Dark & Deep'],
   }
-  // ... (Keep previously added items, I will append new ones)
 ];
+// Removed getRarityColorClasses as it's now defined in gacha/page.tsx
