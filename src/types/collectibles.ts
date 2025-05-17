@@ -23,17 +23,6 @@ export interface Collectible {
 // Sample data for the Gacha system
 export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
-    id: 'crying-rain-sim',
-    parodyTitle: 'Crying in the Rain Simulator',
-    originalMalId: 12345, // Example, replace with a real MAL ID for an anime
-    originalType: 'anime',
-    rarity: 'Common',
-    parodyBlurb: "Experience the thrill of... well, mostly just crying. In the rain. It's deeper than it sounds. Maybe.",
-    imageUrl: 'https://placehold.co/300x400.png?text=RainCrySim&font=lora',
-    genreTags: ['Drama', 'Slice of Life', 'Existential Dread'],
-    moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
-  },
-  {
     id: 'roommate-yandere',
     parodyTitle: 'My Roommate Is a God-Level Yandere',
     originalMalId: 20507, // Mirai Nikki
@@ -43,17 +32,6 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     imageUrl: 'https://placehold.co/300x400.png?text=YandereGod&font=lora',
     genreTags: ['Romance', 'Comedy', 'Horror', 'Supernatural'],
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
-  },
-  {
-    id: 'vending-machine-screams',
-    parodyTitle: 'I Reincarnated as a Vending Machine but It’s Powered by Screams',
-    originalMalId: 49761, // Reincarnated as a Vending Machine, I Now Wander the Dungeon
-    originalType: 'anime',
-    rarity: 'Ultra Rare',
-    parodyBlurb: "Dispensing lukewarm soda and existential angst. Each purchase fuels its tortured existence. Quench your thirst... for suffering.",
-    imageUrl: 'https://placehold.co/300x400.png?text=ScreamVendor&font=lora',
-    genreTags: ['Isekai', 'Dark Fantasy', 'Comedy'],
-    moodTags: ['Dark & Deep'],
   },
   {
     id: 'depression-animated',
