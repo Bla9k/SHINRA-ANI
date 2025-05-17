@@ -30,7 +30,7 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
     const fetchRealDetails = async () => {
       if (!collectible.originalMalId || !collectible.originalType) {
         setIsLoadingDetails(false);
-        setErrorDetails('Missing original item ID or type.');
+        setErrorDetails('Missing original item ID or type for this collectible.');
         return;
       }
       setIsLoadingDetails(true);
@@ -44,10 +44,10 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
         }
         setRealItemDetails(details);
         if (!details) {
-            setErrorDetails(`Could not load details for ${collectible.originalType} ID ${collectible.originalMalId}.`);
+            setErrorDetails(`Details not found for ${collectible.originalType} ID ${collectible.originalMalId}.`);
         }
       } catch (err) {
-        console.error(`Error fetching details for collectible ${collectible.id}:`, err);
+        console.error(`Error fetching details for collectible ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
         setErrorDetails('Failed to load original item details.');
       } finally {
         setIsLoadingDetails(false);
@@ -72,7 +72,7 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.random() * 0.5 }} // Staggered animation
+      transition={{ duration: 0.3, delay: Math.random() * 0.3 }} // Staggered animation
       className="w-full group"
     >
       <Card className={cn(
@@ -83,9 +83,9 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
           {isLoadingDetails && !realItemDetails?.imageUrl && (
             <Skeleton className="absolute inset-0" />
           )}
-          {(!isLoadingDetails && !realItemDetails?.imageUrl) && (
+          {(!isLoadingDetails && !realItemDetails?.imageUrl) && ( // Show parody image if real one fails or doesn't exist
             <Image
-              src={collectible.imageUrl || 'https://placehold.co/300x400.png?text=Parody'}
+              src={collectible.imageUrl || 'https://placehold.co/300x400.png?text=ParodyArt&font=lora'}
               alt={collectible.parodyTitle}
               layout="fill"
               objectFit="cover"
@@ -187,7 +187,10 @@ export default function GachaPage() {
     if (!isClient) return;
 
     setIsLoading(true);
-    setPulledCollectibles(null);
+    setPulledCollectibles(null); // Clear previous results for new roll
+
+    // Simulate a short delay for better UX even though the local roll is fast
+    await new Promise(resolve => setTimeout(resolve, 300));
 
     const result = await performGachaRoll();
 
@@ -230,12 +233,12 @@ export default function GachaPage() {
         ) : (
           <Sparkles className="mr-2 h-5 w-5" />
         )}
-        Roll for 10 Collectibles!
+        Roll for 4 Collectibles!
       </Button>
 
       {isLoading && (
-        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
-          {Array.from({ length: 10 }).map((_, index) => (
+        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"> {/* Changed to 4 for skeleton too */}
+          {Array.from({ length: 4 }).map((_, index) => ( // Show 4 skeletons
             <Card key={`skel-${index}`} className="glass-deep aspect-[3/5] animate-pulse">
                 <CardHeader className="p-0 relative h-2/3">
                     <Skeleton className="h-full w-full rounded-t-lg" />
@@ -251,7 +254,7 @@ export default function GachaPage() {
       )}
 
       {pulledCollectibles && pulledCollectibles.length > 0 && !isLoading && (
-        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"> {/* Changed to 4 columns for display */}
           {pulledCollectibles.map((collectible) => (
             <GachaCard key={collectible.id} collectible={collectible} />
           ))}
