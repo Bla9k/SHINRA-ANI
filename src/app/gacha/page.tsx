@@ -1,4 +1,3 @@
-
 // src/app/gacha/page.tsx
 'use client';
 
@@ -8,22 +7,22 @@ import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDes
 import { performGachaRoll } from '@/services/collectibles';
 import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity, type GachaPack, SAMPLE_PACKS } from '@/types/collectibles';
 import Image from 'next/image';
-import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle, Package, ShoppingBag, Grid, List } from 'lucide-react'; // Removed LinkIcon
+import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle, Package, ShoppingBag, Grid, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
+import { cn, shuffleArray } from '@/lib/utils'; // Import shuffleArray
 import { motion, AnimatePresence } from 'framer-motion';
 import { getAnimeDetails, type Anime } from '@/services/anime';
 import { getMangaDetails, type Manga } from '@/services/manga';
 import { Skeleton } from '@/components/ui/skeleton';
-import Link from 'next/link'; // Keep Link for "View Original"
-import { GACHA_ROLL_SIZE, RARITY_ORDER, RARITY_NUMERICAL_VALUE, GACHA_RARITY_RATES } from '@/config/gachaConfig';
+import Link from 'next/link';
+import { GACHA_ROLL_SIZE, RARITY_ORDER, RARITY_NUMERICAL_VALUE, GACHA_RARITY_RATES, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT, SOFT_PITY_INCREASE_RATE, PITY_DISTRIBUTION } from '@/config/gachaConfig';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // For pity system
+import { useAuth } from '@/hooks/useAuth';
 
 const CardTitle = CardTitlePrimitive;
 
@@ -35,7 +34,7 @@ const getRarityColorClasses = (rarity: CollectibleRarity): string => {
     case 'Legendary': return 'border-orange-400/70 bg-orange-500/20 text-orange-300 neon-glow-legendary';
     case 'Mythic': return 'border-red-500/70 bg-red-600/20 text-red-300 neon-glow-mythic';
     case 'Event': return 'border-yellow-400/70 bg-yellow-500/20 text-yellow-300 neon-glow-event';
-    case 'Forbidden': return 'border-red-700/80 bg-red-900/30 text-red-200 neon-glow-forbidden'; // New Forbidden style
+    case 'Forbidden': return 'border-red-700/80 bg-red-900/30 text-red-200 neon-glow-forbidden';
     default: return 'border-muted/50 bg-muted/20 text-muted-foreground';
   }
 };
@@ -71,14 +70,14 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
       if (isMounted) {
         setIsLoadingDetails(true);
         setErrorDetails(null);
-        setImageError(false); // Reset image error on new fetch
+        setImageError(false);
       }
       try {
         let details: Anime | Manga | null = null;
         if (collectible.originalType === 'anime') {
-          details = await getAnimeDetails(collectible.originalMalId, undefined, true); // noDelay = true for faster Gacha display
+          details = await getAnimeDetails(collectible.originalMalId, undefined, true);
         } else if (collectible.originalType === 'manga') {
-          details = await getMangaDetails(collectible.originalMalId, undefined, true); // noDelay = true
+          details = await getMangaDetails(collectible.originalMalId, undefined, true);
         }
         if (isMounted) {
           setRealItemDetails(details);
@@ -102,9 +101,9 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
 
   const rarityClasses = getRarityColorClasses(collectible.rarity);
 
-  let displayImageUrl = GENERIC_PLACEHOLDER; // Default to loading placeholder
+  let displayImageUrl = GENERIC_PLACEHOLDER;
 
-  if (!isLoadingDetails) { // Only determine final image once loading is done
+  if (!isLoadingDetails) {
     if (imageError) {
       displayImageUrl = IMAGE_UNAVAILABLE_PLACEHOLDER;
     } else if (collectible.isEvolvedForm && collectible.imageUrl && collectible.imageUrl !== NO_ART_PLACEHOLDER) {
@@ -112,26 +111,25 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
     } else if (realItemDetails?.imageUrl) {
       displayImageUrl = realItemDetails.imageUrl;
     } else if (collectible.imageUrl && collectible.imageUrl !== NO_ART_PLACEHOLDER) {
-      displayImageUrl = collectible.imageUrl; // Parody art if real fails or not evolved
+      displayImageUrl = collectible.imageUrl;
     } else {
-      displayImageUrl = IMAGE_UNAVAILABLE_PLACEHOLDER; // Absolute fallback if all else fails
+      displayImageUrl = IMAGE_UNAVAILABLE_PLACEHOLDER;
     }
   }
   
-  console.log(`[GachaCard] Collectible: ${collectible.parodyTitle}, isLoadingDetails: ${isLoadingDetails}, displayImageUrl: ${displayImageUrl}, imageError: ${imageError}`);
+  // console.log(`[GachaCard] Collectible: ${collectible.parodyTitle}, isLoadingDetails: ${isLoadingDetails}, displayImageUrl: ${displayImageUrl}, imageError: ${imageError}`);
 
   const handleCardClick = () => {
     if (isFusionMode && onSelectForFusion) {
       onSelectForFusion(collectible);
     }
-    // No navigation if not in fusion mode or if it's a fusion mode click
   };
 
   const cardContent = (
     <Card
       className={cn(
         "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group",
-        rarityClasses.split(' ')[0], // Applies the border color class
+        rarityClasses.split(' ')[0],
         isFusionMode && "hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-primary cursor-pointer",
         isSelectedForFusion && "ring-2 ring-primary ring-offset-2 ring-offset-background"
       )}
@@ -155,13 +153,13 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
               console.warn(`[GachaCard] Image error for: ${displayImageUrl}. Falling back.`);
               setImageError(true);
             }}
-            priority={false} // Generally false for gacha cards unless they are few
+            priority={false}
           />
         )}
         <Badge
           className={cn(
             "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
-            rarityClasses // Applies bg, text color, and specific glow classes
+            rarityClasses
           )}
         >
           {collectible.rarity} {collectible.isEvolvedForm ? <Sparkles size={12} className="ml-1 text-yellow-300"/> : ''}
@@ -224,18 +222,24 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
     </Card>
   );
 
-  // The entire card is clickable only in fusion mode. Otherwise, the Link handles navigation.
   if (isFusionMode) {
     return <div className="w-full group" onClick={handleCardClick}>{cardContent}</div>;
   }
-
-  // For display after roll, allow linking to detail page
+  
+  // If not in fusion mode, card is not interactive for selection,
+  // but can still have a link for viewing original details.
   return (
-    <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior>
-        <a className="block w-full group" onClick={onClose}> {/* Assuming onClose from a modal context if present */}
+    <div className="w-full group">
+      {collectible.originalMalId && collectible.originalType ? (
+        <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior>
+          <a target="_blank" rel="noopener noreferrer" className="block">
             {cardContent}
-        </a>
-    </Link>
+          </a>
+        </Link>
+      ) : (
+        cardContent
+      )}
+    </div>
   );
 });
 GachaCard.displayName = 'GachaCard';
@@ -324,7 +328,7 @@ const PackCard: React.FC<PackCardProps> = React.memo(({ pack, onOpenPack, isLoad
     if (pack.isLegacyPack && faceCardImages.length > 1) {
       const interval = setInterval(() => {
         setCurrentImageIndex(prevIndex => (prevIndex + 1) % faceCardImages.length);
-      }, 2500); // Change image every 2.5 seconds
+      }, 2500); 
       return () => clearInterval(interval);
     }
   }, [pack.isLegacyPack, faceCardImages]);
@@ -385,7 +389,7 @@ PackCard.displayName = 'PackCard';
 
 
 const DropRatesDisplay: React.FC = () => {
-    const rarities = Object.keys(GACHA_RARITY_RATES).filter(r => r !== 'Forbidden') as CollectibleRarity[]; // Exclude Forbidden from general rates display
+    const rarities = Object.keys(GACHA_RARITY_RATES).filter(r => r !== 'Forbidden') as CollectibleRarity[];
     return (
         <Card className="glass-deep shadow-lg border-border/50 w-full">
             <CardHeader>
@@ -410,7 +414,7 @@ const DropRatesDisplay: React.FC = () => {
 DropRatesDisplay.displayName = 'DropRatesDisplay';
 
 const RarityVisualGuide: React.FC = () => {
-    const rarities = RARITY_ORDER; // Show all defined rarities
+    const rarities = RARITY_ORDER; 
     return (
         <Card className="glass-deep shadow-lg border-border/50 w-full">
             <CardHeader>
@@ -438,7 +442,7 @@ const cardVariants = {
     y: 0,
     scale: 1,
     transition: {
-      delay: i * 0.1, // Slightly faster stagger
+      delay: i * 0.1, 
       duration: 0.4,
       ease: "easeOut",
     },
@@ -458,30 +462,30 @@ export default function GachaPage() {
   const [selectedForFusion, setSelectedForFusion] = useState<Collectible[]>([]);
   const [openingPackId, setOpeningPackId] = useState<string | null>(null);
 
-  const { user, userProfile, loading: authLoading, fetchUserProfile } = useAuth();
-  const [currentPityCount, setCurrentPityCount] = useState(0);
+  // Removed useAuth as per previous request (no login barrier, no coins/inventory for now)
+  // const { user, userProfile, loading: authLoading, fetchUserProfile } = useAuth();
+  // const [currentPityCount, setCurrentPityCount] = useState(0);
 
   useEffect(() => {
     setIsClient(true);
-    if (userProfile) {
-        setCurrentPityCount(userProfile.gachaPityCounter || 0);
-    }
-  }, [userProfile]);
+    // Pity count logic removed
+  }, []);
 
   const handleRoll = async (packId?: string) => {
     if (!isClient) return;
     setIsLoading(true);
     setOpeningPackId(packId || null);
-    setPulledCollectibles(null); // Clear previous pulls immediately
-    setSelectedForFusion([]); // Clear fusion selection
+    setPulledCollectibles(null); 
+    setSelectedForFusion([]); 
 
     const currentPackDetails = packId ? SAMPLE_PACKS.find(p => p.id === packId) : null;
     const packNameForToast = currentPackDetails ? currentPackDetails.name : 'General Pool';
     const rollSize = currentPackDetails?.isLegacyPack ? 1 : GACHA_ROLL_SIZE;
 
-    await new Promise(resolve => setTimeout(resolve, 700)); // Simulate network delay for UX
+    await new Promise(resolve => setTimeout(resolve, 700)); 
 
-    const result = await performGachaRoll(user?.uid || null, packId);
+    // Removed userId from performGachaRoll call as it's not needed without pity/inventory
+    const result = await performGachaRoll(packId); 
 
     setOpeningPackId(null);
 
@@ -494,15 +498,11 @@ export default function GachaPage() {
       setPulledCollectibles([]);
     } else {
       setPulledCollectibles(result.collectibles);
-      setFusionCandidates(result.collectibles);
-      if (result.newPityCounter !== undefined && user) {
-          setCurrentPityCount(result.newPityCounter);
-          // Optimistically update local profile if needed, or rely on next fetchUserProfile
-          if (fetchUserProfile) fetchUserProfile(user.uid);
-      }
+      setFusionCandidates(result.collectibles); // Candidates for fusion are the just-pulled cards
+      // Pity counter update logic removed
       toast({
         title: `${packNameForToast} Opened!`,
-        description: `You pulled ${rollSize} new collectible${rollSize > 1 ? 's' : ''}!`,
+        description: `You pulled ${result.collectibles.length} new collectible${result.collectibles.length > 1 ? 's' : ''}!`,
         variant: "default",
       });
     }
@@ -538,17 +538,16 @@ export default function GachaPage() {
         setSelectedForFusion([]);
         return;
     }
-
+    
     const rarity1Value = RARITY_NUMERICAL_VALUE[card1.rarity] ?? 0;
     const rarity2Value = RARITY_NUMERICAL_VALUE[card2.rarity] ?? 0;
     let outputRarityIndex: number;
 
-    if (rarity1Value === rarity2Value) { // Same rarity
-        outputRarityIndex = Math.min(rarity1Value + 1, RARITY_ORDER.indexOf('Mythic')); // Cap at Mythic for standard fusion
-    } else { // Different rarities
+    if (rarity1Value === rarity2Value) { 
+        outputRarityIndex = Math.min(rarity1Value + 1, RARITY_ORDER.indexOf('Mythic'));
+    } else { 
         const higherIndex = Math.max(rarity1Value, rarity2Value);
         const lowerIndex = Math.min(rarity1Value, rarity2Value);
-        // If rarities are far apart, result is one above lower. If close, result is the higher one.
         outputRarityIndex = (higherIndex - lowerIndex >= 2) ? Math.min(lowerIndex + 1, RARITY_ORDER.indexOf('Mythic')) : Math.min(higherIndex, RARITY_ORDER.indexOf('Mythic'));
     }
     const outputRarityTier = RARITY_ORDER[outputRarityIndex];
@@ -556,7 +555,7 @@ export default function GachaPage() {
     const potentialResults = SAMPLE_COLLECTIBLES.filter(c =>
         c.rarity === outputRarityTier &&
         c.id !== card1.id && c.id !== card2.id &&
-        c.rarity !== 'Event' && c.rarity !== 'Forbidden' // Exclude special rarities from standard fusion output pool
+        c.rarity !== 'Event' && c.rarity !== 'Forbidden'
     );
 
     if (potentialResults.length > 0) {
@@ -568,11 +567,13 @@ export default function GachaPage() {
             duration: 5000,
         });
         setPulledCollectibles(prev => {
-            if (!prev) return [fusedCollectible]; // Should not happen if fusion button is visible
+            if (!prev) return [fusedCollectible];
             const remainingFromPull = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
-            const newDisplayedSet = [fusedCollectible, ...remainingFromPull];
-            // Adjust to maintain the current roll size display if desired, or show new set
-            return newDisplayedSet.slice(0, prev.length -1); // Show fused card + remaining from original pull
+            return [fusedCollectible, ...remainingFromPull].slice(0, GACHA_ROLL_SIZE); // Maintain roll size
+        });
+        setFusionCandidates(prev => { // Update fusion candidates too
+            const remaining = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
+            return [fusedCollectible, ...remaining].slice(0, GACHA_ROLL_SIZE);
         });
     } else {
         toast({ title: "Fusion Fizzled...", description: `No suitable ${outputRarityTier} card could be formed from this combination. The cards remain.`, variant: "destructive" });
@@ -609,16 +610,16 @@ export default function GachaPage() {
             className="text-muted-foreground mt-1 sm:mt-2 text-sm sm:text-base"
         >
           Roll for unique, parody collectibles! Free during Beta.
-          {user && currentPityCount > 0 && <span className="block text-xs mt-1">Pity: {currentPityCount}/{HARD_PITY_COUNT}</span>}
+          {/* Pity display removed */}
         </motion.p>
       </div>
 
       <Tabs defaultValue="general" className="w-full max-w-5xl mb-6 sm:mb-8" onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-2 glass-deep rounded-lg">
-          <TabsTrigger value="general" className={cn("data-[state=active]:neon-glow-tab", activeTab === "general" && "data-[state=active]:fiery-glow-tab")}>
+          <TabsTrigger value="general" className={cn("data-[state=active]:fiery-glow-tab", activeTab === "general" && "data-[state=active]:neon-glow-tab")}>
             <List className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5"/> General Roll
           </TabsTrigger>
-          <TabsTrigger value="packs" className={cn("data-[state=active]:neon-glow-tab", activeTab === "packs" && "data-[state=active]:fiery-glow-tab")}>
+          <TabsTrigger value="packs" className={cn("data-[state=active]:fiery-glow-tab", activeTab === "packs" && "data-[state=active]:neon-glow-tab")}>
             <Grid className="mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5"/> Booster Packs
           </TabsTrigger>
         </TabsList>
@@ -630,13 +631,13 @@ export default function GachaPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="min-h-[300px]" // Ensure TabsContent has some height
+            className="min-h-[300px]" 
           >
             <TabsContent value="general" className="mt-6">
               <div className="flex flex-col items-center gap-3 mb-4 sm:mb-6">
                   <Button
                       onClick={() => handleRoll()}
-                      disabled={isLoading || !isClient || (authLoading && !!user)} // Disable if auth is loading for a logged-in user
+                      disabled={isLoading || !isClient} 
                       size="lg"
                       className="px-5 py-3 sm:px-6 sm:py-4 text-sm sm:text-md fiery-glow-hover sf-bansho-button rounded-xl relative overflow-hidden w-full max-w-xs"
                       aria-label={`Roll for ${GACHA_ROLL_SIZE} collectibles from general pool`}
@@ -679,7 +680,7 @@ export default function GachaPage() {
         </div>
       )}
 
-      {isLoading && !openingPackId && ( // General roll loading skeletons
+      {isLoading && !openingPackId && (
         <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
           {Array.from({ length: GACHA_ROLL_SIZE }).map((_, index) => (
             <Card key={`skel-${index}`} className="glass-deep aspect-[3/4] animate-pulse">
@@ -699,7 +700,7 @@ export default function GachaPage() {
       {pulledCollectibles && !isLoading && (
         <motion.div
           className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"
-          variants={{ visible: { transition: { staggerChildren: 0.1 } } }} // Use constant for stagger
+          variants={{ visible: { transition: { staggerChildren: 0.1 } } }} 
           initial="hidden"
           animate="visible"
         >
@@ -775,6 +776,3 @@ export default function GachaPage() {
   );
 }
 GachaPage.displayName = 'GachaPage';
-
-
-    
