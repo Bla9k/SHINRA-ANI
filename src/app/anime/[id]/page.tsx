@@ -25,7 +25,7 @@ import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave';
 // Add other layers if needed
 import LongHoverButtonWrapper, { type AlternativeOption as LongHoverAlternativeOption } from '@/components/shared/LongHoverButtonWrapper.tsx';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { assignAnimeToMood, removeAnimeFromMood, getMoodsForAnime } from '@/services/moods.ts'; // Ensured .ts extension
+import { assignAnimeToMood, removeAnimeFromMood, getMoodsForAnime } from '@/services/moods.ts';
 import { MOOD_FILTERS_ANIME, type Mood } from '@/config/moods';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from '@/components/ui/dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -301,7 +301,7 @@ export default function AnimeDetailPage() {
   ];
 
 
-  return ( // Fixed: Correct placement of return statement
+  return ( 
     <div className="container mx-auto px-4 py-8">
         {/* Background Image Section */}
         <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
@@ -310,29 +310,25 @@ export default function AnimeDetailPage() {
                      src={anime.imageUrl}
                      alt={`${anime.title} backdrop`}
                      fill
-                     className="object-cover object-top opacity-15 blur-md scale-110" // Reduced opacity
+                     className="object-cover object-top opacity-15 blur-md scale-110" 
                      aria-hidden="true"
                      priority
                  />
              )}
-            {/* Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/80 to-background" />
         </div>
 
-        {/* Main Content Area */}
-        <div className="relative mt-16 md:mt-32"> {/* Adjusted top margin */}
-            {/* Main Anime Info Card */}
+        <div className="relative mt-16 md:mt-32"> 
             <Card className="overflow-visible glass border-primary/20 shadow-xl backdrop-blur-xl bg-card/60 mb-12">
                 <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
-                    {/* Left Column: Cover Image & Actions */}
-                    <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10"> {/* Adjusted negative margin */}
-                        <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow border-2 border-primary/50 w-48 md:w-full mx-auto"> {/* Cover image */}
+                    <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10"> 
+                        <Card className="overflow-hidden aspect-[2/3] relative shadow-lg neon-glow border-2 border-primary/50 w-48 md:w-full mx-auto"> 
                            {anime.imageUrl ? (
                               <Image
                                 src={anime.imageUrl}
                                 alt={anime.title}
                                 fill
-                                sizes="(max-width: 768px) 192px, 25vw" // Responsive image sizes
+                                sizes="(max-width: 768px) 192px, 25vw" 
                                 className="object-cover"
                                 priority
                               />
@@ -342,7 +338,6 @@ export default function AnimeDetailPage() {
                                </div>
                            )}
                         </Card>
-                        {/* Action Buttons */}
                         <div className="flex flex-col gap-3 mt-4">
                             <Button
                                 size="lg"
@@ -352,7 +347,7 @@ export default function AnimeDetailPage() {
                                 <PlayCircle size={18} className="mr-2"/> Watch Episodes
                             </Button>
 
-                            {isMobile === undefined ? (
+                           {isMobile === undefined ? (
                                 <Skeleton className="h-9 w-full rounded-md" />
                             ) : (
                                 <LongHoverButtonWrapper
@@ -361,9 +356,7 @@ export default function AnimeDetailPage() {
                                     buttonLabel={`Search ${anime.title} on AnimePahe and other sites`}
                                 >
                                      <Button variant="outline" size="sm" className="w-full neon-glow-hover">
-                                        <span>
-                                            <Search size={14} className="mr-2" /> Watch on AnimePahe <Compass size={14} className="ml-1.5 opacity-70" />
-                                        </span>
+                                        <span> Watch on AnimePahe </span>
                                     </Button>
                                 </LongHoverButtonWrapper>
                             )}
@@ -388,7 +381,6 @@ export default function AnimeDetailPage() {
                         </div>
                     </div>
 
-                    {/* Right Column: Details & Synopsis */}
                     <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col">
                         <CardHeader className="p-0 mb-3">
                            <CardTitle className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary">{anime.title}</CardTitle>
@@ -404,7 +396,6 @@ export default function AnimeDetailPage() {
                                 return mood ? <Badge key={moodId} variant="outline" className="text-xs border-accent/50 bg-accent/20"><mood.icon size={12} className="mr-1"/>{mood.name}</Badge> : null;
                             })}
                         </div>
-                         {/* Stats Card */}
                          <Card className="glass p-3 mb-4 border-primary/10">
                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
                               <div className="flex items-center gap-2" title="Score">
@@ -422,7 +413,6 @@ export default function AnimeDetailPage() {
                            </div>
                          </Card>
                         <Separator className="my-4 bg-border/50" />
-                        {/* Synopsis & Trailer */}
                         <CardContent className="p-0 flex-grow">
                             <div className="space-y-2">
                                <h3 className="text-xl font-semibold mb-2">Synopsis</h3>
@@ -432,18 +422,17 @@ export default function AnimeDetailPage() {
                                    </CardDescription>
                                 </ScrollArea>
                             </div>
-                            {/* Trailer (if available) */}
                             {anime.trailer?.embed_url && (
                                <div className="mt-6 space-y-3">
                                   <h3 className="text-xl font-semibold flex items-center gap-2"><Youtube size={22} className="text-red-600"/> Trailer</h3>
                                    <AspectRatio ratio={16 / 9} className="rounded-lg overflow-hidden border border-border/50 glass shadow-md">
                                         <iframe
-                                            src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")} // Ensure autoplay is off by default
+                                            src={anime.trailer.embed_url.replace("autoplay=1", "autoplay=0")} 
                                             title={`${anime.title} Trailer`}
                                             allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                                             allowFullScreen
                                             className="w-full h-full"
-                                            loading="lazy" // Lazy load the iframe
+                                            loading="lazy" 
                                         ></iframe>
                                    </AspectRatio>
                                </div>
@@ -453,7 +442,6 @@ export default function AnimeDetailPage() {
                 </div>
             </Card>
 
-            {/* Episodes Section */}
             <div ref={episodesSectionRef} id="episodes-section">
                 <section className="mb-12">
                     <div className="flex justify-between items-center mb-4">
@@ -506,7 +494,6 @@ export default function AnimeDetailPage() {
                 </section>
             </div>
 
-            {/* Nami's Picks Section */}
             {(loadingNamiRecs || namiRecommendations.length > 0 || namiError) && (
                  <section className="mb-12">
                     <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2">
@@ -520,8 +507,8 @@ export default function AnimeDetailPage() {
                          </Alert>
                     )}
                      {renderHorizontalSection(
-                         "", // No title needed here as it's above
-                         () => null, // No icon needed if title is already there
+                         "", 
+                         () => null, 
                          namiRecommendations,
                          loadingNamiRecs,
                          "Nami couldn't find any recommendations based on this anime right now.",
@@ -531,11 +518,10 @@ export default function AnimeDetailPage() {
                  </section>
              )}
 
-             {/* Related Anime Section */}
              {(loadingRecs || recommendations.length > 0) && (
                  renderHorizontalSection(
                      "Related Anime",
-                     Tv, // Using Tv icon for related anime
+                     Tv, 
                      recommendations,
                      loadingRecs,
                      "No related anime found.",
@@ -545,7 +531,6 @@ export default function AnimeDetailPage() {
             )}
         </div>
 
-         {/* Mood Tagging Dialog */}
          <Dialog open={isMoodsDialogOpen} onOpenChange={setIsMoodsDialogOpen}>
             <DialogContent className="glass-deep sm:max-w-md">
                 <DialogHeader>
@@ -588,23 +573,17 @@ export default function AnimeDetailPage() {
 function AnimeDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8 animate-pulse">
-      {/* Background Skeleton */}
       <div className="absolute inset-x-0 top-0 h-[40vh] md:h-[60vh] -z-10 overflow-hidden">
             <Skeleton className="h-full w-full opacity-10 blur-md scale-110" />
-           {/* Gradient Overlay Skeleton (could be a div with background) */}
            <div className="absolute inset-0 bg-gradient-to-b from-background/10 via-background/80 to-background" />
        </div>
-       {/* Main Content Skeleton */}
        <div className="relative mt-16 md:mt-32">
             <Card className="overflow-visible glass border-primary/20 bg-card/60 mb-12">
                <div className="flex flex-col md:flex-row gap-6 md:gap-10 p-4 md:p-8">
-                  {/* Left Column Skeleton */}
                   <div className="w-full md:w-1/3 lg:w-1/4 flex-shrink-0 mx-auto md:mx-0 text-center -mt-24 md:-mt-32 z-10">
-                      {/* Cover Image Skeleton */}
                       <Card className="overflow-hidden aspect-[2/3] relative border-2 border-primary/50 w-48 md:w-full mx-auto">
                           <Skeleton className="h-full w-full" />
                       </Card>
-                       {/* Action Buttons Skeleton */}
                        <div className="flex flex-col gap-3 mt-4">
                            <Skeleton className="h-10 w-full rounded-md" />
                            <Skeleton className="h-9 w-full rounded-md" />
@@ -613,19 +592,16 @@ function AnimeDetailSkeleton() {
                            <Skeleton className="h-9 w-full rounded-md" />
                        </div>
                   </div>
-                  {/* Right Column Skeleton */}
                   <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col">
                       <CardHeader className="p-0 mb-3">
-                          <Skeleton className="h-8 w-3/4 mb-2" /> {/* Title */}
-                          <Skeleton className="h-4 w-1/2" /> {/* Subtitle/Alt title */}
+                          <Skeleton className="h-8 w-3/4 mb-2" /> 
+                          <Skeleton className="h-4 w-1/2" /> 
                       </CardHeader>
-                      {/* Genres Skeleton */}
                       <div className="flex flex-wrap gap-2 mb-4">
                           <Skeleton className="h-6 w-16 rounded-full" />
                           <Skeleton className="h-6 w-20 rounded-full" />
                            <Skeleton className="h-6 w-16 rounded-full" />
                       </div>
-                       {/* Stats Card Skeleton */}
                        <Card className="glass p-3 mb-4 border-primary/10">
                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
                               <Skeleton className="h-5 w-14" />
@@ -635,48 +611,44 @@ function AnimeDetailSkeleton() {
                          </div>
                       </Card>
                       <Separator className="my-4 bg-border/50" />
-                      {/* Synopsis Skeleton */}
                       <CardContent className="p-0 flex-grow">
                           <div className="space-y-2 mb-6">
-                            <Skeleton className="h-7 w-32 mb-2" /> {/* Synopsis Title */}
-                            <div className="h-24 pr-3 space-y-2"> {/* ScrollArea content */}
+                            <Skeleton className="h-7 w-32 mb-2" /> 
+                            <div className="h-24 pr-3 space-y-2"> 
                                <Skeleton className="h-4 w-full" />
                                <Skeleton className="h-4 w-full" />
                                <Skeleton className="h-4 w-5/6" />
                             </div>
                           </div>
-                           {/* Trailer Skeleton */}
                            <div className="mt-6 space-y-3">
-                               <Skeleton className="h-7 w-28 mb-2" /> {/* Trailer Title */}
-                               <Skeleton className="aspect-video w-full rounded-lg glass" /> {/* Iframe */}
+                               <Skeleton className="h-7 w-28 mb-2" /> 
+                               <Skeleton className="aspect-video w-full rounded-lg glass" /> 
                            </div>
                       </CardContent>
                   </div>
                </div>
             </Card>
-             {/* Episodes Section Skeleton */}
              <section className="mb-12">
                  <div className="flex justify-between items-center mb-4">
-                    <Skeleton className="h-8 w-36" /> {/* Episodes Title */}
-                    <Skeleton className="h-5 w-20" /> {/* Source Badge */}
+                    <Skeleton className="h-8 w-36" /> 
+                    <Skeleton className="h-5 w-20" /> 
                  </div>
-                 <Card className="glass p-6"> {/* Card for episodes list */}
+                 <Card className="glass p-6"> 
                      <div className="flex flex-col items-center justify-center text-center h-40">
-                          <Skeleton className="h-10 w-10 rounded-full mb-3" /> {/* Loader/Icon */}
-                          <Skeleton className="h-5 w-48 mb-2" /> {/* Loading text */}
-                          <Skeleton className="h-4 w-64" /> {/* Sub-text */}
+                          <Skeleton className="h-10 w-10 rounded-full mb-3" /> 
+                          <Skeleton className="h-5 w-48 mb-2" /> 
+                          <Skeleton className="h-4 w-64" /> 
                      </div>
                  </Card>
              </section>
-            {/* Horizontal Sections Skeleton */}
             <section className="mb-12">
-                <Skeleton className="h-8 w-48 mb-4" /> {/* Section Title */}
+                <Skeleton className="h-8 w-48 mb-4" /> 
                  <div className="flex space-x-3 md:space-x-4 overflow-x-auto pb-4">
                     {Array.from({ length: 5 }).map((_, index) => <SkeletonItemCard key={`rec-skel-${index}`} />)}
                 </div>
             </section>
              <section>
-                <Skeleton className="h-8 w-52 mb-4" /> {/* Section Title */}
+                <Skeleton className="h-8 w-52 mb-4" /> 
                  <div className="flex space-x-3 md:space-x-4 overflow-x-auto pb-4">
                     {Array.from({ length: 5 }).map((_, index) => <SkeletonItemCard key={`rel-skel-${index}`} />)}
                 </div>
@@ -685,3 +657,4 @@ function AnimeDetailSkeleton() {
     </div>
   );
 }
+
