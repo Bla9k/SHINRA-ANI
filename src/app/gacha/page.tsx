@@ -5,9 +5,9 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDescription } from '@/components/ui/card';
 import { performGachaRoll } from '@/services/collectibles';
-import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity, type GachaPack, SAMPLE_PACKS } from '@/types/collectibles.ts';
+import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity, type GachaPack, SAMPLE_PACKS } from '@/types/collectibles';
 import Image from 'next/image';
-import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle, Package, ShoppingBag, Grid, List } from 'lucide-react';
+import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle, Package, ShoppingBag, Grid, List, Link as LinkIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -21,7 +21,7 @@ import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useToast } from '@/hooks/use-toast'; // Import useToast
+import { useToast } from '@/hooks/use-toast';
 
 const CardTitle = CardTitlePrimitive;
 
@@ -48,91 +48,107 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
   const [realItemDetails, setRealItemDetails] = useState<Anime | Manga | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
+
+  const GENERIC_PLACEHOLDER = 'https://placehold.co/300x450/0B0C10/E0E7EF?text=Image+Unavailable&font=poppins';
+  const NO_ART_PLACEHOLDER = 'https://placehold.co/300x400.png?text=NoArt&font=lora';
 
   useEffect(() => {
+    let isMounted = true;
     const fetchRealDetails = async () => {
       if (!collectible.originalMalId || !collectible.originalType) {
-        setIsLoadingDetails(false);
-        setErrorDetails('Missing original item ID or type for linking.');
-        console.warn(`[GachaCard] Collectible ${collectible.id} missing originalMalId or originalType.`);
+        if (isMounted) {
+          setIsLoadingDetails(false);
+          setErrorDetails('Missing original item ID or type.');
+          console.warn(`[GachaCard] Collectible ${collectible.id} missing originalMalId or originalType.`);
+        }
         return;
       }
-      setIsLoadingDetails(true);
-      setErrorDetails(null);
+      if (isMounted) {
+        setIsLoadingDetails(true);
+        setErrorDetails(null);
+        setImageError(false);
+      }
       try {
         let details: Anime | Manga | null = null;
-        console.log(`[GachaCard] Fetching details for ${collectible.originalType} ID: ${collectible.originalMalId}`);
+        console.log(`[GachaCard - ${collectible.parodyTitle}] Fetching details for ${collectible.originalType} ID: ${collectible.originalMalId}`);
         if (collectible.originalType === 'anime') {
-          details = await getAnimeDetails(collectible.originalMalId, undefined, true); // noDelay = true
+          details = await getAnimeDetails(collectible.originalMalId, undefined, true);
         } else if (collectible.originalType === 'manga') {
-          details = await getMangaDetails(collectible.originalMalId, undefined, true); // noDelay = true
+          details = await getMangaDetails(collectible.originalMalId, undefined, true);
         }
-        setRealItemDetails(details);
-        if (!details) {
-            setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
-            console.warn(`[GachaCard] Jikan fetch returned null for ${collectible.originalType} ID: ${collectible.originalMalId}`);
-        } else {
-            console.log(`[GachaCard] Successfully fetched details for ${collectible.originalType} ID: ${collectible.originalMalId}`, details);
+        if (isMounted) {
+          setRealItemDetails(details);
+          if (!details) {
+            setErrorDetails(`Details not found for ${collectible.originalType} ID ${collectible.originalMalId}.`);
+            console.warn(`[GachaCard - ${collectible.parodyTitle}] Jikan fetch returned null for ${collectible.originalType} ID: ${collectible.originalMalId}`);
+          } else {
+            console.log(`[GachaCard - ${collectible.parodyTitle}] Details fetched for ${collectible.originalType} ID: ${collectible.originalMalId}`, details?.title);
+          }
         }
       } catch (err) {
-        console.error(`[GachaCard] Error fetching details for collectible ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
-        setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
+        if (isMounted) {
+          console.error(`[GachaCard - ${collectible.parodyTitle}] Error fetching details for ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
+          setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
+        }
       } finally {
-        setIsLoadingDetails(false);
+        if (isMounted) setIsLoadingDetails(false);
       }
     };
     fetchRealDetails();
+    return () => { isMounted = false; };
   }, [collectible]);
 
   const rarityClasses = getRarityColorClasses(collectible.rarity);
 
-  let displayImageUrl = 'https://placehold.co/300x450/0B0C10/E0E7EF?text=Loading&font=poppins'; // Default placeholder
+  let displayImageUrl = GENERIC_PLACEHOLDER; // Default to generic placeholder
 
-  if (collectible.isEvolvedForm && collectible.imageUrl && collectible.imageUrl !== 'https://placehold.co/300x400.png?text=NoArt&font=lora') {
+  if (collectible.isEvolvedForm && collectible.imageUrl && collectible.imageUrl !== NO_ART_PLACEHOLDER) {
     displayImageUrl = collectible.imageUrl;
   } else if (realItemDetails?.imageUrl) {
     displayImageUrl = realItemDetails.imageUrl;
-  } else if (collectible.imageUrl && collectible.imageUrl !== 'https://placehold.co/300x400.png?text=NoArt&font=lora') {
-    displayImageUrl = collectible.imageUrl; // Use parody art if real art isn't available yet or if it's the only one
+  } else if (collectible.imageUrl && collectible.imageUrl !== NO_ART_PLACEHOLDER) {
+    displayImageUrl = collectible.imageUrl;
   }
   
-  // Log the URLs for debugging
-  console.log(`[GachaCard Debug - ${collectible.parodyTitle}] Original Collectible URL: ${collectible.imageUrl}, Real Item URL: ${realItemDetails?.imageUrl}, Final Display URL: ${displayImageUrl}`);
-
+  // console.log(`[GachaCard - ${collectible.parodyTitle}] Final display URL: ${displayImageUrl}`);
 
   const handleCardClick = () => {
     if (isFusionMode && onSelectForFusion) {
       onSelectForFusion(collectible);
     }
-    // Card is not a link by default anymore. Link to details is explicit.
+    // No navigation if not in fusion mode from this click
   };
 
   const cardContent = (
     <Card
         className={cn(
           "glass-deep shadow-xl border overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out group",
-          rarityClasses.split(' ')[0], // Base border color from rarity
+          rarityClasses.split(' ')[0],
           isFusionMode && "hover:ring-2 hover:ring-offset-2 hover:ring-offset-background hover:ring-primary cursor-pointer",
           isSelectedForFusion && "ring-2 ring-primary ring-offset-2 ring-offset-background"
         )}
         onClick={handleCardClick}
       >
         <CardHeader className="p-0 relative aspect-[3/4]">
-          {isLoadingDetails && !displayImageUrl.startsWith('https://placehold.co/300x450/') ? (
+          {isLoadingDetails && !imageError ? (
             <Skeleton className="absolute inset-0 bg-muted/30" />
           ) : (
             <Image
-              src={displayImageUrl}
+              src={imageError ? GENERIC_PLACEHOLDER : displayImageUrl}
               alt={collectible.parodyTitle}
               fill
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              className={cn("object-cover transition-opacity duration-500", (isLoadingDetails && !displayImageUrl.startsWith('https://placehold.co/300x450/')) ? "opacity-30" : "opacity-100", collectible.isEvolvedForm ? 'filter hue-rotate-15 saturate-150' : '')}
+              className={cn(
+                "object-cover transition-opacity duration-500",
+                (isLoadingDetails && !displayImageUrl.includes('placehold.co')) ? "opacity-30" : "opacity-100",
+                collectible.isEvolvedForm ? 'filter hue-rotate-15 saturate-150' : ''
+              )}
               data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
-              onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x450/0B0C10/E0E7EF?text=Error&font=poppins'; }}
-              priority={false} // Generally false for Gacha cards unless it's a single featured one
+              onError={() => setImageError(true)} // Set error state to use GENERIC_PLACEHOLDER
+              priority={false}
             />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
           <Badge
             className={cn(
               "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
@@ -173,7 +189,7 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
                          {collectible.originalMalId && collectible.originalType && (
                             <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior>
                                 <a target="_blank" rel="noopener noreferrer" className="text-[9px] text-primary/70 hover:text-primary hover:underline flex items-center gap-0.5 mt-1" onClick={(e) => e.stopPropagation()}>
-                                    View Original <Info size={10} />
+                                    View Original <LinkIcon size={10} />
                                 </a>
                             </Link>
                          )}
@@ -201,9 +217,12 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible, onSelectForFusion, i
         </CardContent>
       </Card>
   );
-
-  // The card itself is not a link anymore. Linking is done via the explicit "View Original" button.
-  return <div className="w-full group">{cardContent}</div>;
+  // Only wrap with Link if not in fusion mode
+  return (
+    <div className="w-full group">
+      {cardContent}
+    </div>
+  );
 };
 GachaCard.displayName = 'GachaCard';
 
@@ -339,8 +358,7 @@ export default function GachaPage() {
 
     await new Promise(resolve => setTimeout(resolve, 700));
 
-    // Pity system and user coin logic are disabled for now.
-    const result = await performGachaRoll(null, packId); // Pass null for userId
+    const result = await performGachaRoll(packId);
 
     setOpeningPackName(null);
 
@@ -397,15 +415,21 @@ export default function GachaPage() {
     const rarity2Value = RARITY_NUMERICAL_VALUE[card2.rarity];
     let outputRarityIndex: number;
 
-    if (rarity1Value === rarity2Value) {
+    // Determine output rarity based on precise rules
+    if (rarity1Value === rarity2Value) { // Same rarity
         outputRarityIndex = Math.min(rarity1Value + 1, RARITY_ORDER.length - 1);
-    } else {
+    } else { // Different rarities
         const higherIndex = Math.max(rarity1Value, rarity2Value);
         const lowerIndex = Math.min(rarity1Value, rarity2Value);
-        if (higherIndex - lowerIndex >= 2 && lowerIndex + 1 < RARITY_ORDER.length) {
-            outputRarityIndex = lowerIndex + 1;
-        } else {
-            outputRarityIndex = Math.min(higherIndex, RARITY_ORDER.length - 1);
+        // If significantly different (e.g., Common + Ultra Rare), aim for the higher one or one above lower
+        if (higherIndex - lowerIndex >= 2) {
+            // Could be higherIndex or lowerIndex + 1. Let's try higher for now or a specific rule.
+            // For now, let's make it "one step above the lower rarity" but capped
+             outputRarityIndex = Math.min(lowerIndex + 1, RARITY_ORDER.length - 1);
+             // Or if you want it to be the higher of the two:
+             // outputRarityIndex = higherIndex;
+        } else { // Rarities are adjacent (e.g., Common + Rare)
+            outputRarityIndex = Math.min(higherIndex, RARITY_ORDER.length - 1); // Result in the higher of the two, or cap at Mythic
         }
     }
     const outputRarityTier = RARITY_ORDER[outputRarityIndex];
@@ -414,7 +438,7 @@ export default function GachaPage() {
         c.rarity === outputRarityTier &&
         c.id !== card1.id &&
         c.id !== card2.id &&
-        c.rarity !== 'Event'
+        c.rarity !== 'Event' // Exclude event cards from being fusion results through normal fusion
     );
 
     if (potentialResults.length > 0) {
@@ -426,14 +450,17 @@ export default function GachaPage() {
             duration: 5000,
         });
         setPulledCollectibles(prev => {
-            if (!prev) return [fusedCollectible]; // Should not happen if fusion modal is open
-            const remaining = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
-            const newPulls = [fusedCollectible, ...remaining];
-            const cardsToShow = Math.min(GACHA_ROLL_SIZE, newPulls.length);
-            return newPulls.slice(0, cardsToShow);
+            if (!prev) return [fusedCollectible];
+            // Remove the two selected cards and add the new fused one
+            const remainingFromPull = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
+            const newDisplayedSet = [fusedCollectible, ...remainingFromPull];
+            // Ensure we still display GACHA_ROLL_SIZE cards if possible, by adding from general pool if needed (or just show fewer if only 3 remain)
+            // For simplicity now, just show the new set
+            const cardsToShow = Math.min(GACHA_ROLL_SIZE, newDisplayedSet.length);
+            return newDisplayedSet.slice(0, cardsToShow);
         });
     } else {
-        toast({ title: "Fusion Fizzled...", description: `No suitable ${outputRarityTier} card could be formed. The cards remain.`, variant: "destructive" });
+        toast({ title: "Fusion Fizzled...", description: `No suitable ${outputRarityTier} card could be formed from this combination. The cards remain.`, variant: "destructive" });
     }
 
     setIsFusionModalOpen(false);
