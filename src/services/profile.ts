@@ -8,7 +8,8 @@ import {
     updateDoc,
     serverTimestamp,
     Timestamp,
-    FirebaseError
+    FirebaseError,
+    arrayUnion // Keep for potential future list additions
 } from 'firebase/firestore';
 
 // --- Interfaces ---
@@ -48,6 +49,8 @@ export interface UserProfileData {
     subscriptionTier: 'spark' | 'ignition' | 'hellfire' | 'burstdrive' | null;
     createdAt: Date | Timestamp;
     updatedAt: Date | Timestamp;
+    // Removed: coins: number;
+    // Removed: ownedCollectibleIds: string[];
 }
 
 export const defaultUserProfileData: Omit<UserProfileData, 'uid' | 'email' | 'createdAt' | 'updatedAt' | 'username' | 'avatarUrl'> = {
@@ -74,8 +77,8 @@ export const defaultUserProfileData: Omit<UserProfileData, 'uid' | 'email' | 'cr
     subscriptionTier: null,
 };
 
-const MAX_RETRIES = 2; // Increased max retries
-const RETRY_DELAY_MS = 2500; // Increased retry delay
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 3000;
 
 async function executeWithRetry<T>(action: () => Promise<T>, operationName: string): Promise<T> {
     let retries = 0;
@@ -86,8 +89,8 @@ async function executeWithRetry<T>(action: () => Promise<T>, operationName: stri
             const firebaseError = error as FirebaseError;
             if (firebaseError.code === 'unavailable' && retries < MAX_RETRIES) {
                 retries++;
-                console.warn(`[${operationName}] Firebase unavailable (attempt ${retries}/${MAX_RETRIES}). Retrying in ${RETRY_DELAY_MS / 1000}s... Error: ${firebaseError.message}`);
-                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * retries)); // Exponential backoff might be too much here, just increasing delay
+                console.warn(`[${operationName}] Firebase unavailable (attempt ${retries}/${MAX_RETRIES}). Retrying in ${RETRY_DELAY_MS / 1000 * retries}s... Error: ${firebaseError.message}`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS * retries));
             } else {
                 console.error(`[${operationName}] Firebase error after ${retries} retries:`, firebaseError.code, firebaseError.message);
                 if (firebaseError.code === 'unavailable') {
@@ -101,61 +104,72 @@ async function executeWithRetry<T>(action: () => Promise<T>, operationName: stri
     }
 }
 
-
 export async function createUserProfileDocument(
     uid: string,
     initialData: Partial<Pick<UserProfileData, 'email' | 'username' | 'avatarUrl'>>
 ): Promise<UserProfileData> {
     return executeWithRetry(async () => {
+        if (!db) throw new Error("Firestore (db) is not initialized in createUserProfileDocument.");
         const userDocRef = doc(db, 'users', uid);
         console.log(`[createUserProfileDocument] Attempting to create/update profile for UID: ${uid}`);
-        const docSnap = await getDoc(userDocRef); // This getDoc can also fail with "unavailable"
-        const now = serverTimestamp(); // Get serverTimestamp once
+        const docSnap = await getDoc(userDocRef);
+        const now = serverTimestamp();
 
         let finalProfileData: UserProfileData;
 
         if (docSnap.exists()) {
             console.log(`[createUserProfileDocument] Profile for UID: ${uid} already exists. Ensuring core details are up-to-date.`);
-            const existingData = docSnap.data() as UserProfileData;
+            const existingData = docSnap.data() as UserProfileData; // Assume data conforms to UserProfileData
             const updatePayload: Partial<UserProfileData> = {
-                updatedAt: now as Timestamp, // Firestore server timestamp
-                email: initialData.email || existingData.email || '', // Prioritize new data from auth provider
-                // Only update username from auth provider if current Firestore username is default or empty
+                updatedAt: now as Timestamp,
+                email: initialData.email || existingData.email || '',
                 username: initialData.username && (existingData.username === `User-${uid.substring(0,5)}` || !existingData.username)
                     ? initialData.username
                     : existingData.username || initialData.username || `User-${uid.substring(0,5)}`,
-                // Only update avatar from auth provider if current Firestore avatar is null or empty
                 avatarUrl: initialData.avatarUrl !== undefined && (existingData.avatarUrl === null || existingData.avatarUrl === '')
                     ? initialData.avatarUrl
                     : existingData.avatarUrl !== undefined ? existingData.avatarUrl : null,
-                subscriptionTier: existingData.subscriptionTier || null, // Preserve existing tier
+                subscriptionTier: existingData.subscriptionTier || null,
             };
-            await updateDoc(userDocRef, updatePayload as any); // Use any for serverTimestamp compatibility
+            await updateDoc(userDocRef, updatePayload as any);
             finalProfileData = {
-                ...existingData, // Start with existing data
-                ...updatePayload, // Override with updates
+                ...existingData,
+                ...updatePayload,
                 uid,
-                createdAt: (existingData.createdAt instanceof Timestamp ? existingData.createdAt.toDate() : new Date(existingData.createdAt as any)) || new Date(), // Ensure createdAt is a Date
-                updatedAt: new Date(), // For immediate client-side use
+                createdAt: (existingData.createdAt instanceof Timestamp ? existingData.createdAt.toDate() : new Date(existingData.createdAt as any)) || new Date(),
+                updatedAt: new Date(),
             };
         } else {
             console.log(`[createUserProfileDocument] No profile found for UID: ${uid}. Creating new profile.`);
-            const newProfileData = { // Explicitly type to ensure all fields from default are considered
+            const newProfileData: Omit<UserProfileData, 'createdAt' | 'updatedAt'> & { createdAt: Timestamp, updatedAt: Timestamp } = {
                 uid,
                 email: initialData.email || '',
                 username: initialData.username || initialData.email?.split('@')[0] || `User-${uid.substring(0, 5)}`,
                 avatarUrl: initialData.avatarUrl === undefined ? null : initialData.avatarUrl,
-                ...defaultUserProfileData, // Spread defaults
-                createdAt: now as Timestamp, // Firestore server timestamp
-                updatedAt: now as Timestamp, // Firestore server timestamp
+                bannerUrl: defaultUserProfileData.bannerUrl,
+                bio: defaultUserProfileData.bio,
+                status: defaultUserProfileData.status,
+                level: defaultUserProfileData.level,
+                xp: defaultUserProfileData.xp,
+                xpToNextLevel: defaultUserProfileData.xpToNextLevel,
+                badges: defaultUserProfileData.badges,
+                stats: { ...defaultUserProfileData.stats },
+                watchlistIds: [],
+                readlistIds: [],
+                favoriteIds: [],
+                genrePreferences: {},
+                joinedCommunities: [],
+                subscriptionTier: null,
+                createdAt: now as Timestamp,
+                updatedAt: now as Timestamp,
             };
-            await setDoc(userDocRef, newProfileData as any); // Use any for serverTimestamp compatibility
+            await setDoc(userDocRef, newProfileData as any);
             console.log(`[createUserProfileDocument] New profile created for UID: ${uid}`);
             finalProfileData = {
                 ...newProfileData,
-                createdAt: new Date(), // For client-side immediate use
-                updatedAt: new Date(), // For client-side immediate use
-            };
+                createdAt: new Date(),
+                updatedAt: new Date(),
+            } as UserProfileData;
         }
         return finalProfileData;
     }, "Create/Update User Profile");
@@ -167,13 +181,13 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
         throw new Error("User ID is required to fetch profile.");
     }
     return executeWithRetry(async () => {
+        if (!db) throw new Error("Firestore (db) is not initialized in getUserProfileDocument.");
         const userDocRef = doc(db, 'users', uid);
         console.log(`[getUserProfileDocument] Fetching profile for UID: ${uid}`);
         const docSnap = await getDoc(userDocRef);
         if (docSnap.exists()) {
             const data = docSnap.data();
             console.log(`[getUserProfileDocument] Profile data found for UID ${uid}.`);
-            // Convert Firestore Timestamps to JS Date objects for client-side consistency
             const createdAtDate = data.createdAt instanceof Timestamp ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date());
             const updatedAtDate = data.updatedAt instanceof Timestamp ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : new Date());
 
@@ -181,8 +195,8 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
                 uid,
                 email: data.email || '',
                 username: data.username || `User-${uid.substring(0,5)}`,
-                avatarUrl: data.avatarUrl === undefined ? null : data.avatarUrl, // Handle undefined
-                bannerUrl: data.bannerUrl === undefined ? null : data.bannerUrl, // Handle undefined
+                avatarUrl: data.avatarUrl === undefined ? null : data.avatarUrl,
+                bannerUrl: data.bannerUrl === undefined ? null : data.bannerUrl,
                 bio: data.bio || '',
                 status: data.status || defaultUserProfileData.status,
                 level: data.level || defaultUserProfileData.level,
@@ -202,13 +216,14 @@ export async function getUserProfileDocument(uid: string): Promise<UserProfileDa
             return profile;
         } else {
             console.warn(`[getUserProfileDocument] No profile document found for UID: ${uid}. Returning null.`);
-            return null; // Explicitly return null if not found, to trigger creation logic
+            return null;
         }
     }, "Get User Profile");
 }
 
 export async function updateUserProfileDocument(uid: string, data: Partial<UserProfileData>): Promise<void> {
      return executeWithRetry(async () => {
+        if (!db) throw new Error("Firestore (db) is not initialized in updateUserProfileDocument.");
         const userDocRef = doc(db, 'users', uid);
         console.log(`[updateUserProfileDocument] Updating profile for UID: ${uid} with data:`, data);
         await updateDoc(userDocRef, {
@@ -225,6 +240,7 @@ export async function updateUserSubscriptionTier(uid: string, tier: 'spark' | 'i
         throw new Error("User ID is required to update subscription tier.");
     }
     return executeWithRetry(async () => {
+        if (!db) throw new Error("Firestore (db) is not initialized in updateUserSubscriptionTier.");
         const userDocRef = doc(db, 'users', uid);
         console.log(`[updateUserSubscriptionTier] Updating subscription tier for UID: ${uid} to ${tier}`);
         await updateDoc(userDocRef, {
@@ -235,49 +251,50 @@ export async function updateUserSubscriptionTier(uid: string, tier: 'spark' | 'i
     }, "Update User Subscription Tier");
 }
 
+
 export async function addItemToList(
     uid: string,
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds',
     item: UserListItemData
 ): Promise<void> {
     return executeWithRetry(async () => {
+        if (!db) throw new Error(`Firestore (db) is not initialized in addItemToList (${listName}).`);
         const userDocRef = doc(db, 'users', uid);
-        // Firestore Lite does not support arrayUnion. Fetch, modify, then set.
-        const userProfile = await getUserProfileDocument(uid);
-        const currentList = userProfile?.[listName] || [];
-        // Avoid duplicates
-        if (!currentList.some(existingItem => existingItem.id === item.id && existingItem.type === item.type)) {
-            const updatedList = [...currentList, item];
-            await updateDoc(userDocRef, {
-                [listName]: updatedList,
-                updatedAt: serverTimestamp()
-            });
-            console.log(`Item ${item.id} added to ${listName} for user ${uid}`);
-        } else {
-            console.log(`Item ${item.id} already in ${listName} for user ${uid}`);
-        }
+        await updateDoc(userDocRef, {
+            [listName]: arrayUnion(item),
+            updatedAt: serverTimestamp()
+        });
+        console.log(`Item ${item.id} added to ${listName} for user ${uid}`);
     }, `Add item to ${listName}`);
 }
 
 export async function removeItemFromList(
     uid: string,
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds',
-    itemId: number,
-    itemType: 'anime' | 'manga'
+    itemToRemove: UserListItemData // Pass the whole item to remove by exact match
 ): Promise<void> {
     return executeWithRetry(async () => {
+        if (!db) throw new Error(`Firestore (db) is not initialized in removeItemFromList (${listName}).`);
         const userDocRef = doc(db, 'users', uid);
+        // Firestore arrayRemove requires the exact object to remove.
+        // This means the object passed must match one in the array precisely.
+        // If only ID and type are used for matching, you need to fetch, filter, and set.
+        // For simplicity and common use with arrayRemove, we assume the object matches.
+        // If more complex removal logic is needed (e.g., by ID only), fetch-filter-set is required.
         const userProfile = await getUserProfileDocument(uid);
         if (userProfile && userProfile[listName]) {
-            const updatedList = userProfile[listName].filter(item => !(item.id === itemId && item.type === itemType));
+            const updatedList = userProfile[listName].filter(
+                item => !(item.id === itemToRemove.id && item.type === itemToRemove.type)
+            );
             await updateDoc(userDocRef, {
                 [listName]: updatedList,
                 updatedAt: serverTimestamp()
             });
-            console.log(`Item ${itemId} (type: ${itemType}) removed from ${listName} for user ${uid}`);
+            console.log(`Item ${itemToRemove.id} (type: ${itemToRemove.type}) removed from ${listName} for user ${uid}`);
         }
     }, `Remove item from ${listName}`);
 }
+
 
 export async function updateItemInList(
     uid: string,
@@ -285,6 +302,7 @@ export async function updateItemInList(
     updatedItem: UserListItemData
 ): Promise<void> {
      return executeWithRetry(async () => {
+        if (!db) throw new Error(`Firestore (db) is not initialized in updateItemInList (${listName}).`);
         const userDocRef = doc(db, 'users', uid);
         const userProfile = await getUserProfileDocument(uid);
         if (userProfile && userProfile[listName]) {
@@ -293,8 +311,7 @@ export async function updateItemInList(
             if (itemIndex > -1) {
                 list[itemIndex] = updatedItem;
             } else {
-                // If item not found for update, add it instead.
-                console.warn(`Item ${updatedItem.id} (type: ${updatedItem.type}) not found in ${listName} for user ${uid} to update. Adding it.`);
+                console.warn(`Item ${updatedItem.id} (type: ${updatedItem.type}) not found in ${listName} for user ${uid} to update. Adding it instead.`);
                 list = [...list, updatedItem];
             }
             await updateDoc(userDocRef, {
@@ -313,11 +330,13 @@ export async function updateItemInList(
     }, `Update item in ${listName}`);
 }
 
+
 export async function getUserList(
     uid: string,
     listName: 'watchlistIds' | 'readlistIds' | 'favoriteIds'
 ): Promise<UserListItemData[]> {
     return executeWithRetry(async () => {
+        if (!db) throw new Error(`Firestore (db) is not initialized in getUserList (${listName}).`);
         const userProfile = await getUserProfileDocument(uid);
         return userProfile?.[listName] || [];
     }, `Get user ${listName}`);
