@@ -34,17 +34,6 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: 'sword-boy-screams',
-    parodyTitle: 'Sword Boy Screams for 300 Episodes',
-    originalMalId: 21, // One Piece
-    originalType: 'anime',
-    rarity: 'Rare',
-    parodyBlurb: "He has a sword. He screams. A lot. Sometimes he wins. Sometimes he screams more. Peak fiction.",
-    imageUrl: 'https://placehold.co/300x400.png?text=SwordScream&font=lora',
-    genreTags: ['Action', 'Shonen', 'Power-Up'],
-    moodTags: ['Adrenaline Rush'],
-  },
-  {
     id: 'roommate-yandere',
     parodyTitle: 'My Roommate Is a God-Level Yandere',
     originalMalId: 20507, // Mirai Nikki
@@ -89,17 +78,6 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
-    id: 'she-breathed-once',
-    parodyTitle: 'She Breathed Once, So He Fell in Love',
-    originalMalId: 13579, // Placeholder: A generic shoujo, find a real one
-    originalType: 'manga',
-    rarity: 'Common',
-    parodyBlurb: "The pinnacle of shoujo romance. Witness breathtaking...breathing. And instantaneous, undying devotion.",
-    imageUrl: 'https://placehold.co/300x400.png?text=LoveBreathe&font=lora',
-    genreTags: ['Romance', 'Shoujo', 'School Life'],
-    moodTags: ['Heartwarming', 'Comfy & Cozy'],
-  },
-  {
     id: 'naruto-uncle-returns',
     parodyTitle: 'Naruto’s Lost Uncle Returns in 2025',
     originalMalId: 20, // Naruto
@@ -121,7 +99,6 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Action', 'Adventure', 'Supernatural', 'Comedy'],
     moodTags: ['Adrenaline Rush'],
   },
-  // Add more samples to ensure we have at least 10 for the roll
   {
     id: 'isekai-truck-kun',
     parodyTitle: 'Truck-kun Strikes Again!',
