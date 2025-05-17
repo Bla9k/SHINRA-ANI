@@ -73,7 +73,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
-    id: 'naruto-uncle-returns',
+    id: 'naruto-s-lost-uncle-returns-in-2025',
     parodyTitle: 'Naruto’s Lost Uncle Returns in 2025',
     originalMalId: 20, // Naruto
     originalType: 'anime',
@@ -84,7 +84,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
-    id: 'budget-jojo',
+    id: 'budget-jojo-but-still-fire',
     parodyTitle: 'Budget JoJo but Still Fire',
     originalMalId: 14719, // JoJo's Bizarre Adventure (TV)
     originalType: 'anime',
@@ -131,7 +131,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   },
   // Batch 1
   {
-    id: 'angst-teen-pilots-robot',
+    id: 'angsty-teen-reluctantly-pilots-giant-robot-again',
     parodyTitle: 'Angsty Teen Reluctantly Pilots Giant Robot Again',
     originalMalId: 30, // Neon Genesis Evangelion
     originalType: 'anime',
@@ -142,7 +142,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'isekai-smartphone-max-pro',
+    id: 'my-smartphone-in-another-world:-now-with-5g!',
     parodyTitle: 'My Smartphone In Another World: Now With 5G!',
     originalMalId: 35203, // Isekai wa Smartphone to Tomo ni.
     originalType: 'anime',
@@ -153,7 +153,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Hilarious'],
   },
   {
-    id: 'food-wars-extra-salt',
+    id: 'food-wars:-extra-salty-edition',
     parodyTitle: 'Food Wars: Extra Salty Edition',
     originalMalId: 28171, // Shokugeki no Souma
     originalType: 'anime',
@@ -164,10 +164,10 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Hilarious'],
   },
   {
-    id: 'overpowered-mc-problem',
+    id: 'my-mc-is-too-overpowered-and-now-i-have-plot-problems',
     parodyTitle: 'My MC is Too Overpowered and Now I Have Plot Problems',
-    originalMalId: 21, // One Punch Man (Anime MAL ID)
-    originalType: 'anime',
+    originalMalId: 21, // One Punch Man (Anime MAL ID, using 34134 for manga seems more appropriate for the general OPM concept)
+    originalType: 'anime', // Could also be manga, as OPM has prominent versions of both
     rarity: 'Ultra Rare',
     parodyBlurb: "He can defeat anyone with one punch... so now what? An existential comedy about ultimate power.",
     imageUrl: 'https://placehold.co/300x400.png?text=OPMCprobs&font=lora',
@@ -175,7 +175,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Adrenaline Rush'],
   },
   {
-    id: 'cute-girls-doing-war-crimes',
+    id: 'cute-girls-doing-questionable-battlefield-things',
     parodyTitle: 'Cute Girls Doing Questionable Battlefield Things',
     originalMalId: 35838, // Girls' Last Tour
     originalType: 'anime',
@@ -186,7 +186,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Ride'],
   },
   {
-    id: 'high-school-death-game',
+    id: 'high-school-death-game:-midterms-are-a-killer',
     parodyTitle: 'High School Death Game: Midterms Are a Killer',
     originalMalId: 32182, // Danganronpa 3: The End of Kibougamine Gakuen - Mirai-hen
     originalType: 'anime',
@@ -197,7 +197,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'time-travel-fix-it-fic',
+    id: 'if-i-could-turn-back-time:-the-anime',
     parodyTitle: 'If I Could Turn Back Time: The Anime',
     originalMalId: 32281, // Erased
     originalType: 'anime',
@@ -208,7 +208,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Ride', 'Dark & Deep'],
   },
   {
-    id: 'yet-another-isekai-harem',
+    id: 'yet-another-generic-isekai-harem-adventure',
     parodyTitle: 'Yet Another Generic Isekai Harem Adventure',
     originalMalId: 40148, // Example: Peter Grill to Kenja no Jikan
     originalType: 'anime',
@@ -219,7 +219,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy'],
   },
   {
-    id: 'edgy-vampire-romance',
+    id: 'my-immortal,-brooding,-sparkly-boyfriend',
     parodyTitle: 'My Immortal, Brooding, Sparkly Boyfriend',
     originalMalId: 3457, // Vampire Knight (Anime MAL ID)
     originalType: 'anime',
@@ -230,7 +230,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Ride'],
   },
   {
-    id: 'sports-anime-power-of-friendship',
+    id: 'the-power-of-friendship-wins-the-championship-(again)',
     parodyTitle: 'The Power of Friendship Wins the Championship (Again)',
     originalMalId: 20583, // Haikyuu!!
     originalType: 'anime',
@@ -241,7 +241,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Heartwarming'],
   },
   {
-    id: 'gundam-space-politics',
+    id: 'giant-robots-&-complicated-space-politics-weekly',
     parodyTitle: 'Giant Robots & Complicated Space Politics Weekly',
     originalMalId: 80, // Mobile Suit Gundam
     originalType: 'anime',
@@ -252,7 +252,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep'],
   },
   {
-    id: 'berserk-suffering-continues',
+    id: 'berserk:-the-suffering-never-ends-(but-the-art-is-great)',
     parodyTitle: 'Berserk: The Suffering Never Ends (But The Art is Great)',
     originalMalId: 22, // Berserk manga
     originalType: 'manga',
@@ -263,7 +263,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'idol-hell-sparkle-edition',
+    id: 'idol-hell:-sparkle-&-despair-edition',
     parodyTitle: 'Idol Hell: Sparkle & Despair Edition',
     originalMalId: 32827, // Love Live! Sunshine!!
     originalType: 'anime',
@@ -274,7 +274,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Ride', 'Heartwarming'],
   },
   {
-    id: 'slow-burn-romance-glacial-pace',
+    id: 'will-they/wont-they:-glacial-pace-edition',
     parodyTitle: 'Will They/Wont They: Glacial Pace Edition',
     originalMalId: 392, // Kimi ni Todoke (Manga MAL ID)
     originalType: 'manga',
@@ -285,7 +285,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming'],
   },
   {
-    id: 'death-note-potato-chip',
+    id: 'death-note:-i-ll-take-a-potato-chip...-and-eat-it!',
     parodyTitle: 'Death Note: I\'ll Take a Potato Chip... AND EAT IT!',
     originalMalId: 1535, // Death Note
     originalType: 'anime',
@@ -296,7 +296,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'attack-on-titan-everyone-dies',
+    id: 'attack-on-my-sanity:-everyone-dies',
     parodyTitle: 'Attack on My Sanity: Everyone Dies',
     originalMalId: 23390, // Attack on Titan (Manga MAL ID)
     originalType: 'manga',
@@ -307,7 +307,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Adrenaline Rush'],
   },
   {
-    id: 'magical-boy-transformation',
+    id: 'magical-boy-transformation-sequence:-the-series',
     parodyTitle: 'Magical Boy Transformation Sequence: The Series',
     originalMalId: 28891, // Cute High Earth Defense Club LOVE!
     originalType: 'anime',
@@ -318,7 +318,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'slime-isekai-nation-building',
+    id: 'that-time-i-got-reincarnated-as-a-slime-and-accidentally-built-a-nation',
     parodyTitle: 'That Time I Got Reincarnated as a Slime and Accidentally Built a Nation',
     originalMalId: 37430, // Tensura
     originalType: 'anime',
@@ -329,7 +329,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Comfy & Cozy'],
   },
   {
-    id: 'ghost-in-shell-philosophy-101',
+    id: 'ghost-in-the-shell:-philosophy-101-with-guns',
     parodyTitle: 'Ghost in the Shell: Philosophy 101 with Guns',
     originalMalId: 43, // Ghost in the Shell (1995 Movie)
     originalType: 'anime',
@@ -340,7 +340,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep'],
   },
   {
-    id: 'clannad-feels-trip',
+    id: 'clannad:-the-onion-cutting-simulator',
     parodyTitle: 'Clannad: The Onion Cutting Simulator',
     originalMalId: 2167, // Clannad
     originalType: 'anime',
@@ -351,7 +351,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
   },
   {
-    id: 'dragon-ball-power-scream',
+    id: 'dragon-ball-z:-power-up-by-screaming-louder',
     parodyTitle: 'Dragon Ball Z: Power Up by Screaming Louder',
     originalMalId: 813, // Dragon Ball Z
     originalType: 'anime',
@@ -362,7 +362,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
-    id: 'your-lie-in-april-piano-tears',
+    id: 'your-lie-in-april:-play-piano,-cry-violently',
     parodyTitle: 'Your Lie in April: Play Piano, Cry Violently',
     originalMalId: 23273, // Shigatsu wa Kimi no Uso
     originalType: 'anime',
@@ -373,7 +373,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
   },
   {
-    id: 'konosuba-useless-party',
+    id: 'konosuba:-my-adventuring-party-is-useless-(and-i-love-it)',
     parodyTitle: 'KonoSuba: My Adventuring Party is Useless (and I Love It)',
     originalMalId: 30831, // Kono Subarashii Sekai ni Shukufuku wo!
     originalType: 'anime',
@@ -384,7 +384,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'made-in-abyss-cute-horror',
+    id: 'made-in-abyss:-adorable-characters,-unspeakable-horrors',
     parodyTitle: 'Made in Abyss: Adorable Characters, Unspeakable Horrors',
     originalMalId: 34599, // Made in Abyss
     originalType: 'anime',
@@ -395,7 +395,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Epic Adventure', 'Emotional Rollercoaster'],
   },
   {
-    id: 'another-isekai-slave-harem',
+    id: 'another-isekai-where-the-mc-buys-a-slave-girl-(but-it-s-okay-because-plot)',
     parodyTitle: 'Another Isekai Where the MC Buys a Slave Girl (But It\'s Okay Because Plot)',
     originalMalId: 32280, // Isekai Maou to Shoukan Shoujo no Dorei Majutsu
     originalType: 'anime',
@@ -406,7 +406,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy'],
   },
   {
-    id: 'monster-musume-everyday-life',
+    id: 'my-life-with-monster-girls:-it-s-a-logistical-nightmare',
     parodyTitle: 'My Life With Monster Girls: It\'s a Logistical Nightmare',
     originalMalId: 16273, // Monster Musume no Iru Nichijou (Manga MAL ID)
     originalType: 'manga',
@@ -417,7 +417,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'code-geass-chessmaster-supreme',
+    id: 'code-geass:-lelouch-plays-5d-chess-while-everyone-else-plays-checkers',
     parodyTitle: 'Code Geass: Lelouch Plays 5D Chess While Everyone Else Plays Checkers',
     originalMalId: 1575, // Code Geass: Lelouch of the Rebellion
     originalType: 'anime',
@@ -428,7 +428,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Dark & Deep', 'Epic Adventure'],
   },
   {
-    id: 'rent-a-girlfriend-cringe-fest',
+    id: 'rent-a-girlfriend:-the-ultimate-cringe-compilation',
     parodyTitle: 'Rent-a-Girlfriend: The Ultimate Cringe Compilation',
     originalMalId: 40839, // Kanojo, Okarishimasu
     originalType: 'anime',
@@ -439,7 +439,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Hilarious'],
   },
   {
-    id: 'mushishi-chill-supernatural-detective',
+    id: 'mushishi:-supernatural-pest-control,-but-make-it-zen',
     parodyTitle: 'Mushishi: Supernatural Pest Control, But Make It Zen',
     originalMalId: 457, // Mushishi
     originalType: 'anime',
@@ -450,7 +450,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Dark & Deep'],
   },
   {
-    id: 'promised-neverland-s1-only',
+    id: 'the-promised-neverland-(season-1-only,-we-don-t-talk-about-the-rest)',
     parodyTitle: 'The Promised Neverland (Season 1 ONLY, We Don\'t Talk About The Rest)',
     originalMalId: 37779, // Yakusoku no Neverland
     originalType: 'anime',
@@ -461,7 +461,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'spy-x-family-wholesome-espionage',
+    id: 'spy-x-family:-wholesome-espionage-and-fake-marriages',
     parodyTitle: 'Spy x Family: Wholesome Espionage and Fake Marriages',
     originalMalId: 50265, // Spy x Family
     originalType: 'anime',
@@ -472,7 +472,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'vinland-saga-no-enemies',
+    id: 'vinland-saga:-thorfinn-has-no-enemies-(eventually)',
     parodyTitle: 'Vinland Saga: Thorfinn Has No Enemies (Eventually)',
     originalMalId: 17375, // Vinland Saga (Manga MAL ID)
     originalType: 'manga',
@@ -483,7 +483,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'k-on-moe-blob-band',
+    id: 'k-on!:-cute-girls-eat-cake-and-occasionally-play-music',
     parodyTitle: 'K-On!: Cute Girls Eat Cake and Occasionally Play Music',
     originalMalId: 5680, // K-On!
     originalType: 'anime',
@@ -494,7 +494,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming'],
   },
   {
-    id: 'goblin-slayer-controversy-bait',
+    id: 'goblin-slayer:-edgy,-controversial,-and-surprisingly-vanilla-later',
     parodyTitle: 'Goblin Slayer: Edgy, Controversial, and Surprisingly Vanilla Later',
     originalMalId: 37180, // Goblin Slayer
     originalType: 'anime',
@@ -505,7 +505,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'another-world-restaurant-food-porn',
+    id: 'restaurant-to-another-world:-pure,-unadulterated-food-porn',
     parodyTitle: 'Restaurant to Another World: Pure, Unadulterated Food Porn',
     originalMalId: 34012, // Isekai Shokudou
     originalType: 'anime',
@@ -516,7 +516,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming'],
   },
   {
-    id: 'demon-slayer-breathing-styles',
+    id: 'demon-slayer:-everyone-has-a-cool-breathing-style-except-zenitsu-(sometimes)',
     parodyTitle: 'Demon Slayer: Everyone Has a Cool Breathing Style Except Zenitsu (Sometimes)',
     originalMalId: 38000, // Kimetsu no Yaiba
     originalType: 'anime',
@@ -527,7 +527,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure', 'Emotional Rollercoaster'],
   },
   {
-    id: 'fate-stay-night-confusing-timeline',
+    id: 'fate/stay-night:-which-route-am-i-watching?!',
     parodyTitle: 'Fate/Stay Night: Which Route AM I Watching?!',
     originalMalId: 356, // Fate/stay night (2006)
     originalType: 'anime',
@@ -538,7 +538,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep'],
   },
   {
-    id: 'bunny-girl-senpai-quantum-physics',
+    id: 'rascal-does-not-dream-of-quantum-physics-and-sad-girls',
     parodyTitle: 'Rascal Does Not Dream of Quantum Physics and Sad Girls',
     originalMalId: 37450, // Seishun Buta Yarou wa Bunny Girl Senpai no Yume wo Minai
     originalType: 'anime',
@@ -549,7 +549,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Heartwarming', 'Dark & Deep'],
   },
   {
-    id: 'mushoku-tensei-problematic-mc',
+    id: 'mushoku-tensei:-talented-isekai-protagonist,-questionable-life-choices',
     parodyTitle: 'Mushoku Tensei: Talented Isekai Protagonist, Questionable Life Choices',
     originalMalId: 39535, // Mushoku Tensei: Isekai Ittara Honki Dasu
     originalType: 'anime',
@@ -560,7 +560,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'grand-blue-diving-anime',
+    id: 'grand-blue-dreaming:-the-diving-anime-that-s-not-about-diving',
     parodyTitle: 'Grand Blue Dreaming: The Diving Anime That\'s Not About Diving',
     originalMalId: 37105, // Grand Blue
     originalType: 'anime',
@@ -571,7 +571,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 're-zero-suffering-loop',
+    id: 're:zero---starting-life-in-another-world-by-dying-repeatedly',
     parodyTitle: 'Re:Zero - Starting Life in Another World by Dying Repeatedly',
     originalMalId: 31240, // Re:Zero kara Hajimeru Isekai Seikatsu
     originalType: 'anime',
@@ -582,7 +582,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Adrenaline Rush'],
   },
   {
-    id: 'shield-hero-misunderstood',
+    id: 'the-rising-of-the-shield-hero:-everyone-hates-me-but-i-have-a-raccoon-girl',
     parodyTitle: 'The Rising of the Shield Hero: Everyone Hates Me But I Have a Raccoon Girl',
     originalMalId: 35790, // Tate no Yuusha no Nariagari
     originalType: 'anime',
@@ -593,7 +593,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: 'haikyuu-volleyball-jesus',
+    id: 'haikyuu!!:-short-ginger-kid-is-basically-volleyball-jesus',
     parodyTitle: 'Haikyuu!!: Short Ginger Kid is Basically Volleyball Jesus',
     originalMalId: 20583, // Haikyuu!!
     originalType: 'anime',
@@ -604,7 +604,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Heartwarming'],
   },
   {
-    id: 'classroom-of-elite-edgy-mc',
+    id: 'classroom-of-the-elite:-my-high-school-life-is-an-edgy-mind-game',
     parodyTitle: 'Classroom of the Elite: My High School Life is an Edgy Mind Game',
     originalMalId: 35507, // Youkoso Jitsuryoku Shijou Shugi no Kyoushitsu e
     originalType: 'anime',
@@ -615,7 +615,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep'],
   },
   {
-    id: 'horimiya-diabetes-inducing-romance',
+    id: 'horimiya:-this-romance-is-too-sweet,-i-need-insulin',
     parodyTitle: 'Horimiya: This Romance is Too Sweet, I Need Insulin',
     originalMalId: 42897, // Horimiya
     originalType: 'anime',
@@ -626,7 +626,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
-    id: 'steins-gate-microwave-time-machine',
+    id: 'steins;gate:-my-microwave-is-a-time-machine-(and-it-screws-everything-up)',
     parodyTitle: 'Steins;Gate: My Microwave is a Time Machine (and it Screws Everything Up)',
     originalMalId: 9253, // Steins;Gate (Anime MAL ID)
     originalType: 'anime',
@@ -637,7 +637,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Adrenaline Rush'],
   },
   {
-    id: 'your-name-body-swap-feels',
+    id: 'your-name.:-beautiful-scenery,-body-swaps,-and-imminent-disaster',
     parodyTitle: 'Your Name.: Beautiful Scenery, Body Swaps, and Imminent Disaster',
     originalMalId: 32282, // Kimi no Na wa.
     originalType: 'anime',
@@ -648,7 +648,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
   },
   {
-    id: 'a-silent-voice-communication-is-hard',
+    id: 'a-silent-voice:-communication-is-hard,-okay?',
     parodyTitle: 'A Silent Voice: Communication is Hard, Okay?',
     originalMalId: 28851, // Koe no Katachi
     originalType: 'anime',
@@ -659,7 +659,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep', 'Heartwarming'],
   },
   {
-    id: 'violet-evergarden-typing-with-feelings',
+    id: 'violet-evergarden:-learning-to-type...-with-feelings',
     parodyTitle: 'Violet Evergarden: Learning to Type... With Feelings',
     originalMalId: 33352, // Violet Evergarden
     originalType: 'anime',
@@ -670,7 +670,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Heartwarming'],
   },
   {
-    id: 'that-time-i-got-reincarnated-as-a-spider',
+    id: 'so-i-m-a-spider,-so-what?-now-with-more-stats!',
     parodyTitle: 'So I\'m a Spider, So What? Now With More Stats!',
     originalMalId: 37984, // Kumo Desu ga, Nani ka?
     originalType: 'anime',
@@ -681,7 +681,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Adrenaline Rush'],
   },
   {
-    id: 'love-is-war-galaxy-brain-romance',
+    id: 'kaguya-sama:-love-is-war-(but-mostly-overthinking)',
     parodyTitle: 'Kaguya-sama: Love is War (But Mostly Overthinking)',
     originalMalId: 37999, // Kaguya-sama wa Kokurasetai: Tensai-tachi no Renai Zunousen
     originalType: 'anime',
@@ -692,7 +692,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Heartwarming'],
   },
   {
-    id: 'chainsaw-man-needs-therapy',
+    id: 'chainsaw-man:-denji-really-needs-therapy-(and-a-hug)',
     parodyTitle: 'Chainsaw Man: Denji REALLY Needs Therapy (and a Hug)',
     originalMalId: 116778, // Chainsaw Man (Manga MAL ID)
     originalType: 'manga',
@@ -703,7 +703,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush', 'Emotional Rollercoaster'],
   },
   {
-    id: 'jujutsu-kaisen-cool-powers-trauma',
+    id: 'jujutsu-kaisen:-cool-powers,-endless-trauma',
     parodyTitle: 'Jujutsu Kaisen: Cool Powers, Endless Trauma',
     originalMalId: 40748, // Jujutsu Kaisen (TV)
     originalType: 'anime',
@@ -715,7 +715,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   },
   // Batch 2
   {
-    id: 'bleach-filler-arc-simulator',
+    id: 'bleach:-the-never-ending-filler-arc-simulator',
     parodyTitle: 'Bleach: The Never-Ending Filler Arc Simulator',
     originalMalId: 269, // Bleach
     originalType: 'anime',
@@ -726,7 +726,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush'],
   },
   {
-    id: 'fullmetal-alchemist-equivalent-exchange-of-tears',
+    id: 'fullmetal-alchemist:-equivalent-exchange-of-my-tears',
     parodyTitle: 'Fullmetal Alchemist: Equivalent Exchange of My Tears',
     originalMalId: 5114, // Fullmetal Alchemist: Brotherhood
     originalType: 'anime',
@@ -737,7 +737,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'gintama-fourth-wall-breaker-supreme',
+    id: 'gintama:-the-fourth-wall-is-but-a-suggestion',
     parodyTitle: 'Gintama: The Fourth Wall Is But a Suggestion',
     originalMalId: 918, // Gintama
     originalType: 'anime',
@@ -748,7 +748,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Adrenaline Rush', 'Emotional Rollercoaster'],
   },
   {
-    id: 'hunter-x-hunter-hiatus-simulator',
+    id: 'hunter-x-hunter:-hiatus-simulator-(now-with-more-nen!)',
     parodyTitle: 'Hunter x Hunter: Hiatus Simulator (Now with More Nen!)',
     originalMalId: 136, // Hunter x Hunter (2011)
     originalType: 'anime',
@@ -759,9 +759,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'mob-psycho-100-emotional-explosion',
+    id: 'mob-psycho-100:-if-my-emotions-hit-100%,-something-explodes',
     parodyTitle: 'Mob Psycho 100: If My Emotions Hit 100%, Something Explodes',
-    originalMalId: 32182, // Danganronpa 3 (Placeholder - this ID is for Danganronpa, Mob Psycho is 31170)
+    originalMalId: 31170, // Mob Psycho 100 Correct ID
     originalType: 'anime',
     rarity: 'Ultra Rare',
     parodyBlurb: "A sweet, unassuming esper who just wants to be popular. Also, he can level cities when stressed. Relatable.",
@@ -770,7 +770,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Heartwarming', 'Adrenaline Rush'],
   },
   {
-    id: 'one-piece-never-ending-journey',
+    id: 'one-piece:-the-journey-that-will-outlive-us-all',
     parodyTitle: 'One Piece: The Journey That Will Outlive Us All',
     originalMalId: 21, // One Piece (anime)
     originalType: 'anime',
@@ -781,9 +781,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Emotional Rollercoaster', 'Heartwarming'],
   },
   {
-    id: 'that-time-i-got-reincarnated-as-a-demon-lord-with-a-secretary',
+    id: 'i-m-a-demon-lord-but-my-secretary-runs-everything',
     parodyTitle: 'I\'m a Demon Lord But My Secretary Runs Everything',
-    originalMalId: 41489, // Maoujou de Oyasumi
+    originalMalId: 41489, // Maoujou de Oyasumi - (Could also be Hataraku Maou-sama! for similar vibe: 15809)
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "Conquering the world is hard work, mostly for my extremely competent (and terrified) staff.",
@@ -792,7 +792,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'tokyo-ghoul-edgy-and-confusing',
+    id: 'tokyo-ghoul:-what-is-even-happening-anymore?-(but-edgy)',
     parodyTitle: 'Tokyo Ghoul: What Is Even Happening Anymore? (But Edgy)',
     originalMalId: 35227, // Tokyo Ghoul:re
     originalType: 'anime',
@@ -803,7 +803,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'yuri-on-ice-ice-skating-romance',
+    id: 'yuri!!!-on-ice:-competitive-ice-skating-and-unspoken-romance',
     parodyTitle: 'Yuri!!! on Ice: Competitive Ice Skating and Unspoken Romance',
     originalMalId: 32995, // Yuri!!! on Ice
     originalType: 'anime',
@@ -814,7 +814,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Emotional Rollercoaster'],
   },
   {
-    id: 'banana-fish-pain-and-suffering',
+    id: 'banana-fish:-emotional-support-gangster-story-(prepare-for-pain)',
     parodyTitle: 'Banana Fish: Emotional Support Gangster Story (Prepare for Pain)',
     originalMalId: 36649, // Banana Fish
     originalType: 'anime',
@@ -825,7 +825,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'cells-at-work-anthropomorphic-biology',
+    id: 'cells-at-work!:-your-biology-class,-but-moe',
     parodyTitle: 'Cells at Work!: Your Biology Class, But Moe',
     originalMalId: 37141, // Hataraku Saibou
     originalType: 'anime',
@@ -836,7 +836,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Heartwarming', 'Comfy & Cozy'],
   },
   {
-    id: 'dr-stone-science-isekai',
+    id: 'dr.-stone:-rebuilding-civilization-with-science!-(and-hair-gel)',
     parodyTitle: 'Dr. Stone: Rebuilding Civilization with SCIENCE! (and Hair Gel)',
     originalMalId: 38691, // Dr. Stone
     originalType: 'anime',
@@ -847,7 +847,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Adrenaline Rush', 'Hilarious'],
   },
   {
-    id: 'fire-force-firefighters-with-superpowers',
+    id: 'fire-force:-firefighters,-but-they-start-the-fires-(with-their-souls)',
     parodyTitle: 'Fire Force: Firefighters, But They START The Fires (With Their Souls)',
     originalMalId: 38671, // Enen no Shouboutai
     originalType: 'anime',
@@ -858,7 +858,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush'],
   },
   {
-    id: 'golden-kamuy-weird-west-hokkaido',
+    id: 'golden-kamuy:-hokkaido-treasure-hunt-with-war-criminals-and-bear-fights',
     parodyTitle: 'Golden Kamuy: Hokkaido Treasure Hunt with War Criminals and Bear Fights',
     originalMalId: 36028, // Golden Kamuy
     originalType: 'anime',
@@ -869,7 +869,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Adrenaline Rush', 'Dark & Deep', 'Hilarious'],
   },
   {
-    id: 'my-hero-academia-superhero-school-drama',
+    id: 'my-hero-academia:-superhero-high-school-with-extra-drama',
     parodyTitle: 'My Hero Academia: Superhero High School with Extra Drama',
     originalMalId: 31964, // Boku no Hero Academia
     originalType: 'anime',
@@ -880,7 +880,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Heartwarming', 'Emotional Rollercoaster'],
   },
   {
-    id: 'ranking-of-kings-dont-judge-by-appearance',
+    id: 'ranking-of-kings:-don-t-judge-a-prince-by-his-size-(he-will-wreck-you)',
     parodyTitle: 'Ranking of Kings: Don\'t Judge a Prince by His Size (He Will Wreck You)',
     originalMalId: 40834, // Ousama Ranking
     originalType: 'anime',
@@ -891,7 +891,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Epic Adventure', 'Emotional Rollercoaster'],
   },
   {
-    id: 'that-time-i-got-reincarnated-as-a-slime-season-2-more-meetings',
+    id: 'slime-isekai-s2:-now-with-more-meetings-and-nation-building!',
     parodyTitle: 'Slime Isekai S2: Now With More Meetings and Nation Building!',
     originalMalId: 39551, // Tensei shitara Slime Datta Ken 2nd Season
     originalType: 'anime',
@@ -902,7 +902,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Comfy & Cozy'],
   },
   {
-    id: 'to-your-eternity-immortal-suffering-simulator',
+    id: 'to-your-eternity:-immortal-being-learns-about-life-through-unending-pain',
     parodyTitle: 'To Your Eternity: Immortal Being Learns About Life Through Unending Pain',
     originalMalId: 41025, // Fumetsu no Anata e
     originalType: 'anime',
@@ -913,7 +913,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: 'wonder-egg-priority-trauma-and-symbolism',
+    id: 'wonder-egg-priority:-cute-girls-fight-trauma-monsters-(it-s-very-symbolic)',
     parodyTitle: 'Wonder Egg Priority: Cute Girls Fight Trauma Monsters (It\'s Very Symbolic)',
     originalMalId: 43299, // Wonder Egg Priority
     originalType: 'anime',
@@ -924,7 +924,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'ancient-magus-bride-wholesome-monster-romance',
+    id: 'ancient-magus-bride:-girl-buys-monster-husband,-it-s-surprisingly-wholesome',
     parodyTitle: 'Ancient Magus\' Bride: Girl Buys Monster Husband, It\'s Surprisingly Wholesome',
     originalMalId: 9095, // Mahoutsukai no Yome (Manga MAL ID)
     originalType: 'manga',
@@ -935,7 +935,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Comfy & Cozy', 'Epic Adventure'],
   },
   {
-    id: 'beastars-furry-high-school-drama',
+    id: 'beastars:-furry-high-school-is-more-angsty-than-yours',
     parodyTitle: 'Beastars: Furry High School Is More Angsty Than Yours',
     originalMalId: 103701, // Beastars (Manga MAL ID)
     originalType: 'manga',
@@ -946,7 +946,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'devils-line-vampire-cop-romance',
+    id: 'devils-line:-he-s-a-vampire-cop,-she-s-a-grad-student,-it-gets-bloody',
     parodyTitle: 'Devils\' Line: He\'s a Vampire Cop, She\'s a Grad Student, It Gets Bloody',
     originalMalId: 80609, // Devils Line (Manga MAL ID)
     originalType: 'manga',
@@ -957,7 +957,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: 'eromanga-sensei-problematic-sibling-comedy',
+    id: 'eromanga-sensei:-my-little-sister-is-my-lewd-manga-artist-(it-s-complicated)',
     parodyTitle: 'Eromanga Sensei: My Little Sister Is My Lewd Manga Artist (It\'s Complicated)',
     originalMalId: 32901, // Eromanga Sensei
     originalType: 'anime',
@@ -968,7 +968,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'gate-jsdf-invades-fantasy-world',
+    id: 'gate:-the-jsdf-invades-a-fantasy-world-(and-it-goes-surprisingly-well)',
     parodyTitle: 'GATE: The JSDF Invades a Fantasy World (And It Goes Surprisingly Well)',
     originalMalId: 28907, // Gate: Jieitai Kanochi nite, Kaku Tatakaeri
     originalType: 'anime',
@@ -979,7 +979,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
-    id: 'jobless-reincarnation-redemption-arc-deluxe',
+    id: 'jobless-reincarnation:-from-neet-to-actually-trying-(slowly)',
     parodyTitle: 'Jobless Reincarnation: From NEET to Actually Trying (Slowly)',
     originalMalId: 39535, // Mushoku Tensei (Same as problematic MC, focusing on redemption arc)
     originalType: 'anime',
@@ -990,7 +990,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: 'kill-la-kill-clothes-are-evil',
+    id: 'kill-la-kill:-clothes-are-evil-(and-also-power-ups)',
     parodyTitle: 'Kill la Kill: Clothes Are Evil (And Also Power-Ups)',
     originalMalId: 18679, // Kill la Kill
     originalType: 'anime',
@@ -1001,7 +1001,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Hilarious'],
   },
   {
-    id: 'log-horizon-stuck-in-mmo-but-with-economics',
+    id: 'log-horizon:-stuck-in-an-mmo,-but-with-more-spreadsheets',
     parodyTitle: 'Log Horizon: Stuck in an MMO, But With More Spreadsheets',
     originalMalId: 17245, // Log Horizon
     originalType: 'anime',
@@ -1012,7 +1012,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep'],
   },
   {
-    id: 'made-in-abyss-season-2-even-more-suffering',
+    id: 'made-in-abyss-s2:-the-suffering-intensifies-(still-cute-tho)',
     parodyTitle: 'Made in Abyss S2: The Suffering Intensifies (Still Cute Tho)',
     originalMalId: 41084, // Made in Abyss: Retsujitsu no Ougonkyou
     originalType: 'anime',
@@ -1023,7 +1023,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'monogatari-series-talk-no-jutsu-supreme',
+    id: 'monogatari-series:-90%-talking,-10%-supernatural-shenanigans',
     parodyTitle: 'Monogatari Series: 90% Talking, 10% Supernatural Shenanigans',
     originalMalId: 5081, // Bakemonogatari
     originalType: 'anime',
@@ -1034,9 +1034,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Hilarious'],
   },
   {
-    id: 'noragami-homeless-god-for-hire',
+    id: 'noragami:-your-friendly-neighborhood-homeless-god-(5-yen-per-wish)',
     parodyTitle: 'Noragami: Your Friendly Neighborhood Homeless God (5 Yen Per Wish)',
-    originalMalId: 20507, // Noragami (Placeholder ID, actual: 20507 is Mirai Nikki, Noragami is 20507)
+    originalMalId: 20507, // Corrected ID for Noragami is 20507
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "He's trying to get a shrine, she's a half-phantom, and his regalia is a sassy teenage boy. Godhood is tough.",
@@ -1045,7 +1045,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Hilarious', 'Heartwarming'],
   },
   {
-    id: 'overlord-isekai-evil-mc-is-fun',
+    id: 'overlord:-being-an-evil-skeletal-overlord-is-surprisingly-fun',
     parodyTitle: 'Overlord: Being an Evil Skeletal Overlord is Surprisingly Fun',
     originalMalId: 29803, // Overlord
     originalType: 'anime',
@@ -1056,7 +1056,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Dark & Deep'],
   },
   {
-    id: 'psycho-pass-dystopian-future-crime-coefficient',
+    id: 'psycho-pass:-your-crime-coefficient-is-too-high,-prepare-for-dominator',
     parodyTitle: 'Psycho-Pass: Your Crime Coefficient is Too High, Prepare for DOMINATOR',
     originalMalId: 13601, // Psycho-Pass
     originalType: 'anime',
@@ -1067,7 +1067,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'steins-gate-0-more-suffering-different-timeline',
+    id: 'steins;gate-0:-more-suffering,-different-timeline,-same-sad-okabe',
     parodyTitle: 'Steins;Gate 0: More Suffering, Different Timeline, Same Sad Okabe',
     originalMalId: 30484, // Steins;Gate 0
     originalType: 'anime',
@@ -1078,7 +1078,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'sword-of-the-stranger-samurai-movie-peak-animation',
+    id: 'sword-of-the-stranger:-the-best-samurai-fight-you-ve-ever-seen',
     parodyTitle: 'Sword of the Stranger: The Best Samurai Fight You\'ve Ever Seen',
     originalMalId: 2418, // Stranger: Mukou Hadan
     originalType: 'anime',
@@ -1089,7 +1089,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
   },
   {
-    id: 'toradora-tsundere-romcom-classic',
+    id: 'toradora!:-the-palm-top-tiger-and-the-dense-delinquent-looking-guy',
     parodyTitle: 'Toradora!: The Palm-Top Tiger and the Dense Delinquent-Looking Guy',
     originalMalId: 4224, // Toradora!
     originalType: 'anime',
@@ -1100,7 +1100,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Emotional Rollercoaster', 'Hilarious'],
   },
   {
-    id: 'tower-of-god-manhwa-anime-adaptation',
+    id: 'tower-of-god:-climb-the-tower,-find-your-girl-(it-s-complicated)',
     parodyTitle: 'Tower of God: Climb the Tower, Find Your Girl (It\'s Complicated)',
     originalMalId: 1151, // Tower of God (Manhwa MAL ID)
     originalType: 'manga', // Original is Manhwa
@@ -1111,7 +1111,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Adrenaline Rush', 'Dark & Deep'],
   },
   {
-    id: 'uzaki-chan-wants-to-hang-out-annoying-but-cute',
+    id: 'uzaki-chan-wants-to-hang-out-(and-annoy-you-endlessly,-but-it-s-kinda-cute)',
     parodyTitle: 'Uzaki-chan Wants to Hang Out (And Annoy You Endlessly, But It\'s Kinda Cute)',
     originalMalId: 41226, // Uzaki-chan wa Asobitai!
     originalType: 'anime',
@@ -1122,7 +1122,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'wandering-witch-elaina-travel-and-trauma',
+    id: 'wandering-witch:-elaina-s-travel-blog-(now-with-more-trauma!)',
     parodyTitle: 'Wandering Witch: Elaina\'s Travel Blog (Now With More Trauma!)',
     originalMalId: 40571, // Majo no Tabitabi
     originalType: 'anime',
@@ -1133,7 +1133,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep', 'Epic Adventure'],
   },
   {
-    id: 'wolf-children-single-mom-werewolf-story',
+    id: 'wolf-children:-single-mom-raises-werewolf-kids,-it-s-tough',
     parodyTitle: 'Wolf Children: Single Mom Raises Werewolf Kids, It\'s Tough',
     originalMalId: 12355, // Ookami Kodomo no Ame to Yuki
     originalType: 'anime',
@@ -1144,7 +1144,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Emotional Rollercoaster'],
   },
   {
-    id: 'yuru-camp-comfy-camping-girls',
+    id: 'yuru-camp:-maximum-comfiness-achieved-through-camping',
     parodyTitle: 'Yuru Camp: Maximum Comfiness Achieved Through Camping',
     originalMalId: 34798, // Yuru Camp
     originalType: 'anime',
@@ -1155,7 +1155,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming'],
   },
   {
-    id: 'zombieland-saga-idol-zombies',
+    id: 'zombieland-saga:-zombie-idols-save-saga-prefecture-(somehow)',
     parodyTitle: 'Zombieland Saga: Zombie Idols Save Saga Prefecture (Somehow)',
     originalMalId: 37976, // Zombie Land Saga
     originalType: 'anime',
@@ -1166,7 +1166,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Heartwarming', 'Adrenaline Rush'],
   },
   {
-    id: 'ancient-wyverns-tale-dragon-dad',
+    id: 'the-ancient-wyvern-who-became-my-dad',
     parodyTitle: 'The Ancient Wyvern Who Became My Dad',
     originalMalId: 12403, // Dragon, Ie wo Kau (Dragon Goes House-Hunting) - using related theme
     originalType: 'anime',
@@ -1177,7 +1177,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
-    id: 'cat-cafe-chronicles-too-much-fluff',
+    id: 'cat-cafe-chronicles:-drowning-in-cuteness',
     parodyTitle: 'Cat Cafe Chronicles: Drowning in Cuteness',
     originalMalId: 38907, // Nekopara
     originalType: 'anime',
@@ -1188,7 +1188,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming', 'Hilarious'],
   },
   {
-    id: 'cyberpunk-samurai-soul',
+    id: 'cyberpunk-samurai:-my-katana-has-wi-fi',
     parodyTitle: 'Cyberpunk Samurai: My Katana Has Wi-Fi',
     originalMalId: 42332, // Cyberpunk: Edgerunners
     originalType: 'anime',
@@ -1199,7 +1199,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Dark & Deep', 'Epic Adventure'],
   },
   {
-    id: 'detective-is-already-dead-but-not-really',
+    id: 'the-detective-is-already-dead-(but-her-ghost-won-t-leave-me-alone)',
     parodyTitle: 'The Detective Is Already Dead (But Her Ghost Won\'t Leave Me Alone)',
     originalMalId: 46471, // Tantei wa Mou, Shindeiru.
     originalType: 'anime',
@@ -1210,7 +1210,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: 'dragon-maid- Kobayashi-too-relatable',
+    id: 'miss-kobayashi-s-dragon-maid:-my-life-is-chaos-but-the-dragons-are-cute',
     parodyTitle: 'Miss Kobayashi\'s Dragon Maid: My Life Is Chaos But The Dragons Are Cute',
     originalMalId: 33206, // Kobayashi-san Chi no Maid Dragon
     originalType: 'anime',
@@ -1221,9 +1221,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming', 'Hilarious'],
   },
   {
-    id: 'elf-archer-tsundere-overload',
+    id: 'elf-archer:-my-tsundere-level-is-over-9000!',
     parodyTitle: 'Elf Archer: My Tsundere Level Is Over 9000!',
-    originalMalId: 26297, // Goblin Slayer (Plausible source for elf archer trope)
+    originalMalId: 26297, // Goblin Slayer (Plausible source for elf archer trope, MAL ID 37180 for anime)
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "It's not like she LIKES shooting arrows with you or anything, b-baka! Highly skilled, highly flustered.",
@@ -1232,7 +1232,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Adrenaline Rush'],
   },
   {
-    id: 'isekai-cheat-skill-farm',
+    id: 'i-got-a-cheat-skill-in-another-world-and-became-unrivaled-in-the-real-world,-too-(mostly-farming)',
     parodyTitle: 'I Got a Cheat Skill in Another World and Became Unrivaled in the Real World, Too (Mostly Farming)',
     originalMalId: 52346, // Isekai de Cheat Skill wo Te ni Shita Ore wa, Genjitsu Sekai wo mo Musou Suru
     originalType: 'anime',
@@ -1243,7 +1243,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Epic Adventure'],
   },
   {
-    id: 'knight-and-demon-king-romance',
+    id: 'the-knight-and-her-demon-king:-office-romance,-underworld-edition',
     parodyTitle: 'The Knight and Her Demon King: Office Romance, Underworld Edition',
     originalMalId: 41380, // Maoujou de Oyasumi (Different context, but fitting for demon king romance)
     originalType: 'anime',
@@ -1254,9 +1254,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Hilarious'],
   },
   {
-    id: 'space-opera-with-talking-cats',
+    id: 'galaxy-cats:-the-space-opera-(but-with-more-naps)',
     parodyTitle: 'Galaxy Cats: The Space Opera (But With More Naps)',
-    originalMalId: 584, // Outlaw Star (Has a catgirl, close enough)
+    originalMalId: 584, // Outlaw Star (Has a catgirl, close enough for parody)
     originalType: 'anime',
     rarity: 'Ultra Rare',
     parodyBlurb: "Epic space battles, ancient mysteries, and a ship's cat that's secretly running the whole operation. Meowtstanding.",
@@ -1265,9 +1265,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Epic Adventure', 'Hilarious'],
   },
   {
-    id: 'succubus-cafe-slice-of-death',
+    id: 'welcome-to-the-succubus-cafe:-slice-of-life-(and-death)',
     parodyTitle: 'Welcome to the Succubus Cafe: Slice of Life (and Death)',
-    originalMalId: 41403, // Ishuzoku Reviewers (Adjacent theme)
+    originalMalId: 41403, // Ishuzoku Reviewers (Adjacent theme for parody)
     originalType: 'anime',
     rarity: 'Rare',
     parodyBlurb: "Serving coffee, pastries, and life-draining kisses. Customer service is a killer.",
@@ -1276,7 +1276,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Dark & Deep'],
   },
   {
-    id: 'isekai-pharmacist-revolutionizes-medicine',
+    id: 'isekai-pharmacist:-revolutionizing-medieval-medicine-with-modern-chemistry',
     parodyTitle: 'Isekai Pharmacist: Revolutionizing Medieval Medicine with Modern Chemistry',
     originalMalId: 49438, // Isekai Yakkyoku
     originalType: 'anime',
@@ -1287,7 +1287,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   },
   {
-    id: 'slime-rancher-in-another-world',
+    id: 'slime-rancher:-isekai-edition',
     parodyTitle: 'Slime Rancher: Isekai Edition',
     originalMalId: 39292, // Kami-tachi ni Hirowareta Otoko
     originalType: 'anime',
@@ -1298,7 +1298,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Comfy & Cozy', 'Heartwarming'],
   },
   {
-    id: 'assassination-classroom-kill-your-teacher',
+    id: 'assassination-classroom:-our-teacher-is-an-octopus-alien-and-we-must-kill-him',
     parodyTitle: 'Assassination Classroom: Our Teacher is an Octopus Alien and We Must Kill Him',
     originalMalId: 24833, // Ansatsu Kyoushitsu
     originalType: 'anime',
@@ -1309,7 +1309,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Heartwarming', 'Emotional Rollercoaster'],
   },
   {
-    id: 'durarara-ikebukuro-chaos-simulator',
+    id: 'durarara!!:-ikebukuro-is-a-mess-and-i-love-it',
     parodyTitle: 'Durarara!!: Ikebukuro Is a Mess and I Love It',
     originalMalId: 6746, // Durarara!!
     originalType: 'anime',
@@ -1320,7 +1320,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'food-dungeon-survival-gourmet',
+    id: 'dungeon-meshi:-gourmet-cooking-with-monster-parts',
     parodyTitle: 'Dungeon Meshi: Gourmet Cooking with Monster Parts',
     originalMalId: 85781, // Dungeon Meshi (Manga MAL ID)
     originalType: 'manga',
@@ -1331,7 +1331,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Epic Adventure', 'Comfy & Cozy'],
   },
   {
-    id: 'rezero-emilia-best-girl-debate-club',
+    id: 're:zero---emilia-best-girl-debate-club-(subaru-suffers-in-background)',
     parodyTitle: 'Re:Zero - Emilia Best Girl Debate Club (Subaru Suffers in Background)',
     originalMalId: 31240, // Re:Zero kara Hajimeru Isekai Seikatsu
     originalType: 'anime',
@@ -1343,7 +1343,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     isEvolvedForm: true, // Assuming 'Suffering Loop' is base
   },
   {
-    id: 'oshi-no-ko-entertainment-industry-dark-side',
+    id: '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)',
     parodyTitle: '[Oshi no Ko]: The Dark Side of Showbiz (with Reincarnation and Revenge)',
     originalMalId: 130907, // [Oshi no Ko] (Manga MAL ID)
     originalType: 'manga',
@@ -1353,9 +1353,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Drama', 'Mystery', 'Reincarnation', 'Supernatural', 'Seinen', 'Psychological'],
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
-  // Start of Batch 2 (Creative continuation)
+  // Batch 2
   {
-    id: 'blend-s-surprise-sadistic-smile',
+    id: 'blend-s:-service-with-a-(surprise!-sadistic!)-smile',
     parodyTitle: 'Blend S: Service with a (Surprise! Sadistic!) Smile',
     originalMalId: 34618, // Blend S
     originalType: 'anime',
@@ -1366,7 +1366,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'darling-in-the-franxx-angsty-teens-giant-robots-again',
+    id: 'darling-in-the-franxx:-angsty-teens-pilot-lewd-robots-(again,-but-different)',
     parodyTitle: 'Darling in the FranXX: Angsty Teens Pilot Lewd Robots (Again, but Different)',
     originalMalId: 35849, // Darling in the FranXX
     originalType: 'anime',
@@ -1377,7 +1377,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Adrenaline Rush', 'Dark & Deep'],
   },
   {
-    id: 'erased-who-dunnit-time-loop',
+    id: 'erased:-butterfly-effect-detective-agency',
     parodyTitle: 'Erased: Butterfly Effect Detective Agency',
     originalMalId: 32281, // Boku dake ga Inai Machi
     originalType: 'anime',
@@ -1388,7 +1388,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
   {
-    id: 'gabriel-dropout-fallen-angel-neet',
+    id: 'gabriel-dropout:-top-angel-becomes-ultimate-neet-gamer',
     parodyTitle: 'Gabriel DropOut: Top Angel Becomes Ultimate NEET Gamer',
     originalMalId: 33731, // Gabriel DropOut
     originalType: 'anime',
@@ -1399,7 +1399,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Comfy & Cozy'],
   },
   {
-    id: 'gurren-lagann-drill-pierce-the-heavens',
+    id: 'gurren-lagann:-my-drill-is-the-drill-that-will-pierce-the-heavens-(and-logic)',
     parodyTitle: 'Gurren Lagann: My Drill Is The Drill That Will Pierce The Heavens (And Logic)',
     originalMalId: 2001, // Tengen Toppa Gurren Lagann
     originalType: 'anime',
@@ -1410,7 +1410,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush', 'Epic Adventure', 'Hilarious'],
   },
   {
-    id: 'hinamatsuri-yakuza-psychic-daughter',
+    id: 'hinamatsuri:-yakuza-adopts-psychic-girl,-hilarity-ensues',
     parodyTitle: 'Hinamatsuri: Yakuza Adopts Psychic Girl, Hilarity Ensues',
     originalMalId: 36296, // Hinamatsuri
     originalType: 'anime',
@@ -1421,7 +1421,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Hilarious', 'Heartwarming', 'Comfy & Cozy'],
   },
   {
-    id: 'initial-d-eurobeat-drift-king',
+    id: 'initial-d:-eurobeat-intensifies-while-tofu-gets-delivered',
     parodyTitle: 'Initial D: Eurobeat Intensifies While Tofu Gets Delivered',
     originalMalId: 185, // Initial D First Stage
     originalType: 'anime',
@@ -1432,7 +1432,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Adrenaline Rush'],
   },
   {
-    id: 'interviews-with-monster-girls-demi-chans-are-cute',
+    id: 'interviews-with-monster-girls:-my-students-are-monsters-(literally,-and-it-s-cute)',
     parodyTitle: 'Interviews with Monster Girls: My Students Are Monsters (Literally, and It\'s Cute)',
     originalMalId: 33430, // Demi-chan wa Kataritai
     originalType: 'anime',
@@ -1443,7 +1443,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Heartwarming', 'Comfy & Cozy', 'Hilarious'],
   },
   {
-    id: 'land-of-the-lustrous-gem-people-suffering',
+    id: 'land-of-the-lustrous:-pretty-gem-people-suffer-beautifully',
     parodyTitle: 'Land of the Lustrous: Pretty Gem People Suffer Beautifully',
     originalMalId: 92507, // Houseki no Kuni (Manga MAL ID)
     originalType: 'manga',
@@ -1454,7 +1454,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Epic Adventure'],
   },
   {
-    id: 'nichijou-my-ordinary-life-is-anything-but',
+    id: 'nichijou:-my-ordinary-life-is-an-absurdist-fever-dream',
     parodyTitle: 'Nichijou: My Ordinary Life is an Absurdist Fever Dream',
     originalMalId: 10165, // Nichijou
     originalType: 'anime',
@@ -1463,81 +1463,9 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     imageUrl: 'https://placehold.co/300x400.png?text=AbsurdistLife&font=lora',
     genreTags: ['Comedy', 'School', 'Slice of Life', 'Gag Humor'],
     moodTags: ['Hilarious', 'Comfy & Cozy'],
-  },
-  // NOTE: THIS IS THE END OF THE 50 NEW CARDS. I WILL CONTINUE ADDING MORE IN SUBSEQUENT TURNS.
-  // The existing cards below this line are the ones we had before this expansion.
+  }
 ];
-// Removed getRarityColorClasses as it's now defined in gacha/page.tsx
-// The list above now contains the original set + approximately 50 new ones.
-// Further expansion will continue in the next response if needed.
 
-```
-  </change>
-  <change>
-    <file>/src/config/gachaConfig.ts</file>
-    <content><![CDATA[// src/config/gachaConfig.ts
-import type { CollectibleRarity } from '@/types/collectibles';
-
-export const GACHA_ROLL_SIZE = 4;
-export const GACHA_COST = 0; // Still free for beta
-
-// Base Drop Rates (should sum to 1.0)
-export const GACHA_RARITY_RATES: Record<CollectibleRarity, number> = {
-  Common: 0.60,      // 60%
-  Rare: 0.25,        // 25%
-  'Ultra Rare': 0.09,// 9%
-  Legendary: 0.04,   // 4%
-  Mythic: 0.02,      // 2%
-  Event: 0,          // Event items typically have their own banners or specific conditions
-};
-
-// Pity System Parameters
-// Rarity tiers that trigger pity reset and are guaranteed by hard pity
-export const PITY_TARGET_RARITIES: CollectibleRarity[] = ['Legendary', 'Mythic', 'Event'];
-
-export const HARD_PITY_COUNT = 90; // Guaranteed target rarity at this many pulls without one
-export const SOFT_PITY_START_COUNT = 75; // Chance for target rarities starts increasing significantly
-
-// How much the combined chance of PITY_TARGET_RARITIES increases per pull during soft pity.
-export const SOFT_PITY_INCREASE_RATE = 0.06; // 6% increase per pull in soft pity for target rarities sum
-
-// How to distribute the pity chance among target rarities if hard pity is hit,
-// or how to distribute the increased soft pity chance.
-export const PITY_DISTRIBUTION: Partial<Record<CollectibleRarity, number>> = {
-  Legendary: 0.70,
-  Mythic: 0.28,
-  Event: 0.02,
-};
-
-// For precise fusion
-export const RARITY_ORDER: CollectibleRarity[] = ['Common', 'Rare', 'Ultra Rare', 'Legendary', 'Mythic'];
-export const RARITY_NUMERICAL_VALUE: Record<CollectibleRarity, number> = {
-    Common: 0,
-    Rare: 1,
-    'Ultra Rare': 2,
-    Legendary: 3,
-    Mythic: 4,
-    Event: 5, // Event rarity is high but typically excluded from standard fusion
-};
-
-
-// Validate that PITY_DISTRIBUTION sums to 1 for the PITY_TARGET_RARITIES it covers
-const pityDistributionSum = PITY_TARGET_RARITIES.reduce((sum, rarity) => {
-    return sum + (PITY_DISTRIBUTION[rarity] || 0);
-}, 0);
-
-if (Math.abs(pityDistributionSum - 1.0) > 0.001 && PITY_TARGET_RARITIES.length > 0 && PITY_TARGET_RARITIES.some(r => PITY_DISTRIBUTION[r] && PITY_DISTRIBUTION[r]! > 0) ) {
-    console.warn(
-        `GACHA WARNING: PITY_DISTRIBUTION values for PITY_TARGET_RARITIES do not sum to 1.0 (Current sum: ${pityDistributionSum}). ` +
-        `This may lead to unexpected behavior during pity pulls. Please adjust PITY_DISTRIBUTION for [${PITY_TARGET_RARITIES.join(', ')}].`
-    );
-}
-
-// Validate that GACHA_RARITY_RATES sum to 1.0
-const baseRateSum = Object.values(GACHA_RARITY_RATES).reduce((sum, rate) => sum + rate, 0);
-if (Math.abs(baseRateSum - 1.0) > 0.001) {
-    console.warn(
-        `GACHA WARNING: GACHA_RARITY_RATES do not sum to 1.0 (Current sum: ${baseRateSum}). ` +
-        `Drop rates will be normalized, but this may indicate a configuration error.`
-    );
-}
+// NOTE: The validation logic for GACHA_RARITY_RATES and PITY_DISTRIBUTION
+// should be in src/config/gachaConfig.ts, not here.
+// I am removing the misplaced validation logic from this file.
