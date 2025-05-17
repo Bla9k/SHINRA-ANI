@@ -11,13 +11,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2, Drama, ArrowRight, Compass, Search } from 'lucide-react'; // Added Compass
+import { Star, BookText, Layers, Library, Clock, ExternalLink, AlertCircle, CalendarDays, BookOpen, Sparkles, Users, Link2 as LinkIconLucide, Drama, ArrowRight, Compass, Search, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { ItemCard, SkeletonItemCard } from '@/components/shared/ItemCard';
 import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendations';
-import LongPressButtonWrapper, { type AlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
+import LongPressButtonWrapper, { type AlternativeOption as LongPressAlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
+import LongHoverButtonWrapper, { type AlternativeOption as LongHoverAlternativeOption } from '@/components/shared/LongHoverButtonWrapper.tsx';
+
 
 // Helper function to format status
 const formatStatus = (status: string | null): string => {
@@ -80,6 +84,7 @@ const renderHorizontalSection = (
 export default function MangaDetailPage() {
   const params = useParams();
   const id = params.id ? parseInt(params.id as string, 10) : NaN;
+  const isMobile = useIsMobile();
 
   const [manga, setManga] = useState<Manga | null>(null);
   const [recommendations, setRecommendations] = useState<Manga[]>([]);
@@ -89,6 +94,10 @@ export default function MangaDetailPage() {
   const [loadingNamiRecs, setLoadingNamiRecs] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [namiError, setNamiError] = useState<string | null>(null);
+
+  const [isReaderModalOpen, setIsReaderModalOpen] = useState(false);
+  const [readerModalUrl, setReaderModalUrl] = useState('');
+  const [isFetchingReaderUrl, setIsFetchingReaderUrl] = useState(false);
 
   useEffect(() => {
     if (isNaN(id)) {
@@ -125,6 +134,24 @@ export default function MangaDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  const handleReadManga = async () => {
+    if (!manga) return;
+    setIsFetchingReaderUrl(true);
+    // For now, directly construct the MangaKakalot search URL.
+    // In a real scenario, this might involve an API call to your backend to get a more direct link or resolve it.
+    await new Promise(resolve => setTimeout(resolve, 300)); // Simulate a small delay
+
+    // Sanitize title for URL: replace spaces with underscores and convert to lowercase
+    // Further sanitization might be needed for special characters.
+    const sanitizedTitle = manga.title.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const mangaKakalotSearchUrl = `https://mangakakalot.com/search/story/${sanitizedTitle}`;
+
+    setReaderModalUrl(mangaKakalotSearchUrl);
+    setIsReaderModalOpen(true);
+    setIsFetchingReaderUrl(false);
+  };
+
+
   if (loading && !manga) return <MangaDetailSkeleton />;
   if (error) return (
       <div className="container mx-auto px-4 py-8 flex items-center justify-center min-h-[60vh]">
@@ -143,8 +170,7 @@ export default function MangaDetailPage() {
     synonyms: (manga as any).title_synonyms || [],
   };
 
-  const mangaDexSearchUrl = `https://mangadex.org/search?q=${encodeURIComponent(manga.title)}`;
-  const mangaReadOptions: AlternativeOption[] = [
+  const mangaReadOptions: (LongPressAlternativeOption | LongHoverAlternativeOption)[] = [
     { label: "Comick", href: `https://comick.io/search?q=${encodeURIComponent(manga.title)}`, icon: BookOpen },
     { label: "MangaKakalot", href: `https://mangakakalot.com/search/story/${encodeURIComponent(manga.title.replace(/\s+/g, '_'))}`, icon: BookOpen },
     { label: "MangaSee", href: `https://mangasee123.com/search/?name=${encodeURIComponent(manga.title)}`, icon: BookOpen },
@@ -168,16 +194,31 @@ export default function MangaDetailPage() {
                            : <div className="h-full w-full bg-muted flex items-center justify-center"><BookText className="w-16 h-16 text-muted-foreground opacity-50" /></div>}
                         </Card>
                         <div className="flex flex-col gap-3 mt-4">
-                            <LongPressButtonWrapper
-                                onPrimaryAction={() => window.open(mangaDexSearchUrl, '_blank')}
-                                alternativeOptions={mangaReadOptions}
-                                buttonLabel={`Search ${manga.title} on MangaDex and other sites`}
-                            >
-                                <Button size="sm" className="w-full neon-glow-hover">
-                                  {/* Content of the button is handled by LongPressButtonWrapper children */}
-                                  <BookOpen size={16} className="mr-2"/> Read on MangaDex <Compass size={14} className="ml-1.5 opacity-70"/>
-                                </Button>
-                            </LongPressButtonWrapper>
+                           {isMobile === undefined ? (
+                                <Skeleton className="h-9 w-full rounded-md" />
+                            ) : isMobile ? (
+                                <LongPressButtonWrapper
+                                    onPrimaryAction={handleReadManga}
+                                    alternativeOptions={mangaReadOptions}
+                                    buttonLabel={`Read ${manga.title} on MangaKakalot and other sites`}
+                                >
+                                    <Button size="sm" className="w-full neon-glow-hover" disabled={isFetchingReaderUrl}>
+                                        {isFetchingReaderUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        <BookOpen size={16} className="mr-2"/> Read Manga <Compass size={14} className="ml-1.5 opacity-70"/>
+                                    </Button>
+                                </LongPressButtonWrapper>
+                            ) : (
+                                <LongHoverButtonWrapper
+                                    onPrimaryAction={handleReadManga}
+                                    alternativeOptions={mangaReadOptions}
+                                    buttonLabel={`Read ${manga.title} on MangaKakalot and other sites`}
+                                >
+                                     <Button size="sm" className="w-full neon-glow-hover" disabled={isFetchingReaderUrl}>
+                                        {isFetchingReaderUrl && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        <BookOpen size={16} className="mr-2"/> Read Manga <Compass size={14} className="ml-1.5 opacity-70"/>
+                                    </Button>
+                                </LongHoverButtonWrapper>
+                            )}
 
                            {manga.url && <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
                                   <Link href={manga.url} target="_blank" rel="noopener noreferrer">View on MyAnimeList <ExternalLink size={14} className="ml-2" /></Link></Button>}
@@ -233,14 +274,14 @@ export default function MangaDetailPage() {
                  <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2"><Layers size={22}/> Chapters</h3>
                  <Card className="glass p-6 flex flex-col items-center justify-center text-center border-border/50 min-h-[150px]">
                      <BookOpen size={40} className="mb-3 text-muted-foreground opacity-50"/>
-                     <p className="font-medium text-muted-foreground">Chapter Lists & In-App Reading Coming Soon!</p>
-                     <p className="text-sm text-muted-foreground">We're working hard to bring you a seamless reading experience. For now, please use the "Read on MangaDex" button above or check MyAnimeList/other official sources for chapter details.</p>
+                     <p className="font-medium text-muted-foreground">Chapter Lists & In-App Reading Feature (IFrame)</p>
+                     <p className="text-sm text-muted-foreground">Click "Read Manga" above to try opening in an IFrame. For now, please use the "Read on MangaDex" button or check MyAnimeList/other official sources for chapter details.</p>
                  </Card>
             </section>
 
             {(manga as any).relations?.length > 0 && (
                 <section className="mb-12">
-                    <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2"><Link2 size={22}/> Related Manga</h3>
+                    <h3 className="text-2xl font-semibold mb-4 flex items-center gap-2"><LinkIconLucide size={22}/> Related Manga</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                         {(manga as any).relations.map((relation: any) => (
                             relation.entry.filter((e: any) => e.type === 'manga').map((relatedManga: any) => (
@@ -270,6 +311,35 @@ export default function MangaDetailPage() {
 
              {renderHorizontalSection("Similar Manga (from MAL)", Drama, recommendations, loadingRecs, "No similar manga found.", ItemCard, SkeletonItemCard)}
         </div>
+
+         {/* Manga Reader Iframe Modal */}
+        <Dialog open={isReaderModalOpen} onOpenChange={setIsReaderModalOpen}>
+            <DialogContent className="glass-deep p-0 sm:max-w-[95vw] md:max-w-[90vw] lg:max-w-[80vw] xl:max-w-[70vw] 2xl:max-w-[60vw] h-[90vh] flex flex-col">
+                <DialogHeader className="p-3 border-b border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-sm">
+                    <DialogTitle className="text-base truncate text-primary">{manga?.title || 'Manga Reader'}</DialogTitle>
+                </DialogHeader>
+                <div className="flex-grow overflow-hidden">
+                    {readerModalUrl ? (
+                        <iframe
+                            src={readerModalUrl}
+                            title="Manga Reader"
+                            className="w-full h-full border-0"
+                            allowFullScreen
+                            sandbox="allow-scripts allow-same-origin allow-popups allow-forms" // Added sandbox for security
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            <Loader2 className="h-8 w-8 animate-spin mr-2"/> Loading reader...
+                        </div>
+                    )}
+                </div>
+                <DialogFooter className="p-2 border-t border-border/50 flex-shrink-0 bg-card/80 backdrop-blur-sm">
+                    <p className="text-xs text-muted-foreground text-center">
+                        Content is provided by an external site. Features like fullscreen may be limited.
+                    </p>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }

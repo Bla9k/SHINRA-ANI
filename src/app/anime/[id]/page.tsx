@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search, Layers, Library, BookOpen, Sparkles, Users, Link2, Drama, ArrowRight, Compass } from 'lucide-react'; // Added Compass for more options
+import { Star, Tv, CalendarDays, Clock, Film, ExternalLink, AlertCircle, Youtube, PlayCircle, ThumbsUp, ListEnd, Loader2, Search, Layers, Library, BookOpen, Sparkles, Users, Link2 as LinkIconLucide, Drama, ArrowRight, Compass } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -21,16 +21,24 @@ import { getMoodBasedRecommendations } from '@/ai/flows/mood-based-recommendatio
 import { useToast } from '@/hooks/use-toast';
 import { fetchFromAnimeSuge, fetchEpisodesFromAnimeSuge } from '@/layers/animesuge';
 import { fetchFromAniWave, fetchEpisodesFromAniWave } from '@/layers/aniwave';
-import LongPressButtonWrapper, { type AlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
+import LongPressButtonWrapper, { type AlternativeOption as LongPressAlternativeOption } from '@/components/shared/LongPressButtonWrapper.tsx';
+import LongHoverButtonWrapper, { type AlternativeOption as LongHoverAlternativeOption } from '@/components/shared/LongHoverButtonWrapper.tsx';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { assignAnimeToMood, removeAnimeFromMood, getMoodsForAnime } from '@/services/moods';
+import { MOOD_FILTERS_ANIME, type Mood } from '@/config/moods';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogClose, DialogDescription } from '@/components/ui/dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+
 
 // --- Interfaces ---
 interface Episode {
   id: string;
   number: number;
   title: string;
-  link: string;
-  providerLink: string;
-  source: string;
+  link: string; // Internal link to the watch page
+  providerLink: string; // Link to the episode on the provider's site
+  source: string; // Name of the provider (e.g., 'AnimeSuge', 'AniWave')
 }
 
 // Helper function to format status
@@ -91,6 +99,7 @@ export default function AnimeDetailPage() {
   const malId = params.id ? parseInt(params.id as string, 10) : NaN;
   const { toast } = useToast();
   const episodesSectionRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   const [anime, setAnime] = useState<Anime | null>(null);
   const [recommendations, setRecommendations] = useState<Anime[]>([]);
@@ -107,17 +116,21 @@ export default function AnimeDetailPage() {
   const [namiError, setNamiError] = useState<string | null>(null);
   const [episodeError, setEpisodeError] = useState<string | null>(null);
 
+  const [assignedMoods, setAssignedMoods] = useState<string[]>([]);
+  const [isMoodsDialogOpen, setIsMoodsDialogOpen] = useState(false);
+  const [loadingMoods, setLoadingMoods] = useState(false);
+
   useEffect(() => {
     if (isNaN(malId)) {
       setError('Invalid Anime ID.');
-      setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false); setLoadingEpisodes(false);
+      setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false); setLoadingEpisodes(false); setLoadingMoods(false);
       return;
     }
 
-    async function fetchCoreData() {
-      setLoading(true); setLoadingRecs(true); setLoadingNamiRecs(true); setLoadingEpisodes(true);
+    async function fetchAllData() {
+      setLoading(true); setLoadingRecs(true); setLoadingNamiRecs(true); setLoadingEpisodes(true); setLoadingMoods(true);
       setError(null); setNamiError(null); setEpisodeError(null);
-      setAnime(null); setRecommendations([]); setNamiRecommendations([]); setEpisodes([]); setActiveSource(null);
+      setAnime(null); setRecommendations([]); setNamiRecommendations([]); setEpisodes([]); setActiveSource(null); setAssignedMoods([]);
 
       try {
         console.log(`Fetching main anime details for MAL ID: ${malId}`);
@@ -133,16 +146,18 @@ export default function AnimeDetailPage() {
 
         const namiInput = { mood: "Similar to this", watchHistory: [fetchedAnime.title], profileActivity: `Interested in anime like ${fetchedAnime.title}, genres: ${fetchedAnime.genres.map(g => g.name).join(', ')}.` };
         getMoodBasedRecommendations(namiInput).then(namiRecs => setNamiRecommendations(namiRecs.animeRecommendations || [])).catch(err => { console.error("Nami Recs failed:", err); setNamiError("Nami couldn't find recommendations."); }).finally(() => setLoadingNamiRecs(false));
+        
+        getMoodsForAnime(malId).then(moods => setAssignedMoods(moods)).catch(err => console.error("Failed to fetch assigned moods:", err)).finally(() => setLoadingMoods(false));
 
       } catch (err: any) {
         console.error(`[AnimeDetailPage] Error fetching core data for MAL ID ${malId}:`, err);
         setError(err.message || 'Failed to load anime data.');
-        setAnime(null); setRecommendations([]); setNamiRecommendations([]); setEpisodes([]); setActiveSource(null);
-        setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false); setLoadingEpisodes(false);
+        setAnime(null); setRecommendations([]); setNamiRecommendations([]); setEpisodes([]); setActiveSource(null); setAssignedMoods([]);
+        setLoading(false); setLoadingRecs(false); setLoadingNamiRecs(false); setLoadingEpisodes(false); setLoadingMoods(false);
       }
     }
 
-    fetchCoreData();
+    fetchAllData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [malId]);
 
@@ -225,6 +240,26 @@ export default function AnimeDetailPage() {
    // eslint-disable-next-line react-hooks/exhaustive-deps
    }, [anime]);
 
+  const handleMoodToggle = async (moodId: string, isCurrentlyAssigned: boolean) => {
+    if (!anime) return;
+    setLoadingMoods(true);
+    try {
+      if (isCurrentlyAssigned) {
+        await removeAnimeFromMood(anime.mal_id, moodId);
+        setAssignedMoods(prev => prev.filter(id => id !== moodId));
+        toast({ title: "Mood Untagged", description: `Removed from ${MOOD_FILTERS_ANIME.find(m=>m.id===moodId)?.name || 'mood'}.` });
+      } else {
+        await assignAnimeToMood(anime.mal_id, moodId);
+        setAssignedMoods(prev => [...prev, moodId]);
+        toast({ title: "Mood Tagged", description: `Added to ${MOOD_FILTERS_ANIME.find(m=>m.id===moodId)?.name || 'mood'}.` });
+      }
+    } catch (err: any) {
+      toast({ title: "Error Updating Moods", description: err.message || "Could not update mood assignment.", variant: "destructive" });
+    } finally {
+      setLoadingMoods(false);
+    }
+  };
+
 
   if (loading && !anime) {
     return <AnimeDetailSkeleton />;
@@ -255,8 +290,7 @@ export default function AnimeDetailPage() {
    }
 
   const animePaheSearchUrl = `https://animepahe.ru/search?q=${encodeURIComponent(anime.title)}`;
-
-  const animeWatchOptions: AlternativeOption[] = [
+  const animeWatchOptions: (LongPressAlternativeOption | LongHoverAlternativeOption)[] = [
     { label: "Crunchyroll", href: `https://www.crunchyroll.com/search?q=${encodeURIComponent(anime.title)}`, icon: Tv },
     { label: "HiAnime", href: `https://hianime.to/search?keyword=${encodeURIComponent(anime.title)}`, icon: Tv },
     { label: "AniWave", href: `https://aniwave.to/filter?keyword=${encodeURIComponent(anime.title)}`, icon: Tv },
@@ -310,18 +344,33 @@ export default function AnimeDetailPage() {
                                 <PlayCircle size={18} className="mr-2"/> Watch Episodes
                             </Button>
 
-                             <LongPressButtonWrapper
-                                onPrimaryAction={() => window.open(animePaheSearchUrl, '_blank')}
-                                alternativeOptions={animeWatchOptions}
-                                buttonLabel={`Search ${anime.title} on AnimePahe and other sites`}
-                              >
-                                <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
-                                  {/* Content of the button is handled by LongPressButtonWrapper children */}
-                                   <span>
-                                    <Search size={14} className="mr-2" /> Watch on AnimePahe <Compass size={14} className="ml-1.5 opacity-70" />
-                                   </span>
-                                </Button>
-                              </LongPressButtonWrapper>
+                            {isMobile === undefined ? (
+                                <Skeleton className="h-9 w-full rounded-md" /> // Skeleton for button while isMobile is undefined
+                            ) : isMobile ? (
+                                <LongPressButtonWrapper
+                                    onPrimaryAction={() => window.open(animePaheSearchUrl, '_blank')}
+                                    alternativeOptions={animeWatchOptions}
+                                    buttonLabel={`Search ${anime.title} on AnimePahe and other sites`}
+                                >
+                                    <Button variant="outline" size="sm" className="w-full neon-glow-hover">
+                                        <span>
+                                            <Search size={14} className="mr-2" /> Watch on AnimePahe <Compass size={14} className="ml-1.5 opacity-70" />
+                                        </span>
+                                    </Button>
+                                </LongPressButtonWrapper>
+                            ) : (
+                                <LongHoverButtonWrapper
+                                    onPrimaryAction={() => window.open(animePaheSearchUrl, '_blank')}
+                                    alternativeOptions={animeWatchOptions}
+                                    buttonLabel={`Search ${anime.title} on AnimePahe and other sites`}
+                                >
+                                     <Button variant="outline" size="sm" className="w-full neon-glow-hover">
+                                        <span>
+                                            <Search size={14} className="mr-2" /> Watch on AnimePahe <Compass size={14} className="ml-1.5 opacity-70" />
+                                        </span>
+                                    </Button>
+                                </LongHoverButtonWrapper>
+                            )}
 
                            {anime.url && (
                               <Button variant="outline" size="sm" asChild className="w-full neon-glow-hover">
@@ -337,6 +386,9 @@ export default function AnimeDetailPage() {
                                  </Link>
                               </Button>
                            )}
+                           <Button variant="outline" size="sm" onClick={() => setIsMoodsDialogOpen(true)} className="w-full neon-glow-hover">
+                                <Drama size={16} className="mr-2"/> Tag Moods
+                           </Button>
                         </div>
                     </div>
 
@@ -344,10 +396,16 @@ export default function AnimeDetailPage() {
                         <CardHeader className="p-0 mb-3">
                            <CardTitle className="text-2xl md:text-3xl lg:text-4xl font-bold text-primary">{anime.title}</CardTitle>
                         </CardHeader>
-                        <div className="flex flex-wrap gap-2 mb-4">
+                        <div className="flex flex-wrap gap-2 mb-1">
                            {anime.genres?.map(g => (
                              <Badge key={g.mal_id} variant="secondary" className="neon-glow-hover text-xs cursor-default backdrop-blur-sm bg-secondary/60">{g.name}</Badge>
                            ))}
+                        </div>
+                         <div className="flex flex-wrap gap-2 mb-4">
+                            {loadingMoods ? <Skeleton className="h-5 w-20 rounded-full" /> : assignedMoods.map(moodId => {
+                                const mood = MOOD_FILTERS_ANIME.find(m => m.id === moodId);
+                                return mood ? <Badge key={moodId} variant="outline" className="text-xs border-accent/50 bg-accent/20"><mood.icon size={12} className="mr-1"/>{mood.name}</Badge> : null;
+                            })}
                         </div>
                          <Card className="glass p-3 mb-4 border-primary/10">
                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2 text-sm">
@@ -482,8 +540,43 @@ export default function AnimeDetailPage() {
                      SkeletonItemCard
                  )
             )}
-
         </div>
+
+         <Dialog open={isMoodsDialogOpen} onOpenChange={setIsMoodsDialogOpen}>
+            <DialogContent className="glass-deep sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Tag Moods for: {anime.title}</DialogTitle>
+                    <DialogDescription>Select the moods that best describe this anime. This helps everyone discover content!</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] p-1">
+                    <div className="space-y-3 py-2 pr-3">
+                        {MOOD_FILTERS_ANIME.map(mood => {
+                            const isAssigned = assignedMoods.includes(mood.id);
+                            return (
+                                <div key={mood.id} className="flex items-center space-x-3 p-2 rounded-md hover:bg-accent/10 transition-colors">
+                                    <Checkbox
+                                        id={`mood-${mood.id}`}
+                                        checked={isAssigned}
+                                        onCheckedChange={() => handleMoodToggle(mood.id, isAssigned)}
+                                        disabled={loadingMoods}
+                                    />
+                                    <Label htmlFor={`mood-${mood.id}`} className="flex-1 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                        <div className="flex items-center gap-2">
+                                            <mood.icon size={18} className={cn(isAssigned ? "text-primary" : "text-muted-foreground")}/>
+                                            <span>{mood.name}</span>
+                                        </div>
+                                        <p className="text-xs text-muted-foreground mt-0.5">{mood.description}</p>
+                                    </Label>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </ScrollArea>
+                <DialogClose asChild>
+                    <Button variant="outline" className="mt-4 w-full">Done</Button>
+                </DialogClose>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
@@ -507,6 +600,7 @@ function AnimeDetailSkeleton() {
                            <Skeleton className="h-9 w-full rounded-md" />
                            <Skeleton className="h-9 w-full rounded-md" />
                            <Skeleton className="h-9 w-full rounded-md" />
+                           <Skeleton className="h-9 w-full rounded-md" />
                        </div>
                   </div>
                   <div className="w-full md:w-2/3 lg:w-3/4 flex flex-col">
@@ -517,6 +611,7 @@ function AnimeDetailSkeleton() {
                       <div className="flex flex-wrap gap-2 mb-4">
                           <Skeleton className="h-6 w-16 rounded-full" />
                           <Skeleton className="h-6 w-20 rounded-full" />
+                           <Skeleton className="h-6 w-16 rounded-full" />
                       </div>
                        <Card className="glass p-3 mb-4 border-primary/10">
                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-2">
