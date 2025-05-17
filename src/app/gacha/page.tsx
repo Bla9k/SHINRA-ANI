@@ -3,12 +3,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { performGachaRoll } from '@/services/collectibles';
 import type { Collectible } from '@/types/collectibles';
 import Image from 'next/image';
-import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Tv, BookText } from 'lucide-react';
+import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Tv, BookText, Film, Layers, Library } from 'lucide-react'; // Added Film, Layers, Library
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -39,16 +39,17 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
         let details: Anime | Manga | null = null;
         if (collectible.originalType === 'anime') {
           details = await getAnimeDetails(collectible.originalMalId, undefined, true); // true for noDelay
-        } else {
+        } else if (collectible.originalType === 'manga') { // Added else if for manga
           details = await getMangaDetails(collectible.originalMalId, undefined, true); // true for noDelay
         }
         setRealItemDetails(details);
         if (!details) {
-            setErrorDetails(`Details not found for ${collectible.originalType} ID ${collectible.originalMalId}.`);
+            // Refined error message
+            setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
         }
       } catch (err) {
         console.error(`Error fetching details for collectible ${collectible.id} (Original ID: ${collectible.originalMalId}):`, err);
-        setErrorDetails('Failed to load original item details.');
+        setErrorDetails('Failed to load original item details from source.');
       } finally {
         setIsLoadingDetails(false);
       }
@@ -80,33 +81,19 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
         getRarityColor(collectible.rarity).split(' ')[1] // Use border color from rarity
       )}>
         <CardHeader className="p-0 relative aspect-[3/4]">
-          {isLoadingDetails && !realItemDetails?.imageUrl && (
+          {isLoadingDetails && (!realItemDetails?.imageUrl && !collectible.imageUrl) && (
             <Skeleton className="absolute inset-0" />
           )}
-          {(!isLoadingDetails && !realItemDetails?.imageUrl) && ( // Show parody image if real one fails or doesn't exist
-            <Image
-              src={collectible.imageUrl || 'https://placehold.co/300x400.png?text=ParodyArt&font=lora'}
-              alt={collectible.parodyTitle}
-              layout="fill"
-              objectFit="cover"
-              className="transition-opacity duration-300"
-              data-ai-hint="parody collectible art"
-            />
-          )}
-          {realItemDetails?.imageUrl && (
-             <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior>
-                <a target="_blank" rel="noopener noreferrer" className="block w-full h-full relative">
-                    <Image
-                        src={realItemDetails.imageUrl}
-                        alt={realItemDetails.title || collectible.parodyTitle}
-                        layout="fill"
-                        objectFit="cover"
-                        className="transition-transform duration-300 group-hover:scale-110"
-                        data-ai-hint={`${collectible.originalType} cover`}
-                    />
-                </a>
-             </Link>
-          )}
+          {/* Display real item image if available, otherwise parody image, otherwise placeholder */}
+          <Image
+            src={realItemDetails?.imageUrl || collectible.imageUrl || 'https://placehold.co/300x400.png?text=Art&font=lora'}
+            alt={collectible.parodyTitle}
+            fill // Changed from layout="fill"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+            className="object-cover transition-opacity duration-300"
+            data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
+            onError={(e) => { (e.target as HTMLImageElement).src = 'https://placehold.co/300x400.png?text=Error&font=lora'; }}
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
           <Badge
             className={cn(
@@ -137,13 +124,14 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
                 {realItemDetails && !isLoadingDetails && (
                     <div className="mt-1 border-t border-border/30 pt-1.5 space-y-0.5">
                         <p className="text-[10px] text-muted-foreground font-semibold line-clamp-1">
-                            Based on: <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior><a target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{realItemDetails.title}</a></Link>
+                            Original: <Link href={`/${collectible.originalType}/${collectible.originalMalId}`} passHref legacyBehavior><a target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{realItemDetails.title}</a></Link>
                         </p>
-                        <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/80">
-                            {realItemDetails.score && <span className="flex items-center gap-0.5"><Star size={10} className="text-yellow-400"/>{realItemDetails.score.toFixed(1)}</span>}
+                        <div className="flex items-center gap-x-1.5 gap-y-0.5 text-[9px] text-muted-foreground/80 flex-wrap">
+                            {realItemDetails.score !== null && realItemDetails.score !== undefined && <span className="flex items-center gap-0.5"><Star size={10} className="text-yellow-400"/>{realItemDetails.score.toFixed(1)}</span>}
                             {realItemDetails.year && <span className="flex items-center gap-0.5"><CalendarDays size={10}/>{realItemDetails.year}</span>}
-                            {realItemDetails.type === 'anime' && (realItemDetails as Anime).episodes && <span className="flex items-center gap-0.5"><Tv size={10}/>{(realItemDetails as Anime).episodes} eps</span>}
-                            {realItemDetails.type === 'manga' && (realItemDetails as Manga).chapters && <span className="flex items-center gap-0.5"><BookText size={10}/>{(realItemDetails as Manga).chapters} ch</span>}
+                            {collectible.originalType === 'anime' && (realItemDetails as Anime).episodes && <span className="flex items-center gap-0.5"><Film size={10}/>{(realItemDetails as Anime).episodes} eps</span>}
+                            {collectible.originalType === 'manga' && (realItemDetails as Manga).chapters && <span className="flex items-center gap-0.5"><Layers size={10}/>{(realItemDetails as Manga).chapters} ch</span>}
+                            {collectible.originalType === 'manga' && (realItemDetails as Manga).volumes && <span className="flex items-center gap-0.5"><Library size={10}/>{(realItemDetails as Manga).volumes} vol</span>}
                         </div>
                     </div>
                 )}
@@ -152,15 +140,15 @@ const GachaCard: React.FC<GachaCardProps> = ({ collectible }) => {
                 <div className="mt-auto pt-1.5 border-t border-border/30">
                     {collectible.genreTags && collectible.genreTags.length > 0 && (
                         <div className="flex items-center gap-1 text-[9px] mb-0.5">
-                            <Tag size={10} className="text-muted-foreground/70" />
-                            <span className="text-muted-foreground/70 flex-shrink-0">Parody Genres:</span>
+                            <Tag size={10} className="text-muted-foreground/70 flex-shrink-0" />
+                            <span className="text-muted-foreground/70 flex-shrink-0 mr-1">Parody Genres:</span>
                             <span className="text-foreground/80 line-clamp-1">{collectible.genreTags.join(', ')}</span>
                         </div>
                     )}
                     {collectible.moodTags && collectible.moodTags.length > 0 && (
                         <div className="flex items-center gap-1 text-[9px]">
-                            <Info size={10} className="text-muted-foreground/70" />
-                            <span className="text-muted-foreground/70 flex-shrink-0">Feels Like:</span>
+                            <Info size={10} className="text-muted-foreground/70 flex-shrink-0" />
+                            <span className="text-muted-foreground/70 flex-shrink-0 mr-1">Feels Like:</span>
                             <span className="text-foreground/80 line-clamp-1">{collectible.moodTags.join(', ')}</span>
                         </div>
                     )}
@@ -189,7 +177,6 @@ export default function GachaPage() {
     setIsLoading(true);
     setPulledCollectibles(null); // Clear previous results for new roll
 
-    // Simulate a short delay for better UX even though the local roll is fast
     await new Promise(resolve => setTimeout(resolve, 300));
 
     const result = await performGachaRoll();
@@ -200,22 +187,24 @@ export default function GachaPage() {
         description: result.error,
         variant: 'destructive',
       });
-      setPulledCollectibles([]); // Set to empty array to clear previous, if any
+      setPulledCollectibles([]);
     } else {
       setPulledCollectibles(result.collectibles);
       toast({
         title: 'Gacha Roll Success!',
         description: `You pulled ${result.collectibles.length} new collectibles!`,
-        variant: 'default',
+        variant: "default",
       });
     }
     setIsLoading(false);
   };
 
+  const GACHA_ROLL_SIZE = 4; // Defined here for skeleton consistency
+
   return (
     <div className="container mx-auto px-2 sm:px-4 py-8 flex flex-col items-center">
       <div className="text-center mb-6 sm:mb-8">
-        <Gift className="h-12 w-12 sm:h-16 sm:h-16 mx-auto text-primary mb-2 sm:mb-3" />
+        <Gift className="h-12 w-12 sm:h-16 sm:w-16 mx-auto text-primary mb-2 sm:mb-3" />
         <h1 className="text-3xl sm:text-4xl font-bold text-primary sf-text-glow">Shinra-Ani Gacha</h1>
         <p className="text-muted-foreground mt-1 sm:mt-2 text-md sm:text-lg">
           Roll for unique, parody collectibles! It's free!
@@ -233,13 +222,13 @@ export default function GachaPage() {
         ) : (
           <Sparkles className="mr-2 h-5 w-5" />
         )}
-        Roll for 4 Collectibles!
+        Roll for {GACHA_ROLL_SIZE} Collectibles!
       </Button>
 
       {isLoading && (
-        <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"> {/* Changed to 4 for skeleton too */}
-          {Array.from({ length: 4 }).map((_, index) => ( // Show 4 skeletons
-            <Card key={`skel-${index}`} className="glass-deep aspect-[3/5] animate-pulse">
+        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+          {Array.from({ length: GACHA_ROLL_SIZE }).map((_, index) => (
+            <Card key={`skel-${index}`} className="glass-deep aspect-[3/4] animate-pulse">
                 <CardHeader className="p-0 relative h-2/3">
                     <Skeleton className="h-full w-full rounded-t-lg" />
                 </CardHeader>
@@ -254,7 +243,7 @@ export default function GachaPage() {
       )}
 
       {pulledCollectibles && pulledCollectibles.length > 0 && !isLoading && (
-        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"> {/* Changed to 4 columns for display */}
+        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
           {pulledCollectibles.map((collectible) => (
             <GachaCard key={collectible.id} collectible={collectible} />
           ))}
