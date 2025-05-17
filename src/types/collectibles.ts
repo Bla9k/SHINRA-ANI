@@ -7,16 +7,17 @@ export type CollectibleRarity =
   | 'Ultra Rare'
   | 'Legendary'
   | 'Mythic'
-  | 'Event';
+  | 'Event'
+  | 'Forbidden'; // New Rarity
 
 export interface Collectible {
-  id: string; // Unique ID for the collectible (e.g., "crying-rain-sim")
+  id: string;
   parodyTitle: string;
   originalMalId: number;
   originalType: 'anime' | 'manga';
   rarity: CollectibleRarity;
   parodyBlurb: string;
-  imageUrl: string | null; // Image for the collectible itself (parody art)
+  imageUrl: string | null;
   genreTags?: string[];
   moodTags?: string[];
   evolvesToId?: string;
@@ -30,12 +31,31 @@ export interface GachaPack {
   description: string;
   themeTags?: string[];
   faceCardCollectibleId?: string;
-  packImageUrl?: string;
-  collectibleIds: string[];
+  packImageUrl?: string; // Fallback image for the pack itself
+  collectibleIds: string[]; // Collectibles available in this pack
+  isLegacyPack?: boolean; // Flag for special handling
 }
 
 
+// --- SAMPLE COLLECTIBLES ---
+// NOTE: This list needs to be significantly expanded to ~500 for a full experience.
+// The originalMalId and originalType are illustrative and should be verified for accuracy.
+// For the Legacy Pack, ensure some Mythic, Event, and the new Forbidden card are included.
+
 export const SAMPLE_COLLECTIBLES: Collectible[] = [
+  // ... (previous collectibles remain, ensure some Mythics and Events exist)
+  {
+    id: 'lelouch-zero-requiem',
+    parodyTitle: "The Emperor's Final Gambit: Zero Requiem",
+    originalMalId: 1575, // Code Geass: Lelouch of the Rebellion
+    originalType: 'anime',
+    rarity: 'Forbidden',
+    parodyBlurb: "To save the world, he became its greatest villain. A masterpiece of manipulation and sacrifice. All Hail Lelouch!",
+    imageUrl: 'https://placehold.co/300x400.png?text=ZeroRequiem&font=gothic',
+    genreTags: ['Mecha', 'Military', 'Drama', 'Psychological', 'Super Power'],
+    moodTags: ['Dark & Deep', 'Emotional Rollercoaster', 'Epic Adventure'],
+    packExclusive: true, // Typically Forbidden cards would be pack exclusive
+  },
   {
     id: 'depression-animated',
     parodyTitle: 'Depression: The Animated Series',
@@ -68,6 +88,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     imageUrl: 'https://placehold.co/300x400.png?text=UncleNaruto&font=lora',
     genreTags: ['Action', 'Adventure', 'Shonen', 'Event'],
     moodTags: ['Adrenaline Rush', 'Epic Adventure'],
+    packExclusive: true,
   },
   {
     id: 'budget-jojo-but-still-fire',
@@ -412,7 +433,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     rarity: 'Rare',
     parodyBlurb: "They were born to make history. And to make us all cry with how beautiful it is. We ship it.",
     imageUrl: 'https://placehold.co/300x400.png?text=YuriOnIce&font=lora',
-    genreTags: ['Sports', 'Drama', 'Romance'], // Romance is heavily implied
+    genreTags: ['Sports', 'Drama', 'Romance'],
     moodTags: ['Heartwarming', 'Emotional Rollercoaster'],
   },
   {
@@ -423,7 +444,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     rarity: 'Ultra Rare',
     parodyBlurb: "Come for the cool 80s New York crime aesthetic, stay for the soul-crushing trauma. You'll never be the same.",
     imageUrl: 'https://placehold.co/300x400.png?text=BananaPain&font=lora',
-    genreTags: ['Action', 'Adventure', 'Drama', 'Shoujo'], // Shoujo for the source magazine
+    genreTags: ['Action', 'Adventure', 'Drama', 'Shoujo'],
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
@@ -1167,7 +1188,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     id: '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)',
     parodyTitle: '[Oshi no Ko]: The Dark Side Of Showbiz (With Reincarnation And Revenge)',
     originalMalId: 52034, // [Oshi no Ko]
-    originalType: 'anime', // Corrected based on MAL ID provided (anime)
+    originalType: 'anime',
     rarity: 'Mythic',
     parodyBlurb: "Idols, actors, and a whole lot of trauma. This story goes places you wouldn't expect.",
     imageUrl: 'https://placehold.co/300x400.png?text=OshiNoKoDark&font=lora',
@@ -2498,11 +2519,10 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ['Comedy', 'Romance', 'School', 'Shonen', 'Slice of Life'],
     moodTags: ['Heartwarming', 'Comfy & Cozy'],
   }
-  // TODO: Continue adding ~400 more collectibles with varied rarities, themes, and original sources.
-  // Ensure originalMalId and originalType are as accurate as possible for linking.
-  // Mix in more manga parodies.
+  // ... (Continue adding up to ~500, ensuring unique IDs and diverse content)
 ];
 
+// --- SAMPLE GACHA PACKS ---
 export const SAMPLE_PACKS: GachaPack[] = [
   {
     id: 'isekai-starter-pack',
@@ -2510,8 +2530,8 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Everything you need to begin your journey to another world! (Truck-kun may or may not be included).',
     themeTags: ['isekai', 'fantasy', 'comedy'],
     faceCardCollectibleId: 'isekai-truck-kun',
-    packImageUrl: 'https://placehold.co/250x350.png?text=IsekaiOdyssey&font=orbitron',
-    collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.genreTags?.includes('Isekai')).map(c => c.id).slice(0, 20), // Example: first 20 isekai
+    packImageUrl: 'https://placehold.co/200x320.png?text=IsekaiPackArt&font=orbitron',
+    collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.genreTags?.includes('Isekai')).map(c => c.id).slice(0, 20),
   },
   {
     id: 'legendary-heroes-pack',
@@ -2519,7 +2539,7 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Pull for parodies of the most iconic and overpowered heroes in anime & manga!',
     themeTags: ['action', 'legendary', 'mythic', 'shonen'],
     faceCardCollectibleId: 'sao-good-this-time',
-    packImageUrl: 'https://placehold.co/250x350.png?text=HeroicLegends&font=orbitron',
+    packImageUrl: 'https://placehold.co/200x320.png?text=HeroicLegends&font=orbitron',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.rarity === 'Legendary' || c.rarity === 'Mythic').map(c => c.id).slice(0, 20),
   },
   {
@@ -2528,7 +2548,7 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'For when you want to feel things... deeply. Bring tissues.',
     themeTags: ['drama', 'emotional', 'slice of life', 'tragedy'],
     faceCardCollectibleId: 'clannad:-the-onion-cutting-simulator',
-    packImageUrl: 'https://placehold.co/250x350.png?text=TearJerkerCollection&font=orbitron',
+    packImageUrl: 'https://placehold.co/200x320.png?text=TearJerkerPack&font=orbitron',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.moodTags?.includes('Emotional Rollercoaster') || c.genreTags?.includes('Tragedy')).map(c => c.id).slice(0, 20),
   },
   {
@@ -2537,10 +2557,34 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Laugh till you drop with these hilarious parodies!',
     themeTags: ['comedy', 'parody', 'slice of life', 'gag humor'],
     faceCardCollectibleId: 'konosuba:-my-adventuring-party-is-useless-(and-i-love-it)',
-    packImageUrl: 'https://placehold.co/250x350.png?text=LaughOutLoud&font=orbitron',
+    packImageUrl: 'https://placehold.co/200x320.png?text=LaughOutLoud&font=orbitron',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.genreTags?.includes('Comedy') || c.moodTags?.includes('Hilarious')).map(c => c.id).slice(0, 20),
+  },
+  {
+    id: 'legacy-pack',
+    name: 'Legacy Pack',
+    description: 'Contains one ultra-rare card: a chance at Mythic, Event, or the elusive Forbidden tier!',
+    themeTags: ['mythic', 'event', 'forbidden', 'ultra_rare'],
+    faceCardCollectibleId: 'lelouch-zero-requiem', // The new Forbidden card
+    packImageUrl: 'https://placehold.co/200x320.png?text=LegacyPack&font=cinzel', // Distinct pack art
+    collectibleIds: [
+        'lelouch-zero-requiem', // Forbidden
+        'sao-good-this-time', // Mythic
+        'gintama:-the-fourth-wall-is-but-a-suggestion', // Mythic
+        'one-piece:-the-journey-that-will-outlive-us-all', // Mythic
+        'redline:-2d-animation-flexes-so-hard-it-took-7-years-to-make', // Mythic
+        'cowboy-bebop:-space-jazz-and-existential-dread', // Mythic
+        'devilman-crybaby:-demons,-sex,-drugs,-and-a-whole-lot-of-crying', // Mythic
+        'the-tatami-galaxy:-college-student-relives-his-first-two-years-repeatedly-trying-to-find-happiness', // Mythic
+        'frieren:-beyond-journey-s-end-(elf-outlives-everyone,-learns-to-feel)', // Mythic
+        '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)', // Mythic
+        'naruto-s-lost-uncle-returns-in-2025', // Event
+        'frieren-beyond-journey-s-end-season-2', // Event
+        'one-punch-man-season-3:-finally-animated-(probably-by-a-different-studio-again)', // Event
+        // Add more Mythic/Event card IDs here as they are created
+    ],
+    isLegacyPack: true, // Flag for special handling
   }
 ];
-// Ensure collectibleIds in SAMPLE_PACKS reference existing Collectible IDs.
-// This simplified pack creation logic might lead to small pack pools if not many collectibles match the filter.
-// For a production system, pack contents would be more deliberately curated.
+
+    
