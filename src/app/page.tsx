@@ -5,17 +5,17 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAnimes, getMangas, Anime, Manga, mapJikanDataToAnime, mapJikanDataToManga } from '@/services';
-import { Sparkles, AlertCircle, Tv, BookText, Star, TrendingUp, Clock, CalendarDays, ArrowRight, Zap, HelpCircle, RefreshCw, Heart, Palette, Info } from 'lucide-react';
+import { Sparkles, AlertCircle, Tv, BookText, Star, TrendingUp, Clock, CalendarDays, ArrowRight, Zap, HelpCircle, RefreshCw, Heart, Palette, Info, Gift } from 'lucide-react'; // Added Gift
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { cn } from '@/lib/utils';
 import { ItemCard, SkeletonItemCard, BannerCard, SkeletonBannerCard } from '@/components/shared/ItemCard';
 import Footer from '@/components/layout/Footer';
-import { surpriseMeRecommendation } from '@/ai/flows/surprise-me-recommendation';
+import { surpriseMeRecommendation, SurpriseMeRecommendationOutput } from '@/ai/flows/surprise-me-recommendation'; // Ensure output type is imported
 import SurpriseMeModal from '@/components/shared/SurpriseMeModal';
 import AnimeDnaModal from '@/components/shared/AnimeDnaModal';
 import { MOOD_FILTERS_ANIME, type Mood } from '@/config/moods';
 import Link from 'next/link';
-import { Card } from '@/components/ui/card'; // Added Card import
+import { Card } from '@/components/ui/card';
 
 // Define a unified type for items displayed on the homepage
 export type DisplayItem = (Partial<Anime> & Partial<Manga>) & {
@@ -46,7 +46,7 @@ export default function Home() {
     const [trendingManga, setTrendingManga] = useState<DisplayItem[]>([]);
     const [popularManga, setPopularManga] = useState<DisplayItem[]>([]);
 
-    const [surpriseContent, setSurpriseContent] = useState<Anime | null>(null);
+    const [surpriseContent, setSurpriseContent] = useState<SurpriseMeRecommendationOutput | null>(null);
     const [isSurpriseModalOpen, setIsSurpriseModalOpen] = useState(false);
     const [loadingSurprise, setLoadingSurprise] = useState(false);
 
@@ -69,13 +69,18 @@ export default function Home() {
         setLoadingStates(prev => ({ ...prev, [sectionKey]: true }));
         try {
             const response = await fetchFunction(...params);
-            // Handle potential error structure within successful Jikan response
-            if (response && typeof response === 'object' && 'error' in response && response.error) {
-                 console.warn(`[Home Page] Jikan API error for ${sectionKey}:`, response.error);
-                 setData([]); // Set empty data on Jikan-specific error
+
+            if (response && typeof response === 'object' && response.status && response.status !== 200 && response.message) {
+                 console.warn(`[Home Page] Jikan API error for ${sectionKey}: Status ${response.status}, Message: ${response.message || response.error}`);
+                 setData([]);
                  setError(prevError => prevError || `Jikan API error for ${sectionKey}: ${response.message || response.error}`);
-            } else {
-                const items = (response.animes || response.mangas || []) // Use .animes or .mangas from the service response
+            } else if (response && typeof response === 'object' && 'error' in response && response.error) {
+                console.warn(`[Home Page] Jikan API error for ${sectionKey} (in 2xx response):`, response.error);
+                setData([]);
+                setError(prevError => prevError || `Jikan API error for ${sectionKey}: ${response.error}`);
+            }
+            else {
+                const items = (response.animes || response.mangas || response.data || [])
                     .map(mapFunction)
                     .filter((item): item is DisplayItem => item !== null);
                 setData(items.slice(0, 10));
@@ -93,22 +98,26 @@ export default function Home() {
     const fetchInitialData = useCallback(async () => {
         setError(null);
         const baseParamsAnime = [undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10];
-        const baseParamsManga = [undefined, undefined, undefined, undefined, 1, 'popularity', 10];
+        const baseParamsManga = [undefined, undefined, undefined, undefined, undefined, 1, 'popularity', 10];
         const scoreParamsAnime = [undefined, undefined, undefined, undefined, undefined, 1, 'score', 10];
-        const scoreParamsManga = [undefined, undefined, undefined, undefined, 1, 'score', 10];
+        const scoreParamsManga = [undefined, undefined, undefined, undefined, undefined, 1, 'score', 10];
         const airingParams = [undefined, undefined, undefined, undefined, 'airing', 1, 'popularity', 10];
         const upcomingParams = [undefined, undefined, undefined, undefined, 'upcoming', 1, 'popularity', 10];
 
         setLoadingStates(prev => ({ ...prev, namiPicks: true }));
         try {
+            // For Nami's Picks, fetch highly-rated anime and manga, then combine and shuffle
             const [namiAnimeRes, namiMangaRes] = await Promise.all([
-                getAnimes(undefined, undefined, 8.5, undefined, undefined, 1, 'score', 5),
-                getMangas(undefined, undefined, undefined, 8.5, 1, 'score', 5)
+                getAnimes(undefined, undefined, 8.5, undefined, undefined, 1, 'score', 5), // top 5 anime with score >= 8.5
+                getMangas(undefined, undefined, undefined, 8.5, 1, 'score', 5)  // top 5 manga with score >= 8.5
             ]);
             const namiAnimeItems = (namiAnimeRes.animes || []).map(mapJikanDataToAnime).filter((i): i is DisplayItem => i !== null);
             const namiMangaItems = (namiMangaRes.mangas || []).map(mapJikanDataToManga).filter((i): i is DisplayItem => i !== null);
+            
+            // Combine and shuffle for variety
             const combinedNamiPicks = [...namiAnimeItems, ...namiMangaItems].sort(() => 0.5 - Math.random());
-            setNamiPicks(combinedNamiPicks.slice(0, 6));
+            setNamiPicks(combinedNamiPicks.slice(0, 6)); // Show up to 6 diverse picks
+
         } catch (e) {
             console.error("[Home Page] Failed to fetch Nami's Picks:", e);
             setNamiPicks([]);
@@ -117,6 +126,7 @@ export default function Home() {
             setLoadingStates(prev => ({ ...prev, namiPicks: false }));
         }
 
+        // Fetch sections sequentially to avoid Jikan rate limits
         await fetchSectionData(getAnimes, setTrendingAnime, 'trendingAnime', mapJikanDataToAnime, baseParamsAnime);
         await fetchSectionData(getMangas, setTrendingManga, 'trendingManga', mapJikanDataToManga, baseParamsManga);
         await fetchSectionData(getAnimes, setAiringAnime, 'airingAnime', mapJikanDataToAnime, airingParams);
@@ -136,11 +146,10 @@ export default function Home() {
         setSurpriseContent(null);
         setError(null);
         try {
-            const response = await surpriseMeRecommendation({ requestType: 'anime' });
+            // Requesting an anime for surprise me
+            const response = await surpriseMeRecommendation({ requestType: 'anime', genres: [] });
             if (response && response.mal_id) {
-                // Assuming response is already mapped Anime or Manga type
-                const surpriseAnime = response as Anime; // Cast if necessary, ensure flow returns correct type
-                setSurpriseContent(surpriseAnime);
+                setSurpriseContent(response); // This is already the correct SurpriseMeRecommendationOutput type
                 setIsSurpriseModalOpen(true);
             } else {
                 setError("Nami couldn't find a surprise right now. Try again!");
@@ -168,6 +177,7 @@ export default function Home() {
         itemComponent: React.FC<{ item: DisplayItem, onScanDna?: (id: number) => void }> = ItemCard,
         skeletonComponent: React.FC = SkeletonItemCard
     ) => {
+        const sectionKey = title.toLowerCase().replace(/\s+/g, '-');
         return (
             <section className="mb-10 md:mb-14">
                 <div className="flex items-center justify-between mb-3 md:mb-4 px-4 md:px-6 lg:px-8">
@@ -205,7 +215,7 @@ export default function Home() {
         queryParams.set('q', mood.keywords.join(' '));
       }
       queryParams.set('mood_tag', mood.name);
-       queryParams.set('mood_id', mood.id); // Add mood_id for fetching specific playlist
+      queryParams.set('mood_id', mood.id); // Add mood_id for fetching specific playlist
 
       return (
         <Link href={`/anime?${queryParams.toString()}`} className="block snap-start group">
@@ -219,10 +229,10 @@ export default function Home() {
     };
 
     return (
-        <div className="py-8 md:py-10">
+        <div className="py-8 md:py-10"> {/* Increased vertical padding */}
             {error && (
-                 <div className="px-4 md:px-6 lg:px-8 mb-8">
-                   <Alert variant="destructive" className="glass-deep shadow-lg">
+                 <div className="px-4 md:px-6 lg:px-8 mb-8"> {/* Increased bottom margin */}
+                   <Alert variant="destructive" className="glass-deep shadow-lg"> {/* Use glass-deep */}
                      <AlertCircle className="h-4 w-4" />
                      <AlertTitle>Error Loading Homepage</AlertTitle>
                      <AlertDescription>{error}</AlertDescription>
@@ -248,7 +258,7 @@ export default function Home() {
               </div>
             </section>
 
-            <div className="text-center my-8 md:my-12 px-4">
+            <div className="text-center my-8 md:my-12 px-4 flex justify-center items-center gap-4"> {/* Flex container for buttons */}
                 <Button
                     size="lg"
                     variant="outline"
@@ -257,8 +267,17 @@ export default function Home() {
                     className="neon-glow-hover glass-deep text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-xl border-primary/50 hover:border-primary hover:bg-primary/10"
                 >
                     {loadingSurprise ? <RefreshCw className="mr-2 h-5 w-5 animate-spin" /> : <HelpCircle className="mr-2 h-5 w-5 text-primary" />}
-                    What's Next? (Roulette)
+                    What's Next?
                 </Button>
+                <Link href="/gacha" passHref legacyBehavior>
+                    <Button
+                        size="lg"
+                        variant="outline"
+                        className="fiery-glow-hover glass-deep text-base md:text-lg px-6 py-3 md:px-8 md:py-4 rounded-xl border-accent/50 hover:border-accent hover:bg-accent/10 text-accent"
+                    >
+                        <Gift className="mr-2 h-5 w-5" /> Gacha Game
+                    </Button>
+                </Link>
             </div>
 
             {renderHorizontalSection( "Trending Anime", TrendingUp, trendingAnime, loadingStates.trendingAnime, "/anime?sort=popularity", ItemCard, SkeletonItemCard)}
@@ -269,9 +288,9 @@ export default function Home() {
             {renderHorizontalSection( "Upcoming Anime", CalendarDays, upcomingAnime, loadingStates.upcomingAnime, "/anime?status=upcoming", ItemCard, SkeletonItemCard)}
 
             <Footer />
-            {surpriseContent && (
+            {surpriseContent && ( // Ensure surpriseContent is truthy before rendering modal
               <SurpriseMeModal
-                anime={surpriseContent}
+                item={surpriseContent} // Pass item, not anime. Assuming SurpriseMeModal expects 'item'
                 isOpen={isSurpriseModalOpen}
                 onClose={() => setIsSurpriseModalOpen(false)}
                 onTryAnother={handleWhatNextClick}
