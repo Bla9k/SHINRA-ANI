@@ -19,10 +19,10 @@ import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Home as HomeIcon,
-  Search as SearchIconLucide,
+  Search as SearchIconLucide, // Aliased
   Users as UsersIcon,
-  User as UserIconLucide, // Aliased to avoid conflict with 'user' state
-  Settings as SettingsIcon, // Aliased to avoid conflict
+  User as UserIconLucide, // Aliased
+  Settings as SettingsIcon, // Aliased
   Tv,
   BookText,
   Moon,
@@ -44,15 +44,15 @@ import {
   ExternalLink,
   Package,
   List,
-  Sparkles, // Ensure Sparkles is imported
-  HelpCircle, // Added for "What's Next?"
-  RefreshCw, // Added for reroll
-  Combine, // Added for Fusion
-  Info, // Added for DNA Modal and other info
-  Trophy, // For Achievements tab
-  Image as ImageIcon, // For upload/image related UI
-  Camera, // For image uploads
-  X, // For close buttons
+  Sparkles,
+  HelpCircle,
+  RefreshCw,
+  Combine,
+  Info,
+  Trophy,
+  Image as ImageIcon,
+  Camera,
+  X, // For DialogClose in SubscriptionModal if needed
   type LucideIcon
 } from 'lucide-react';
 import anime from 'animejs';
@@ -60,29 +60,6 @@ import anime from 'animejs';
 interface AppLayoutProps {
   children: ReactNode;
 }
-
-export interface NavSubItem {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  href?: string;
-  action?: () => void;
-  disabled?: boolean;
-  title?: string;
-}
-
-export interface NavSection {
-  id: string;
-  label: string;
-  icon: LucideIcon;
-  mainHref?: string;
-  isDirectAction?: boolean;
-  directAction?: () => void;
-  subItems?: NavSubItem[];
-  requiresAuth?: boolean;
-  requiresTier?: UserProfileData['subscriptionTier'][];
-}
-
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isBooting, setIsBooting] = useState(true);
@@ -95,7 +72,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [isLoadingTier, setIsLoadingTier] = useState(false);
-
   const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
 
   const pathname = usePathname();
@@ -105,15 +81,105 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const appContainerRef = useRef<HTMLDivElement>(null);
-  const mainContentRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null); // Added this ref
 
-  // Define TIER_DATA_RAW inside the component
+  // State for BottomNavigationBar's panel (managed by AppLayout)
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
+
+  // Define handler functions BEFORE navSections and TIER_DATA_RAW
+  const handleSearchToggle = useCallback(() => {
+    setInitialSearchTerm('');
+    setIsSearchOpen((prev) => !prev);
+    setOpenWithFilters(false);
+  }, []);
+
+  const handleCloseSearch = useCallback(() => {
+    setIsSearchOpen(false);
+    setInitialSearchTerm('');
+    setOpenWithFilters(false);
+  }, []);
+
+  const handleOpenSubscriptionModal = useCallback(() => {
+    setShowSubscriptionModal(true);
+  }, []);
+
+  const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
+    if (!user?.uid) {
+      toast({ title: "Login Required", description: "Please log in to select a subscription tier.", variant: "destructive" });
+      return;
+    }
+    if (!tierId) {
+      toast({ title: "Error", description: "No tier was selected.", variant: "destructive" });
+      return;
+    }
+    setIsLoadingTier(true);
+    // Find the tier name for the toast message
+    const selectedTierDetails = TIER_DATA_RAW.find(t => t.id === tierId);
+    const tierName = selectedTierDetails?.name || 'your new tier';
+
+    try {
+      await updateUserProfileDocument(user.uid, { subscriptionTier: tierId });
+      if (fetchUserProfile) {
+        await fetchUserProfile(user.uid); // Refresh profile data
+      }
+      toast({
+        title: `Welcome to the ${tierName}!`,
+        description: "Thank you for supporting Shinra-Ani and unlocking new features!",
+        variant: "default",
+      });
+      setShowSubscriptionModal(false);
+    } catch (error: any) {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Could not update your subscription tier.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingTier(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      toast({
+        title: "Logged Out",
+        description: "You have been successfully logged out.",
+        variant: "default",
+      });
+      router.push('/login');
+    } catch (error: any) {
+      console.error("Logout failed in AppLayout:", error);
+      toast({
+        title: "Logout Failed",
+        description: error.message || "Could not log you out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenCreateCommunityModal = useCallback(() => {
+    if (!user) {
+      toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
+      return;
+    }
+    if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
+      toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default" });
+      setShowSubscriptionModal(true);
+      return;
+    }
+    setIsCreateCommunityModalOpen(true);
+  }, [user, userProfile, toast, setShowSubscriptionModal]);
+
+
+  // Moved TIER_DATA_RAW and navSections definitions inside the component
   const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
         name: 'Spark Tier',
         slogan: 'You’re just lighting the fuse.',
-        icon: Sparkles, // Icon for Spark Tier
+        icon: Sparkles,
         features: [
             { text: 'Basic browsing of anime & manga', included: true },
             { text: 'Limited search results (e.g., top 10)', included: true },
@@ -122,14 +188,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
             { text: 'Standard Nami AI search', included: true },
         ],
         buttonText: 'Select Spark',
-        tierColorClass: 'text-primary', // Will adapt to theme's primary
+        tierColorClass: 'text-primary',
         iconGlowClass: theme === 'shinra-fire' ? 'fiery-glow-icon' : 'neon-glow-icon',
     },
     {
         id: 'ignition',
         name: 'Ignition Tier',
         slogan: 'First burst of power.',
-        icon: Flame, // Icon for Ignition Tier
+        icon: Flame,
         features: [
             { text: 'All Spark features', included: true },
             { text: 'Unlimited search results', included: true },
@@ -141,14 +207,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         ],
         buttonText: 'Select Ignition',
         isPopular: true,
-        tierColorClass: 'text-accent', // Will adapt to theme's accent
+        tierColorClass: 'text-accent',
         iconGlowClass: theme === 'shinra-fire' ? 'fiery-glow-icon' : 'neon-glow-icon',
     },
     {
         id: 'hellfire',
         name: 'Hellfire Tier',
         slogan: 'Shinra-style blazing speed.',
-        icon: Zap, // Icon for Hellfire Tier
+        icon: Zap,
         features: [
             { text: 'All Ignition features', included: true },
             { text: 'Unlimited indie reading/watching', included: true },
@@ -166,7 +232,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         id: 'burstdrive',
         name: 'Burst Drive Tier',
         slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket, // Icon for Burst Drive Tier
+        icon: Rocket,
         features: [
             { text: 'All Hellfire features', included: true },
             { text: 'Exclusive profile badges & themes', included: true },
@@ -183,14 +249,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   const TIER_DATA = TIER_DATA_RAW.map(t => ({ ...t, isCurrent: userProfile?.subscriptionTier === t.id }));
 
-  // Define navSections inside the component
   const navSections: NavSection[] = [
     { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
     { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
     { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
     { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
-    { id: 'gacha', label: 'Gacha', icon: Gift, mainHref: '/gacha' },
     { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
+    { id: 'gacha', label: 'Gacha', icon: Gift, mainHref: '/gacha' },
     {
       id: 'profile',
       label: 'Profile & Account',
@@ -216,14 +281,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         { id: 'subscription-tiers', label: 'Subscription Tiers', icon: Star, action: handleOpenSubscriptionModal },
       ],
     },
-     {
+    {
       id: 'search-action',
       label: 'Search',
       icon: SearchIconLucide,
       isDirectAction: true,
       directAction: handleSearchToggle,
     },
-     {
+    {
       id: 'create-community-action',
       label: 'Create Community',
       icon: PlusCircle,
@@ -232,7 +297,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
       requiresAuth: true,
     }
   ];
-
 
   useEffect(() => {
     if (!authLoading && user && userProfile) {
@@ -266,98 +330,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
           opacity: [0, 1],
           translateY: [10, 0],
           duration: 500,
-          easing: 'easeOutQuad',
+          easing: 'easeOut',
         });
       }
     }, 100);
   }, [playAnimation]);
 
-  const handleSearchToggle = useCallback(() => {
-    setInitialSearchTerm('');
-    setIsSearchOpen((prev) => !prev);
-    setOpenWithFilters(false);
-  }, []);
 
-  const handleCloseSearch = useCallback(() => {
-    setIsSearchOpen(false);
-    setInitialSearchTerm('');
-    setOpenWithFilters(false);
-  }, []);
-
-  const handleOpenSubscriptionModal = useCallback(() => {
-    setShowSubscriptionModal(true);
-  }, []);
-
-  const handleSelectTier = async (tierId: Exclude<UserProfileData['subscriptionTier'], null>) => {
-    if (!user?.uid) {
-        toast({ title: "Login Required", description: "Please log in to select a subscription tier.", variant: "destructive" });
-        return;
-    }
-    if (!tierId) {
-        toast({ title: "Error", description: "No tier was selected.", variant: "destructive" });
-        return;
-    }
-    setIsLoadingTier(true);
-    const currentTierDetails = TIER_DATA_RAW.find(t => t.id === tierId);
-    const tierName = currentTierDetails?.name || 'your new tier';
-
-    try {
-      await updateUserProfileDocument(user.uid, { subscriptionTier: tierId });
-      if (fetchUserProfile) {
-        await fetchUserProfile(user.uid); // Refresh profile data
-      }
-      toast({
-        title: `Welcome to the ${tierName}!`,
-        description: "Thank you for supporting Shinra-Ani and unlocking new features!",
-        variant: "default",
-      });
-      setShowSubscriptionModal(false);
-    } catch (error: any) {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Could not update your subscription tier.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoadingTier(false);
-    }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await signOutUser();
-      toast({
-         title: "Logged Out",
-         description: "You have been successfully logged out.",
-         variant: "default",
-      });
-      router.push('/login');
-    } catch (error: any) {
-      console.error("Logout failed in AppLayout:", error);
-      toast({
-         title: "Logout Failed",
-         description: error.message || "Could not log you out. Please try again.",
-         variant: "destructive",
-      });
-    }
-  };
-
-  const handleOpenCreateCommunityModal = useCallback(() => {
-    if (!user) {
-        toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
-        return;
-    }
-     if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
-      toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default" });
-      setShowSubscriptionModal(true); // Open subscription modal if tier is too low
-      return;
-    }
-    setIsCreateCommunityModalOpen(true);
-  }, [user, userProfile, toast]);
-
-
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
   const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : (isPanelOpen && expandedSectionId ? 'pb-[var(--bottom-nav-panel-max-height)]' : 'pb-20');
 
 
@@ -379,12 +358,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <TopBar
                 onSearchIconClick={handleSearchToggle}
-                navSections={navSections} // Pass navSections to TopBar
+                navSections={navSections}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
-                theme={theme}
-                setTheme={setTheme}
              />
             <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)} ref={mainContentRef}>
               <motion.main
@@ -393,7 +370,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 15 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="transition-smooth" // Keep existing class for other transitions if any
+                className="transition-smooth"
               >
                 {children}
               </motion.main>
@@ -401,10 +378,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {theme !== 'hypercharge-netflix' && (
               <BottomNavigationBar
-                className="md:hidden" // Keep hidden on medium and up as TopBar handles it
                 navSections={navSections}
-                theme={theme || 'dark'}
-                setTheme={setTheme}
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
@@ -436,7 +410,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onClose={() => setIsCreateCommunityModalOpen(false)}
                 onCreate={(newCommunity) => {
                     setIsCreateCommunityModalOpen(false);
-                    // Optionally navigate to the new community page
                     router.push(`/community/${newCommunity.id}`);
                 }}
             />
