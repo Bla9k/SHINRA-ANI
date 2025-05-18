@@ -4,18 +4,18 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle as CardTitlePrimitive, CardDescription } from '@/components/ui/card';
-import { performGachaRoll } from '@/services/collectibles.ts';
-import { SAMPLE_COLLECTIBLES, type Collectible, type CollectibleRarity, type GachaPack, SAMPLE_PACKS, NO_ART_PLACEHOLDER, LEGACY_DATA_PLACEHOLDER, IMAGE_UNAVAILABLE_PLACEHOLDER, GENERIC_LOADING_PLACEHOLDER } from '@/types/collectibles.ts';
+import { performGachaRoll } from '@/services/collectibles';
+import { SAMPLE_COLLECTIBLES, SAMPLE_PACKS, type Collectible, type CollectibleRarity, type GachaPack, NO_ART_PLACEHOLDER, GENERIC_LOADING_PLACEHOLDER, IMAGE_UNAVAILABLE_PLACEHOLDER, LEGACY_DATA_PLACEHOLDER } from '@/types/collectibles';
 import Image from 'next/image';
 import { Loader2, Gift, Sparkles, Tag, Info, Star, CalendarDays, Film, Layers, Library, HelpCircle, Percent, Palette, Combine, XCircle, Package, ShoppingBag, Grid, List, RefreshCw } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, shuffleArray } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getAnimeDetails, type Anime } from '@/services/anime.ts';
-import { getMangaDetails, type Manga } from '@/services/manga.ts';
+import { getAnimeDetails, type Anime } from '@/services/anime';
+import { getMangaDetails, type Manga } from '@/services/manga';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
-import { GACHA_ROLL_SIZE, RARITY_ORDER, RARITY_NUMERICAL_VALUE, GACHA_RARITY_RATES } from '@/config/gachaConfig.ts';
+import { GACHA_ROLL_SIZE, RARITY_ORDER, RARITY_NUMERICAL_VALUE, GACHA_RARITY_RATES } from '@/config/gachaConfig';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogClose } from '@/components/ui/dialog';
@@ -24,7 +24,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from 'next-themes';
 import anime from 'animejs';
-
 
 const CardTitle = CardTitlePrimitive;
 
@@ -46,9 +45,10 @@ interface GachaCardProps {
   onSelectForFusion?: (collectible: Collectible) => void;
   isSelectedForFusion?: boolean;
   isFusionMode?: boolean;
+  onAnimationComplete?: () => void; // For legacy pack reveal
 }
 
-const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectForFusion, isSelectedForFusion, isFusionMode }) => {
+const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectForFusion, isSelectedForFusion, isFusionMode, onAnimationComplete }) => {
   const [realItemDetails, setRealItemDetails] = useState<Anime | Manga | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
@@ -59,10 +59,7 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
     let isMounted = true;
     const fetchRealDetails = async () => {
       if (!collectible.originalMalId || !collectible.originalType) {
-        if (isMounted) {
-          setIsLoadingDetails(false);
-          // console.warn(`[GachaCard] Collectible ${collectible.id} missing originalMalId or originalType.`);
-        }
+        if (isMounted) setIsLoadingDetails(false);
         return;
       }
       if (isMounted) {
@@ -71,9 +68,9 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
       try {
         let details: Anime | Manga | null = null;
         if (collectible.originalType === 'anime') {
-          details = await getAnimeDetails(collectible.originalMalId, undefined, true); // No delay for gacha cards
+          details = await getAnimeDetails(collectible.originalMalId, undefined, true);
         } else if (collectible.originalType === 'manga') {
-          details = await getMangaDetails(collectible.originalMalId, undefined, true); // No delay
+          details = await getMangaDetails(collectible.originalMalId, undefined, true);
         }
         if (isMounted) {
           setRealItemDetails(details);
@@ -83,8 +80,7 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
         }
       } catch (err) {
         if (isMounted) {
-          // console.error(`[GachaCard] Error fetching details for ${collectible.id}:`, err);
-          setErrorDetails(`Could not load details for ${collectible.originalType} ID ${collectible.originalMalId} from source.`);
+          setErrorDetails(`Could not load details for ${collectible.originalType} (ID: ${collectible.originalMalId}) from source.`);
         }
       } finally {
         if (isMounted) setIsLoadingDetails(false);
@@ -99,7 +95,7 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
   const cardBaseStyle = rarityClasses.split(' ')[0];
   const cardBgStyle = rarityClasses.split(' ')[1];
   const cardTextStyle = rarityClasses.split(' ')[2];
-  const cardGlowStyle = rarityClasses.split(' ')[3];
+  const cardGlowStyle = rarityClasses.split(' ')[3] || ''; // Ensure glow style is defined
 
   let displayImageUrl = GENERIC_LOADING_PLACEHOLDER;
   if (!isLoadingDetails) {
@@ -112,17 +108,21 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
     } else if (collectible.imageUrl && collectible.imageUrl !== NO_ART_PLACEHOLDER) {
       displayImageUrl = collectible.imageUrl;
     } else if (['Forbidden', 'Mythic', 'Event'].includes(collectible.rarity)) {
-        displayImageUrl = LEGACY_DATA_PLACEHOLDER; // Specific placeholder for high-tier if others fail
+        displayImageUrl = LEGACY_DATA_PLACEHOLDER;
     } else {
       displayImageUrl = IMAGE_UNAVAILABLE_PLACEHOLDER;
     }
   }
+  // console.log(`[GachaCard: ${collectible.parodyTitle}] Display Image URL: ${displayImageUrl}`);
 
-  const handleCardClick = () => {
+
+  const handleCardClick = (e: React.MouseEvent) => {
     if (isFusionMode && onSelectForFusion) {
       onSelectForFusion(collectible);
+    } else if (!isFusionMode) {
+      // Allow clicks to propagate for Link if GachaCard is wrapped
+      // console.log("GachaCard clicked, not in fusion mode.");
     }
-    // No navigation if not in fusion mode for gacha page cards
   };
 
   return (
@@ -131,10 +131,10 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
       className={cn(
         "w-full group glass-deep shadow-xl overflow-hidden h-full flex flex-col transition-all duration-300 ease-in-out",
         cardBaseStyle,
-        (collectible.rarity === 'Forbidden' || collectible.rarity === 'Mythic' || collectible.rarity === 'Legendary') ? cardGlowStyle : 'hover:shadow-lg',
+        cardGlowStyle, // Apply the full neon glow class for border and shadow
         isFusionMode && "cursor-pointer",
         isSelectedForFusion && "ring-2 ring-offset-2 ring-offset-background scale-105",
-        isSelectedForFusion ? "ring-primary" : cardGlowStyle.includes('neon-glow') ? cardBaseStyle : "border",
+        isSelectedForFusion ? "ring-primary" : "border",
         collectible.rarity === 'Forbidden' ? "border-2" : "border"
       )}
       onClick={handleCardClick}
@@ -153,17 +153,15 @@ const GachaCard: React.FC<GachaCardProps> = React.memo(({ collectible, onSelectF
               collectible.isEvolvedForm ? 'filter hue-rotate-15 saturate-150' : ''
             )}
             data-ai-hint={collectible.originalType === 'anime' ? "anime art" : "manga art"}
-            onError={() => {
-              if (!imageError) setImageError(true);
-            }}
+            onError={() => { if (!imageError) setImageError(true); }}
             priority={false}
           />
         )}
         <Badge
           className={cn(
             "absolute top-1.5 right-1.5 text-[10px] px-2 py-0.5 font-semibold shadow-md backdrop-blur-sm",
-            cardBaseStyle, cardBgStyle, cardTextStyle,
-            cardGlowStyle
+            cardBaseStyle, cardBgStyle, cardTextStyle, // Use base, bg, text from rarity
+            cardGlowStyle // Add the glow style directly to badge as well
           )}
         >
           {collectible.rarity} {collectible.isEvolvedForm ? <Sparkles size={12} className="ml-1 text-yellow-300"/> : ''}
@@ -246,22 +244,59 @@ const PackCard: React.FC<PackCardProps> = React.memo(({ pack, onOpenPack, isLoad
 
   useEffect(() => {
     let isMounted = true;
-    const loadFaceCardImages = async () => {
+    const loadPackImages = async () => {
       if (!isMounted) return;
       setIsLoadingImages(true);
       setFaceCardImageUrl(null);
       setLegacyPackImages([]);
 
-      if (pack.packImageUrl && !pack.isLegacyPack) { // Prioritize packImageUrl for non-legacy packs
+      // Priority 1: Dedicated pack.packImageUrl
+      if (pack.packImageUrl && pack.packImageUrl !== NO_ART_PLACEHOLDER) {
         setFaceCardImageUrl(pack.packImageUrl);
         setIsLoadingImages(false);
+        console.log(`[PackCard: ${pack.name}] Using pack.packImageUrl: ${pack.packImageUrl}`);
         return;
       }
 
+      // Priority 2 (especially for Legacy or if packImageUrl is missing): Face Card
+      if (pack.faceCardCollectibleId) {
+        const faceCollectible = SAMPLE_COLLECTIBLES.find(c => c.id === pack.faceCardCollectibleId);
+        if (faceCollectible) {
+          let tempFaceImageUrl = null;
+          // Try collectible's specific art first if not a placeholder
+          if (faceCollectible.imageUrl && faceCollectible.imageUrl !== NO_ART_PLACEHOLDER) {
+            tempFaceImageUrl = faceCollectible.imageUrl;
+          }
+          // Then try fetching real item details
+          if (!tempFaceImageUrl && faceCollectible.originalMalId && faceCollectible.originalType) {
+            try {
+              let details: Anime | Manga | null = null;
+              if (faceCollectible.originalType === 'anime') details = await getAnimeDetails(faceCollectible.originalMalId, undefined, true);
+              else details = await getMangaDetails(faceCollectible.originalMalId, undefined, true);
+              tempFaceImageUrl = details?.imageUrl || null;
+            } catch { /* keep tempFaceImageUrl as is */ }
+          }
+          if (isMounted) {
+            setFaceCardImageUrl(tempFaceImageUrl || GENERIC_PACK_PLACEHOLDER); // Use generic if all else fails
+            console.log(`[PackCard: ${pack.name}] Using faceCard image (resolved): ${tempFaceImageUrl || GENERIC_PACK_PLACEHOLDER}`);
+          }
+        } else if (isMounted) {
+          // faceCardCollectibleId was defined, but collectible not found
+          console.warn(`[PackCard: ${pack.name}] faceCardCollectibleId "${pack.faceCardCollectibleId}" not found in SAMPLE_COLLECTIBLES.`);
+          setFaceCardImageUrl(GENERIC_PACK_PLACEHOLDER);
+        }
+      } else if (isMounted) {
+        // No packImageUrl and no faceCardCollectibleId
+        console.log(`[PackCard: ${pack.name}] No packImageUrl or faceCard. Using generic placeholder.`);
+        setFaceCardImageUrl(GENERIC_PACK_PLACEHOLDER);
+      }
+
+      // Legacy Pack Image Cycling
       if (pack.isLegacyPack && pack.collectibleIds.length > 0) {
         const imageFetchPromises: Promise<string | null>[] = [];
-        const idsToFetch = shuffleArray([...pack.collectibleIds]).slice(0, 5);
-        for (const collId of idsToFetch) {
+        // Shuffle and take a few for the animation to avoid too many initial fetches
+        const idsToAnimate = shuffleArray([...pack.collectibleIds]).slice(0, 5);
+        for (const collId of idsToAnimate) {
           const collectible = SAMPLE_COLLECTIBLES.find(c => c.id === collId);
           if (collectible) {
             if (collectible.imageUrl && collectible.imageUrl !== NO_ART_PLACEHOLDER) {
@@ -281,55 +316,50 @@ const PackCard: React.FC<PackCardProps> = React.memo(({ pack, onOpenPack, isLoad
           }
         }
         const resolvedImages = (await Promise.all(imageFetchPromises)).filter(url => url !== null) as string[];
-        if (isMounted) setLegacyPackImages(resolvedImages.length > 0 ? resolvedImages : [pack.packImageUrl || GENERIC_PACK_PLACEHOLDER]);
-      } else if (pack.faceCardCollectibleId) {
-        const faceCollectible = SAMPLE_COLLECTIBLES.find(c => c.id === pack.faceCardCollectibleId);
-        if (faceCollectible) {
-          let tempFaceImageUrl = (faceCollectible.imageUrl && faceCollectible.imageUrl !== NO_ART_PLACEHOLDER) ? faceCollectible.imageUrl : null;
-          if (!tempFaceImageUrl && faceCollectible.originalMalId && faceCollectible.originalType) {
-            try {
-              let details: Anime | Manga | null = null;
-              if (faceCollectible.originalType === 'anime') details = await getAnimeDetails(faceCollectible.originalMalId, undefined, true);
-              else details = await getMangaDetails(faceCollectible.originalMalId, undefined, true);
-              tempFaceImageUrl = details?.imageUrl || null;
-            } catch { /* Keep tempFaceImageUrl as is */ }
+        if (isMounted) {
+          setLegacyPackImages(resolvedImages.length > 0 ? resolvedImages : [GENERIC_PACK_PLACEHOLDER]);
+          // For Legacy Pack, set the first animated image as the initial faceCardImageUrl if no pack.packImageUrl
+          if (resolvedImages.length > 0 && (!pack.packImageUrl || pack.packImageUrl === NO_ART_PLACEHOLDER)) {
+            setFaceCardImageUrl(resolvedImages[0]);
           }
-          if (isMounted) setFaceCardImageUrl(tempFaceImageUrl || pack.packImageUrl || GENERIC_PACK_PLACEHOLDER);
-        } else if (isMounted) {
-          setFaceCardImageUrl(pack.packImageUrl || GENERIC_PACK_PLACEHOLDER);
+          console.log(`[PackCard: ${pack.name}] Legacy pack animated images loaded: ${resolvedImages.length}`);
         }
-      } else if (isMounted) {
-        setFaceCardImageUrl(pack.packImageUrl || GENERIC_PACK_PLACEHOLDER);
       }
       if (isMounted) setIsLoadingImages(false);
     };
 
-    loadFaceCardImages();
+    loadPackImages();
     return () => { isMounted = false; };
   }, [pack, GENERIC_PACK_PLACEHOLDER]);
 
   useEffect(() => {
     if (pack.isLegacyPack && legacyPackImages.length > 1) {
       const interval = setInterval(() => {
-        setCurrentLegacyImageIndex(prevIndex => (prevIndex + 1) % legacyPackImages.length);
+        if (isMounted) { // Ensure component is still mounted
+            setCurrentLegacyImageIndex(prevIndex => (prevIndex + 1) % legacyPackImages.length);
+        }
       }, 2500);
       return () => clearInterval(interval);
     }
-  }, [pack.isLegacyPack, legacyPackImages]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pack.isLegacyPack, legacyPackImages]); // isMounted is not a standard dependency
 
-  const displayPackImage = pack.isLegacyPack
-    ? (legacyPackImages[currentLegacyImageIndex] || pack.packImageUrl || GENERIC_PACK_PLACEHOLDER)
-    : (faceCardImageUrl || pack.packImageUrl || GENERIC_PACK_PLACEHOLDER);
+  let displayPackImageResolved = pack.isLegacyPack && legacyPackImages.length > 0
+    ? (legacyPackImages[currentLegacyImageIndex] || GENERIC_PACK_PLACEHOLDER)
+    : (faceCardImageUrl || GENERIC_PACK_PLACEHOLDER);
+
+  // console.log(`[PackCard: ${pack.name}] Displaying pack image: ${displayPackImageResolved}`);
+
 
   return (
     <Card ref={cardRef} className="glass-deep shadow-xl border-border/50 flex flex-col overflow-hidden hover:border-primary/50 transition-all aspect-[5/7] group">
       <CardHeader className="p-0 relative flex-grow">
-        {isLoadingImages && !displayPackImage ? ( // Show skeleton only if displayPackImage isn't ready
+        {isLoadingImages ? (
           <Skeleton className="absolute inset-0 bg-muted/30" />
         ) : (
           <AnimatePresence mode="wait">
             <motion.div
-              key={pack.isLegacyPack ? currentLegacyImageIndex : displayPackImage}
+              key={pack.isLegacyPack ? currentLegacyImageIndex : displayPackImageResolved}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -337,14 +367,14 @@ const PackCard: React.FC<PackCardProps> = React.memo(({ pack, onOpenPack, isLoad
               className="absolute inset-0"
             >
               <Image
-                src={displayPackImage}
+                src={displayPackImageResolved}
                 alt={`${pack.name} pack art`}
                 fill
                 sizes="(max-width: 640px) 45vw, (max-width: 1024px) 22vw, 18vw"
                 className="object-cover transition-transform duration-300 group-hover:scale-105"
                 data-ai-hint="gacha pack art"
                 onError={(e) => {
-                    (e.target as HTMLImageElement).srcset = GENERIC_PACK_PLACEHOLDER;
+                    (e.target as HTMLImageElement).srcset = GENERIC_PACK_PLACEHOLDER; // Fallback for srcset too
                     (e.target as HTMLImageElement).src = GENERIC_PACK_PLACEHOLDER;
                 }}
                 priority={false}
@@ -428,11 +458,19 @@ const cardVariants = {
     y: 0,
     scale: 1,
     transition: {
-      delay: i * 0.075, // Slightly faster stagger
+      delay: i * 0.075,
       duration: 0.3,
       ease: "easeOut",
     },
   }),
+   // For Legacy Card Reveal
+  legacyHidden: { opacity: 0, scale: 0.5, rotateY: -90 },
+  legacyVisible: {
+    opacity: 1,
+    scale: 1,
+    rotateY: 0,
+    transition: { delay: 0.2, duration: 0.6, ease: [0.17, 0.67, 0.83, 0.67] }, // Spring-like
+  },
 };
 
 
@@ -450,97 +488,135 @@ export default function GachaPage() {
 
   const [openingPackId, setOpeningPackId] = useState<string | null>(null);
   const [openingPackName, setOpeningPackName] = useState<string>('');
+
   const [isLegacyOpening, setIsLegacyOpening] = useState(false);
   const [legacyRevealStep, setLegacyRevealStep] = useState<'initial' | 'packArt' | 'cardBack' | 'revealed'>('initial');
   const [showRerollButton, setShowRerollButton] = useState(false);
 
   const legacyPackCardRef = useRef<HTMLDivElement>(null);
   const legacyCardBackRef = useRef<HTMLDivElement>(null);
-  const legacyRevealedCardRef = useRef<HTMLDivElement>(null);
+  const legacyRevealedCardRef = useRef<HTMLDivElement>(null); // Ref for the revealed GachaCard
 
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  const handleRoll = async (packId?: string) => {
-    if (!isClient) return;
+  const handleLegacyAnimationComplete = useCallback(() => {
+    // This is called after the revealed card's framer-motion animation should be done.
+    // We add a small timeout to let user see the card before states fully reset.
+    console.log("[GachaPage] Legacy revealed card animation considered complete. Resetting states.");
+    setTimeout(() => {
+        setIsLegacyOpening(false);
+        setLegacyRevealStep('initial');
+        setIsLoading(false); // Ensure loading is false
+        setOpeningPackId(null);
+        // Do NOT clear pulledCollectibles here, it holds the card to display
+        setShowRerollButton(false); // No reroll for legacy pack
+    }, 1500); // Let user see the card for 1.5s
+  }, []);
+
+
+  const handleRoll = async (packIdToOpen?: string) => {
+    if (!isClient || isLoading) return;
+
     setIsLoading(true);
-    setOpeningPackId(packId || null);
-    setPulledCollectibles(null);
+    setOpeningPackId(packIdToOpen || null);
+    setPulledCollectibles(null); // Clear previous pulls immediately
     setSelectedForFusion([]);
     setShowRerollButton(false);
-    setLegacyRevealStep('initial'); // Reset legacy animation state
+    setLegacyRevealStep('initial');
 
-    const currentPack = packId ? SAMPLE_PACKS.find(p => p.id === packId) : null;
-    setOpeningPackName(currentPack ? currentPack.name : 'General Pool');
-    const isThisLegacyPack = !!currentPack?.isLegacyPack;
+    const currentPackBeingOpened = packIdToOpen ? SAMPLE_PACKS.find(p => p.id === packIdToOpen) : null;
+    setOpeningPackName(currentPackBeingOpened ? currentPackBeingOpened.name : 'General Pool');
+    const isThisLegacyPack = !!currentPackBeingOpened?.isLegacyPack;
     setIsLegacyOpening(isThisLegacyPack);
 
-    if (isThisLegacyPack) {
+    console.log(`[GachaPage] handleRoll: packId=${packIdToOpen}, isLegacy=${isThisLegacyPack}, packName=${openingPackName}`);
+
+
+    if (isThisLegacyPack && currentPackBeingOpened) {
       setLegacyRevealStep('packArt');
+      // Wait for pack art to be visible before starting anime.js animation
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      const packCardElement = document.getElementById(`pack-card-${packId}`); // Use a unique ID for the pack card if needed or pass ref
+      const packCardElement = document.getElementById(`pack-card-${currentPackBeingOpened.id}`);
       if (packCardElement && typeof anime === 'function') {
+        console.log(`[GachaPage] Animating Legacy Pack Art: ${currentPackBeingOpened.id}`);
         anime.remove(packCardElement);
         anime({
           targets: packCardElement,
-          scale: [
-            { value: 1, duration: 0 },
-            { value: 1.1, duration: 400, easing: 'easeOutSine' },
-            { value: 1, duration: 400, easing: 'easeInOutQuad' }
-          ],
+          scale: [1, 1.1, 1],
           boxShadow: [
             { value: '0 0 0px 0px hsl(var(--rarity-forbidden-glow-hsl, 0 0% 100%) / 0)', duration: 0 },
-            { value: `0 0 40px 20px hsl(var(--rarity-forbidden-glow-hsl, 0 0% 100%) / 0.7)`, duration: 400, delay:100, easing: 'easeOutQuad' },
-            { value: '0 0 0px 0px hsl(var(--rarity-forbidden-glow-hsl, 0 0% 100%) / 0)', duration: 400, easing: 'easeInQuad' }
+            { value: `0 0 60px 30px hsl(var(--rarity-forbidden-glow-hsl, 0 0% 100%) / 0.8)`, duration: 500, easing: 'easeOutQuad' },
+            { value: '0 0 0px 0px hsl(var(--rarity-forbidden-glow-hsl, 0 0% 100%) / 0)', duration: 500, easing: 'easeInQuad' }
           ],
           duration: 1200,
           complete: async () => {
+            console.log("[GachaPage] Legacy Pack Art animation complete. Setting step to cardBack.");
             setLegacyRevealStep('cardBack');
-            await new Promise(resolve => setTimeout(resolve, 100));
+            // Fetch the card data here, right before showing the card back
+            const result = await performGachaRoll(null, packIdToOpen);
+            if ('error' in result) {
+              toast({ title: 'Legacy Pack Roll Failed', description: result.error, variant: 'destructive' });
+              setIsLegacyOpening(false); setIsLoading(false); setOpeningPackId(null); setLegacyRevealStep('initial');
+            } else {
+              // CRITICAL: Set pulledCollectibles *before* 'revealed' step
+              setPulledCollectibles(result.collectibles);
+              console.log("[GachaPage] Legacy card data fetched. Card:", result.collectibles[0]?.parodyTitle);
 
-            if (legacyCardBackRef.current && typeof anime === 'function') {
-              anime.remove(legacyCardBackRef.current);
-              legacyCardBackRef.current.style.opacity = '1';
-              legacyCardBackRef.current.style.transform = 'rotateY(-180deg) scale(0.7)';
-              anime({
-                targets: legacyCardBackRef.current,
-                rotateY: ['-180deg', '0deg'],
-                scale: [0.7, 1.1, 1],
-                opacity: [0.7, 1],
-                duration: 800,
-                easing: 'easeOutExpo',
-                delay: 100,
-                complete: async () => {
-                  const result = await performGachaRoll(null, packId); // userId is null for free gacha
-                  if ('error' in result) {
-                    toast({ title: 'Gacha Roll Failed', description: result.error, variant: 'destructive' });
-                    setIsLegacyOpening(false); setIsLoading(false); setOpeningPackId(null);
-                  } else {
-                    setPulledCollectibles(result.collectibles);
-                    setLegacyRevealStep('revealed'); // Cards will animate in via GachaCard's own framer-motion
+              // Wait for card back to be visible before animating it
+              await new Promise(resolve => setTimeout(resolve, 100));
+              if (legacyCardBackRef.current && typeof anime === 'function') {
+                console.log("[GachaPage] Animating Card Back flip.");
+                anime.remove(legacyCardBackRef.current);
+                legacyCardBackRef.current.style.opacity = '1';
+                legacyCardBackRef.current.style.transform = 'rotateY(-180deg) scale(0.8)';
+                anime({
+                  targets: legacyCardBackRef.current,
+                  rotateY: ['-180deg', '0deg'],
+                  scale: [0.8, 1.1, 1],
+                  opacity: [0.7, 1],
+                  duration: 800,
+                  easing: 'easeOutExpo',
+                  delay: 100,
+                  complete: () => {
+                    console.log("[GachaPage] Card Back flip complete. Setting step to revealed.");
+                    setLegacyRevealStep('revealed');
+                    // handleLegacyAnimationComplete will be triggered by GachaCard's onAnimationComplete
                   }
-                }
-              });
+                });
+              } else {
+                 console.warn("[GachaPage] legacyCardBackRef not available for animation.");
+                 setLegacyRevealStep('revealed'); // Skip to reveal if ref not found
+              }
             }
           }
         });
+      } else {
+         console.warn(`[GachaPage] Legacy Pack element 'pack-card-${currentPackBeingOpened.id}' not found for animation, or anime.js not loaded.`);
+         // Fallback if pack element not found or anime.js is missing
+         const result = await performGachaRoll(null, packIdToOpen);
+         if ('error' in result) {
+           toast({ title: 'Legacy Pack Roll Failed', description: result.error, variant: 'destructive' });
+         } else {
+           setPulledCollectibles(result.collectibles);
+         }
+         setIsLoading(false); setOpeningPackId(null); setIsLegacyOpening(false); setLegacyRevealStep('initial');
       }
-      return;
+      return; // End of Legacy Pack specific flow
     }
 
-    // For general rolls or non-legacy packs
-    const result = await performGachaRoll(null, packId);
-    setOpeningPackId(null); // Clear opening pack ID for non-legacy
+    // General roll or non-legacy pack roll
+    const result = await performGachaRoll(null, packIdToOpen); // userId is null for free gacha without pity
 
     if ('error' in result) {
       toast({ title: 'Gacha Roll Failed', description: result.error, variant: 'destructive' });
       setPulledCollectibles([]);
     } else {
       setPulledCollectibles(result.collectibles);
-      setFusionCandidates(result.collectibles);
-      setShowRerollButton(!packId); // Show reroll only for general pool rolls
+      setFusionCandidates(result.collectibles); // Set candidates for fusion
+      setShowRerollButton(!packIdToOpen); // Show reroll only for general pool rolls
       toast({
         title: `${openingPackName} Opened!`,
         description: `You pulled ${result.collectibles.length} new collectible${result.collectibles.length > 1 ? 's' : ''}!`,
@@ -548,14 +624,16 @@ export default function GachaPage() {
       });
     }
     setIsLoading(false);
+    setOpeningPackId(null); // Clear opening pack ID after roll
   };
 
   const handleReroll = async () => {
+      if (isLoading) return;
       setIsLoading(true);
       setPulledCollectibles(null);
       setShowRerollButton(false);
-      await new Promise(resolve => setTimeout(resolve, 300));
-      await handleRoll(); // Call general roll
+      await new Promise(resolve => setTimeout(resolve, 300)); // Short delay for visual feedback
+      await handleRoll(); // Call general roll (no packId)
   };
 
 
@@ -582,6 +660,7 @@ export default function GachaPage() {
     const card1 = selectedForFusion[0];
     const card2 = selectedForFusion[1];
 
+    // Prevent fusion with Event or Forbidden cards for standard fusion
     if (card1.rarity === 'Event' || card2.rarity === 'Event' || card1.rarity === 'Forbidden' || card2.rarity === 'Forbidden') {
         toast({ title: "Fusion Blocked", description: "Event and Forbidden cards cannot be used in standard fusion.", variant: "destructive" });
         setIsFusionModalOpen(false);
@@ -593,26 +672,31 @@ export default function GachaPage() {
     const rarity2Value = RARITY_NUMERICAL_VALUE[card2.rarity] ?? 0;
     let outputRarityIndex: number;
 
-    if (rarity1Value === rarity2Value) {
-        outputRarityIndex = Math.min(rarity1Value + 1, RARITY_ORDER.indexOf('Mythic'));
-    } else {
+    if (rarity1Value === rarity2Value) { // Same rarity fusion
+        outputRarityIndex = Math.min(rarity1Value + 1, RARITY_ORDER.indexOf('Mythic')); // Cap at Mythic
+    } else { // Different rarity fusion
         const higherIndex = Math.max(rarity1Value, rarity2Value);
         const lowerIndex = Math.min(rarity1Value, rarity2Value);
-        outputRarityIndex = (higherIndex - lowerIndex >= 2) 
-            ? Math.min(lowerIndex + 1, RARITY_ORDER.indexOf('Mythic')) 
-            : Math.min(higherIndex, RARITY_ORDER.indexOf('Mythic'));
+        // If rarities are far apart, result is one above lower. If close, result is the higher one.
+        // This is a simplified logic; can be more nuanced.
+        if (higherIndex - lowerIndex >= 2) { // e.g. Common (0) + Ultra Rare (2)
+            outputRarityIndex = Math.min(lowerIndex + 1, RARITY_ORDER.indexOf('Mythic')); // -> Rare
+        } else { // e.g. Common (0) + Rare (1)  OR Rare (1) + Ultra Rare (2)
+            outputRarityIndex = Math.min(higherIndex, RARITY_ORDER.indexOf('Mythic')); // -> Rare OR Ultra Rare
+        }
     }
     const outputRarityTier = RARITY_ORDER[outputRarityIndex];
 
     const potentialResults = SAMPLE_COLLECTIBLES.filter(c =>
         c.rarity === outputRarityTier &&
-        c.id !== card1.id && c.id !== card2.id &&
-        c.rarity !== 'Event' && c.rarity !== 'Forbidden'
+        c.id !== card1.id && c.id !== card2.id && // Cannot fuse into one of the input cards
+        c.rarity !== 'Event' && c.rarity !== 'Forbidden' // Standard fusion doesn't yield Event/Forbidden
     );
 
     if (potentialResults.length > 0) {
         const fusedCollectibleBase = potentialResults[Math.floor(Math.random() * potentialResults.length)];
-        const fusedCollectible = { ...fusedCollectibleBase, isEvolvedForm: true };
+        // Mark as evolved/fused for potential visual distinction
+        const fusedCollectible = { ...fusedCollectibleBase, isEvolvedForm: true }; 
 
         toast({
             title: "Fusion Success!",
@@ -620,42 +704,50 @@ export default function GachaPage() {
             variant: "default",
             duration: 5000,
         });
+        // Update the displayed pulled collectibles
         setPulledCollectibles(prev => {
-            if (!prev) return [fusedCollectible];
+            if (!prev) return [fusedCollectible]; // Should not happen if fusion button is visible
             const remainingFromPull = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
-            return [fusedCollectible, ...remainingFromPull].slice(0, GACHA_ROLL_SIZE);
+            // Ensure we still show GACHA_ROLL_SIZE cards, replacing with fused, or fewer if many fused
+            const updatedPull = [fusedCollectible, ...remainingFromPull];
+            return updatedPull.slice(0, GACHA_ROLL_SIZE); 
         });
-        setFusionCandidates(prev => { // Also update candidates for next fusion attempt if needed
+        setFusionCandidates(prev => {
             const remaining = prev.filter(p => p.id !== card1.id && p.id !== card2.id);
             return [fusedCollectible, ...remaining].slice(0, GACHA_ROLL_SIZE);
         });
+
     } else {
-        toast({ title: "Fusion Fizzled...", description: `No suitable ${outputRarityTier} card could be formed. The cards remain.`, variant: "destructive" });
+        toast({ title: "Fusion Fizzled...", description: `No suitable ${outputRarityTier} card could be formed from this combination. The cards remain.`, variant: "destructive" });
     }
 
     setIsFusionModalOpen(false);
     setSelectedForFusion([]);
   };
 
-  const handleLegacyAnimationComplete = useCallback(() => {
-    // This is called after the revealed card's own animation finishes
-    console.log("Legacy animation sequence visually complete. Resetting states.");
-    setIsLegacyOpening(false);
-    setLegacyRevealStep('initial');
-    setIsLoading(false);
-    setOpeningPackId(null);
-    setShowRerollButton(false);
-  }, []);
-
+  // This useEffect now also handles the final step of legacy animation cleanup.
   useEffect(() => {
-    if (legacyRevealStep === 'revealed' && legacyRevealedCardRef.current && pulledCollectibles && pulledCollectibles.length === 1) {
-        // The card itself will animate in via its own framer-motion variants
-        // We just need to ensure the parent loading state is cleared after the card *should* be visible.
-        // A simple timeout can work, or a callback from GachaCard if it had one.
-        const timer = setTimeout(() => {
+    if (legacyRevealStep === 'revealed' && pulledCollectibles && pulledCollectibles.length === 1 && legacyRevealedCardRef.current) {
+        const cardElement = legacyRevealedCardRef.current.querySelector('.group'); // Target the GachaCard's main div
+        if (cardElement && typeof anime === 'function') {
+            anime.remove(cardElement);
+            anime({
+                targets: cardElement,
+                scale: [0.8, 1.05, 1],
+                opacity: [0, 1],
+                translateY: [20, 0],
+                duration: 700,
+                easing: 'easeOutExpo',
+                complete: () => {
+                    console.log("[GachaPage] Legacy Card revealed and its animation complete.");
+                    handleLegacyAnimationComplete();
+                }
+            });
+        } else {
+            // Fallback if element not found or animejs not ready, call complete immediately
+            console.warn("[GachaPage] Could not animate revealed legacy card or anime.js not ready.");
             handleLegacyAnimationComplete();
-        }, 800); // Estimate for card entrance anim
-        return () => clearTimeout(timer);
+        }
     }
   }, [legacyRevealStep, pulledCollectibles, handleLegacyAnimationComplete]);
 
@@ -706,7 +798,7 @@ export default function GachaPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="min-h-[300px]"
+            className="min-h-[300px]" // Ensure content area has min height
           >
             <TabsContent value="general" className="mt-6">
               <div className="flex flex-col items-center gap-3 mb-4 sm:mb-6">
@@ -728,7 +820,7 @@ export default function GachaPage() {
               {SAMPLE_PACKS.length > 0 ? (
                   <div className="grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
                       {SAMPLE_PACKS.map(pack => (
-                          <div key={pack.id} id={`pack-card-${pack.id}`} ref={pack.isLegacyPack ? legacyPackCardRef : null}>
+                          <div key={pack.id} id={`pack-card-${pack.id}`}>
                             <PackCard pack={pack} onOpenPack={() => handleRoll(pack.id)} isLoadingThisPack={isLoading && openingPackId === pack.id} />
                           </div>
                       ))}
@@ -740,84 +832,92 @@ export default function GachaPage() {
           </motion.div>
         </AnimatePresence>
       </Tabs>
-
-     {isLegacyOpening && legacyRevealStep === 'packArt' && openingPackId && (
-        <div className="my-8 flex flex-col items-center justify-center w-full max-w-xs">
-            <p className="text-lg font-semibold text-primary mb-2 animate-pulse">Opening {openingPackName}...</p>
-             {/* The PackCard for legacy pack is targeted via its ID by anime.js, no need to re-render it here explicitly */}
-        </div>
+      
+      {/* Legacy Pack Animation Area */}
+      {isLegacyOpening && openingPackId && legacyRevealStep !== 'revealed' && (
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex flex-col items-center justify-center p-4">
+              {legacyRevealStep === 'packArt' && SAMPLE_PACKS.find(p => p.id === openingPackId) && (
+                  <motion.div
+                      key="legacy-packart-animation"
+                      initial={{ opacity: 0, scale: 0.7 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.5, ease: 'backOut' }}
+                      className="w-full max-w-[200px] sm:max-w-[240px]"
+                  >
+                     {/* Render the pack card that will be animated by anime.js */}
+                     <div id={`pack-card-${openingPackId}`}> 
+                        <PackCard
+                            pack={SAMPLE_PACKS.find(p => p.id === openingPackId)!}
+                            onOpenPack={() => {}} // Dummy, already opening
+                            isLoadingThisPack={true} // Show as busy
+                        />
+                     </div>
+                  </motion.div>
+              )}
+              {legacyRevealStep === 'cardBack' && (
+                  <motion.div
+                      key="legacy-cardback-animation"
+                      ref={legacyCardBackRef}
+                      className="p-4 w-48 h-64 sm:w-56 sm:h-[22rem] rounded-xl shadow-2xl flex items-center justify-center bg-gradient-to-br from-purple-700 via-red-600 to-orange-500 border-2 border-yellow-400/50"
+                      style={{ perspective: '1000px', opacity: 0, transformStyle: 'preserve-3d' }} // Initial state for anime.js
+                  >
+                      <Sparkles className="w-16 h-16 text-yellow-300 opacity-70 animate-pulse" />
+                  </motion.div>
+              )}
+              {legacyRevealStep !== 'initial' && (
+                <p className="text-lg font-semibold text-primary mt-4 animate-pulse">
+                  {legacyRevealStep === 'packArt' ? `Opening ${openingPackName}...` : "Revealing your LEGACY card..."}
+                </p>
+              )}
+          </div>
       )}
 
-      {isLegacyOpening && legacyRevealStep === 'cardBack' && (
-         <motion.div
-            key="legacy-cardback-animation"
-            ref={legacyCardBackRef}
-            className="my-8 p-4 w-48 h-64 sm:w-56 sm:h-[22rem] rounded-xl shadow-2xl flex items-center justify-center bg-gradient-to-br from-purple-700 via-red-600 to-orange-500 border-2 border-yellow-400/50"
-            style={{ perspective: '1000px', opacity: 0, transformStyle: 'preserve-3d' }}
-          >
-             <Sparkles className="w-16 h-16 text-yellow-300 opacity-70" />
-         </motion.div>
-      )}
-
-
-      {(isLoading && !isLegacyOpening && !openingPackId && activeTab === 'general') && (
-        <div className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-6">
-          {Array.from({ length: GACHA_ROLL_SIZE }).map((_, index) => (
-            <Card key={`skel-${index}`} className="glass-deep aspect-[3/4] animate-pulse">
-                <CardHeader className="p-0 relative h-2/3">
-                    <Skeleton className="h-full w-full rounded-t-lg bg-muted/40" />
-                </CardHeader>
-                <CardContent className="p-2 space-y-1">
-                    <Skeleton className="h-3 w-3/4 bg-muted/40" />
-                    <Skeleton className="h-2 w-full bg-muted/40" />
-                    <Skeleton className="h-2 w-1/2 bg-muted/40" />
-                </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {pulledCollectibles && !isLoading && (!isLegacyOpening || (isLegacyOpening && legacyRevealStep === 'revealed')) && (
+      {/* Display Area for Pulled Cards (General or Final Legacy Card) */}
+      {(!isLoading && !isLegacyOpening || (isLegacyOpening && legacyRevealStep === 'revealed')) && pulledCollectibles && pulledCollectibles.length > 0 && (
         <div className="w-full mt-6">
-            {(!isLegacyOpening || (isLegacyOpening && legacyRevealStep === 'revealed')) && (
-                 <CardTitle className="text-xl sm:text-2xl font-semibold text-center mb-3 sm:mb-4 text-primary sf-text-glow">
-                    {openingPackName && openingPackName !== 'General Pool' ? `${openingPackName} Opened!` : "Your Pull!"}
-                 </CardTitle>
-            )}
+            <CardTitle className="text-xl sm:text-2xl font-semibold text-center mb-3 sm:mb-4 text-primary sf-text-glow">
+                {openingPackName && openingPackName !== 'General Pool' && !isLegacyOpening ? `${openingPackName} Opened!` : (isLegacyOpening && legacyRevealStep === 'revealed' ? `${openingPackName} Revealed!` : "Your Pull!")}
+            </CardTitle>
             <motion.div
-                className="w-full grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4"
-                variants={{ visible: { transition: { staggerChildren: 0.075 } } }}
-                initial="hidden"
-                animate="visible"
+                className={cn(
+                  "w-full gap-2 sm:gap-3 md:gap-4",
+                  isLegacyOpening && legacyRevealStep === 'revealed'
+                    ? "flex justify-center" // Center single legacy card
+                    : "grid grid-cols-2 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4"
+                )}
+                variants={!isLegacyOpening ? { visible: { transition: { staggerChildren: 0.075 } } } : undefined}
+                initial={!isLegacyOpening ? "hidden" : undefined}
+                animate={!isLegacyOpening ? "visible" : undefined}
             >
             {pulledCollectibles.map((collectible, index) => (
                 <motion.div
-                    key={`${collectible.id}-${index}-${Date.now()}`}
-                    variants={cardVariants}
-                    custom={index}
-                    className={cn(isLegacyOpening && legacyRevealStep === 'revealed' && "col-start-1 col-span-full sm:col-start-2 sm:col-span-2 md:col-start-2 md:col-span-2 lg:col-start-2 lg:col-span-2 flex justify-center")}
+                    key={`${collectible.id}-${index}-${Date.now()}`} // Ensure unique key for re-renders
+                    variants={isLegacyOpening ? cardVariants.legacyVisible : cardVariants.visible}
+                    initial={isLegacyOpening ? "legacyHidden" : "hidden"}
+                    animate="visible"
+                    custom={index} // For non-legacy stagger
+                    className={cn(isLegacyOpening && legacyRevealStep === 'revealed' && "w-full max-w-[200px] sm:max-w-[240px]")}
                     ref={isLegacyOpening && legacyRevealStep === 'revealed' ? legacyRevealedCardRef : null}
-                    style={isLegacyOpening && legacyRevealStep === 'revealed' ? { opacity: 0 } : {}} // Initially hide legacy revealed card for anime.js
                 >
-                    <div className={cn(isLegacyOpening && legacyRevealStep === 'revealed' && "w-full max-w-[200px] sm:max-w-[240px]")}>
-                        <GachaCard
-                          collectible={collectible}
-                          onSelectForFusion={handleSelectForFusion}
-                          isSelectedForFusion={selectedForFusion.some(c => c.id === collectible.id)}
-                          isFusionMode={isFusionModalOpen}
-                        />
-                    </div>
+                    <GachaCard
+                        collectible={collectible}
+                        onSelectForFusion={handleSelectForFusion}
+                        isSelectedForFusion={selectedForFusion.some(c => c.id === collectible.id)}
+                        isFusionMode={isFusionModalOpen}
+                        onAnimationComplete={isLegacyOpening && legacyRevealStep === 'revealed' ? handleLegacyAnimationComplete : undefined}
+                    />
                 </motion.div>
             ))}
             </motion.div>
-            {showRerollButton && (
+
+            {showRerollButton && !isLegacyOpening && (
                 <div className="mt-6 text-center">
                     <Button onClick={handleReroll} variant="outline" className="neon-glow-hover glass">
                         <RefreshCw size={16} className="mr-2"/> Reroll All (Free)
                     </Button>
                 </div>
             )}
-            {pulledCollectibles.length > 0 && !isLegacyOpening && ( // Don't show fusion for legacy pack pull
+            {pulledCollectibles.length > 0 && !isLegacyOpening && (
                  <div className="mt-6 text-center">
                     <Button onClick={() => setIsFusionModalOpen(true)} variant="outline" className="neon-glow-hover glass">
                         <Combine size={18} className="mr-2"/> Attempt Card Fusion
@@ -827,8 +927,7 @@ export default function GachaPage() {
         </div>
       )}
 
-
-       {(!pulledCollectibles && !isLoading && !openingPackId && !isLegacyOpening && isClient && activeTab === 'general') && (
+       {(!pulledCollectibles || pulledCollectibles.length === 0) && !isLoading && !openingPackId && !isLegacyOpening && isClient && activeTab === 'general' && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -879,7 +978,7 @@ export default function GachaPage() {
                         <Button
                             type="button"
                             onClick={handleAttemptFusion}
-                            disabled={selectedForFusion.length !== 2 || (isLoading && isFusionModalOpen) } /* Corrected disabling logic */
+                            disabled={selectedForFusion.length !== 2 || (isLoading && isFusionModalOpen) }
                             className="fiery-glow-hover"
                         >
                             {(isLoading && isFusionModalOpen) ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Fuse Cards'}

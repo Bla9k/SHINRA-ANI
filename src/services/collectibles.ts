@@ -1,18 +1,22 @@
 // src/services/collectibles.ts
 'use server';
 
-import { SAMPLE_COLLECTIBLES, SAMPLE_PACKS, type Collectible, type CollectibleRarity, type GachaPack } from '@/types/collectibles.ts';
-import { GACHA_ROLL_SIZE, RARITY_ORDER, RARITY_NUMERICAL_VALUE, GACHA_RARITY_RATES, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT, SOFT_PITY_INCREASE_RATE, PITY_DISTRIBUTION } from '@/config/gachaConfig.ts';
+import { SAMPLE_COLLECTIBLES, SAMPLE_PACKS, type Collectible, type CollectibleRarity, type GachaPack } from '@/types/collectibles';
+import { GACHA_ROLL_SIZE, RARITY_ORDER, RARITY_NUMERICAL_VALUE, GACHA_RARITY_RATES, PITY_TARGET_RARITIES, HARD_PITY_COUNT, SOFT_PITY_START_COUNT, SOFT_PITY_INCREASE_RATE, PITY_DISTRIBUTION } from '@/config/gachaConfig';
 import { shuffleArray } from '@/lib/utils';
 import { getUserProfileDocument, updateUserProfileDocument, type UserProfileData } from './profile';
+
+const GACHA_COST = 0; // For beta, Gacha is free
 
 /**
  * Performs a Gacha roll.
  * If packId is provided, rolls from that specific pack's pool.
  * Otherwise, rolls from the general pool.
- * Implements rarity-based drop rates and a pity system.
  */
-export async function performGachaRoll(userId: string | null, packId?: string): Promise<{ collectibles: Collectible[]; newPityCounter?: number } | { error: string }> {
+export async function performGachaRoll(
+    userId: string | null,
+    packId?: string
+): Promise<{ collectibles: Collectible[]; newPityCounter?: number } | { error: string }> {
     console.log(`[GachaService] Performing Gacha roll. UserID: ${userId}, PackID: ${packId}`);
 
     let rollSize = GACHA_ROLL_SIZE;
@@ -24,12 +28,11 @@ export async function performGachaRoll(userId: string | null, packId?: string): 
         console.log(`[GachaService] Rolling from pack "${currentPack.name}".`);
         rollablePoolBase = SAMPLE_COLLECTIBLES.filter(c => currentPack.collectibleIds.includes(c.id));
         if (rollablePoolBase.length === 0) {
-            return { error: `Pack "${currentPack.name}" has no defined collectibles.` };
+            console.error(`[GachaService] Error: Pack "${currentPack.name}" (ID: ${packId}) has no defined/valid collectibles in its collectibleIds list or SAMPLE_COLLECTIBLES is missing these IDs.`);
+            return { error: `Pack "${currentPack.name}" is empty or misconfigured.` };
         }
         if (currentPack.isLegacyPack) {
             rollSize = 1;
-            // Legacy pack has its own "rates" by virtue of its curated high-tier pool
-            // We'll ensure it picks from its defined rarities (Mythic, Event, Forbidden)
             console.log(`[GachaService] Legacy Pack roll. Pool size for this pack: ${rollablePoolBase.length}. Rolling 1 card.`);
         }
         // Future: Implement currentPack.dropRateModifiers if needed
@@ -37,103 +40,63 @@ export async function performGachaRoll(userId: string | null, packId?: string): 
         console.log(`[GachaService] Performing general roll. Base pool size: ${rollablePoolBase.length}`);
     }
 
+    if (rollablePoolBase.length === 0 && !currentPack?.isLegacyPack) { // Check for general pool emptiness specifically
+        console.error("[GachaService] Error: The general rollable pool of collectibles is empty. Cannot perform roll.");
+        return { error: "Gacha pool is currently empty. Please try again later." };
+    }
+
+
     const pulledCollectiblesThisRoll: Collectible[] = [];
     let userProfile: UserProfileData | null = null;
-    let currentPityCounter = 0;
+    let currentPityCounter = 0; // This will be the counter *during* the roll.
 
-    if (userId) {
-        userProfile = await getUserProfileDocument(userId);
-        if (userProfile) {
-            currentPityCounter = userProfile.gachaPityCounter || 0;
-            console.log(`[GachaService] User ${userId} current pity: ${currentPityCounter}`);
-        } else {
-            // This case should ideally not happen if profile creation is robust
-            console.warn(`[GachaService] No profile found for user ${userId} during gacha roll. Pity will not apply.`);
-        }
-    }
+    // Temporarily disable pity for this debugging pass
+    // if (userId) {
+    //     userProfile = await getUserProfileDocument(userId);
+    //     if (userProfile) {
+    //         currentPityCounter = userProfile.gachaPityCounter || 0;
+    //         console.log(`[GachaService] User ${userId} initial pity: ${currentPityCounter}`);
+    //     } else {
+    //         console.warn(`[GachaService] No profile found for user ${userId}. Pity will not apply.`);
+    //     }
+    // }
 
     const raritiesToPull: CollectibleRarity[] = [];
 
     for (let i = 0; i < rollSize; i++) {
-        currentPityCounter++;
+        // currentPityCounter++; // Increment pity for each card pulled in the sequence
         let chosenRarity: CollectibleRarity | null = null;
 
         if (currentPack?.isLegacyPack) {
-            // For legacy pack, we directly pick a card from its specific pool.
-            // The rarity is inherent to the card picked.
-            // No need to roll for rarity first based on general rates.
-            // The pool itself is already curated (Mythic, Event, Forbidden).
-            // We'll just pick one randomly.
+            // For legacy pack, rarity is determined by the single card pulled from its curated pool
             if (rollablePoolBase.length > 0) {
                 const randomIndex = Math.floor(Math.random() * rollablePoolBase.length);
-                chosenRarity = rollablePoolBase[randomIndex].rarity; // Get rarity from the picked card
+                chosenRarity = rollablePoolBase[randomIndex].rarity;
             } else {
-                 console.error("[GachaService] Legacy pack has an empty collectible pool. This shouldn't happen.");
-                 chosenRarity = 'Common'; // Fallback, though highly unlikely for legacy
+                // This case should ideally be prevented by the check at the start of the function
+                console.error("[GachaService] CRITICAL: Legacy pack's rollablePoolBase is empty during card selection.");
+                return { error: "Legacy Pack configuration error." };
             }
         } else {
-            // Calculate effective drop rates for non-Legacy packs
-            effectiveDropRates = { ...GACHA_RARITY_RATES }; // Reset for each pull in a multi-pull
-            if (userId && userProfile) { // Only apply pity if user is logged in and profile exists
-                if (currentPityCounter >= HARD_PITY_COUNT) {
-                    console.log(`[GachaService] Hard pity reached at ${currentPityCounter} pulls!`);
-                    let sumPityRates = 0;
-                    PITY_TARGET_RARITIES.forEach(r => sumPityRates += (PITY_DISTRIBUTION[r] || 0));
-                    
-                    if (sumPityRates > 0) {
-                        (Object.keys(effectiveDropRates) as CollectibleRarity[]).forEach(r => {
-                            effectiveDropRates[r] = PITY_TARGET_RARITIES.includes(r) ? (PITY_DISTRIBUTION[r] || 0) / sumPityRates : 0;
-                        });
-                    } else {
-                         console.warn("[GachaService] Pity distribution sum is 0. Falling back to guaranteeing a Legendary.");
-                         (Object.keys(effectiveDropRates) as CollectibleRarity[]).forEach(r => {
-                            effectiveDropRates[r] = r === 'Legendary' ? 1 : 0;
-                         });
-                    }
-
-                } else if (currentPityCounter >= SOFT_PITY_START_COUNT) {
-                    console.log(`[GachaService] Soft pity active at ${currentPityCounter} pulls.`);
-                    let totalIncrease = 0;
-                    PITY_TARGET_RARITIES.forEach(r => {
-                        const increase = SOFT_PITY_INCREASE_RATE * (currentPityCounter - SOFT_PITY_START_COUNT + 1);
-                        effectiveDropRates[r] = (effectiveDropRates[r] || 0) + increase;
-                        totalIncrease += increase;
-                    });
-
-                    let sumNonPityOriginalRates = 0;
-                    (Object.keys(effectiveDropRates) as CollectibleRarity[]).forEach(r => {
-                        if (!PITY_TARGET_RARITIES.includes(r)) {
-                            sumNonPityOriginalRates += (GACHA_RARITY_RATES[r] || 0);
-                        }
-                    });
-
-                    if (sumNonPityOriginalRates > 0) {
-                        (Object.keys(effectiveDropRates) as CollectibleRarity[]).forEach(r => {
-                            if (!PITY_TARGET_RARITIES.includes(r)) {
-                                effectiveDropRates[r] = Math.max(0, (GACHA_RARITY_RATES[r] || 0) - totalIncrease * ((GACHA_RARITY_RATES[r] || 0) / sumNonPityOriginalRates));
-                            }
-                        });
-                    }
-                }
-            }
+            // For non-Legacy packs, determine rarity based on rates (pity system temporarily disabled)
+            effectiveDropRates = { ...GACHA_RARITY_RATES }; // Use base rates
 
             // Normalize rates to sum to 1
-            let sumRates = Object.values(effectiveDropRates).reduce((s, r) => s + r, 0);
-            if (sumRates === 0) { // Should not happen if rates are defined
+            let sumRates = Object.values(effectiveDropRates).reduce((s, r) => s + (r || 0), 0);
+            if (sumRates === 0) {
                 console.warn("[GachaService] Sum of effective rates is 0. Defaulting to Common.");
                 effectiveDropRates['Common'] = 1;
                 sumRates = 1;
             }
-            if (Math.abs(sumRates - 1.0) > 0.001) {
+             if (Math.abs(sumRates - 1.0) > 0.001) { // Normalize if not already summing to 1
                 (Object.keys(effectiveDropRates) as CollectibleRarity[]).forEach(r => {
                     effectiveDropRates[r] = (effectiveDropRates[r] || 0) / sumRates;
                 });
             }
 
-            // Roll for rarity
             const randomRoll = Math.random();
             let cumulativeChance = 0;
-            for (const rarity of RARITY_ORDER) { // Use RARITY_ORDER to ensure consistent checking
+            for (const rarity of RARITY_ORDER) {
                 cumulativeChance += (effectiveDropRates[rarity] || 0);
                 if (randomRoll < cumulativeChance) {
                     chosenRarity = rarity;
@@ -145,70 +108,79 @@ export async function performGachaRoll(userId: string | null, packId?: string): 
         
         raritiesToPull.push(chosenRarity);
 
-        if (userId && PITY_TARGET_RARITIES.includes(chosenRarity)) {
-            console.log(`[GachaService] Pity target rarity ${chosenRarity} pulled! Resetting pity for user ${userId}.`);
-            currentPityCounter = 0; // Reset pity for the next item in the roll AND for user's profile
-        }
+        // if (userId && PITY_TARGET_RARITIES.includes(chosenRarity)) {
+        //     console.log(`[GachaService] Pity target rarity ${chosenRarity} pulled for user ${userId}. Resetting pity for subsequent pulls in this roll and for profile.`);
+        //     currentPityCounter = 0; // Reset pity for the next item in this roll AND for user's profile later
+        // }
     }
 
-    // Select collectibles based on chosen rarities, attempting uniqueness
-    const shuffledFullPool = shuffleArray([...rollablePoolBase]); // Shuffle the base pool for this pack/general
+    const shuffledFullPoolForSelection = shuffleArray([...rollablePoolBase]);
     const pulledIdsThisRoll = new Set<string>();
 
     for (const targetRarity of raritiesToPull) {
         let pickedCollectible: Collectible | undefined = undefined;
-        let attempts = 0;
-        const maxAttempts = 5; // Try a few times to find a unique one of the target rarity
-
-        // Filter pool for target rarity
-        const raritySpecificPool = shuffledFullPool.filter(c => c.rarity === targetRarity);
-
-        if (raritySpecificPool.length > 0) {
-            while (attempts < maxAttempts) {
-                const potentialPick = raritySpecificPool[Math.floor(Math.random() * raritySpecificPool.length)];
-                if (!pulledIdsThisRoll.has(potentialPick.id)) {
-                    pickedCollectible = potentialPick;
-                    break;
-                }
-                attempts++;
+        
+        // For Legacy Pack, we already know the pool is specific. Pick one.
+        if (currentPack?.isLegacyPack) {
+            if (shuffledFullPoolForSelection.length > 0) {
+                 pickedCollectible = shuffledFullPoolForSelection.pop(); // Take one from the pack's specific pool
             }
-            // If still no unique pick after attempts, take the last potential pick (allows duplicate if pool is small)
-            if (!pickedCollectible) pickedCollectible = raritySpecificPool[Math.floor(Math.random() * raritySpecificPool.length)];
+        } else {
+            // For general/other packs, filter by targetRarity
+            const raritySpecificPool = shuffledFullPoolForSelection.filter(c => c.rarity === targetRarity);
+            let attempts = 0;
+            const maxAttempts = raritySpecificPool.length > 0 ? raritySpecificPool.length : 5; // More attempts if pool is large
+
+            if (raritySpecificPool.length > 0) {
+                while (attempts < maxAttempts) {
+                    const potentialPick = raritySpecificPool[Math.floor(Math.random() * raritySpecificPool.length)];
+                    if (!pulledIdsThisRoll.has(potentialPick.id)) {
+                        pickedCollectible = potentialPick;
+                        break;
+                    }
+                    attempts++;
+                }
+                if (!pickedCollectible) pickedCollectible = raritySpecificPool[Math.floor(Math.random() * raritySpecificPool.length)];
+            }
         }
 
-        // Fallback if no card of chosen rarity (should be rare with large pool)
         if (!pickedCollectible) {
-            console.warn(`[GachaService] No collectible found for rarity ${targetRarity}. Falling back to general pool random.`);
-            pickedCollectible = shuffledFullPool[Math.floor(Math.random() * shuffledFullPool.length)] || rollablePoolBase[0]; // Absolute fallback
-            if (!pickedCollectible) { // Should be impossible if rollablePoolBase is not empty
+            console.warn(`[GachaService] No collectible found for rarity ${targetRarity} from its specific pool or general pool. Trying absolute fallback.`);
+            // Absolute fallback: pick any card from the original shuffled base pool that hasn't been picked yet
+            let fallbackPick = shuffledFullPoolForSelection.find(c => !pulledIdsThisRoll.has(c.id));
+            if (!fallbackPick && rollablePoolBase.length > 0) { // If all unique used, pick any
+                fallbackPick = rollablePoolBase[Math.floor(Math.random() * rollablePoolBase.length)];
+            }
+            if (!fallbackPick) {
+                 console.error("[GachaService] CRITICAL: Could not select any fallback collectible. The pool might be entirely empty.");
                  return { error: "Internal Gacha Error: Failed to select any fallback collectible." };
             }
+            pickedCollectible = fallbackPick;
+            console.log(`[GachaService] Fallback pick: ${pickedCollectible.parodyTitle} (${pickedCollectible.rarity})`);
         }
         
-        let finalCollectible = { ...pickedCollectible }; // Clone
+        let finalCollectible = { ...pickedCollectible };
         pulledIdsThisRoll.add(finalCollectible.id);
 
-        // Lucky Evolution Chance (not for Forbidden or if already an evolved form)
         if (finalCollectible.evolvesToId && finalCollectible.rarity !== 'Forbidden' && !finalCollectible.isEvolvedForm && Math.random() < 0.10) {
             const evolvedForm = SAMPLE_COLLECTIBLES.find(c => c.id === finalCollectible.evolvesToId);
             if (evolvedForm) {
                 console.log(`[GachaService] Lucky Evolution! ${finalCollectible.parodyTitle} evolved into ${evolvedForm.parodyTitle}`);
-                finalCollectible = { ...evolvedForm, isEvolvedForm: true }; // Ensure isEvolvedForm is set
+                finalCollectible = { ...evolvedForm, isEvolvedForm: true };
             }
         }
         pulledCollectiblesThisRoll.push(finalCollectible);
     }
 
-    if (userId && userProfile) { // Only update if user is logged in and profile was loaded
-        try {
-            await updateUserProfileDocument(userId, { gachaPityCounter: currentPityCounter });
-            console.log(`[GachaService] User ${userId} pity counter updated to ${currentPityCounter}.`);
-        } catch (error) {
-            console.error(`[GachaService] Failed to update pity counter for user ${userId}:`, error);
-            // Proceed with returning collectibles, pity update failure is not critical for the roll itself
-        }
-    }
+    // if (userId && userProfile) { // Only update if user is logged in and profile was loaded
+    //     try {
+    //         await updateUserProfileDocument(userId, { gachaPityCounter: currentPityCounter });
+    //         console.log(`[GachaService] User ${userId} pity counter updated to ${currentPityCounter}.`);
+    //     } catch (error) {
+    //         console.error(`[GachaService] Failed to update pity counter for user ${userId}:`, error);
+    //     }
+    // }
 
     console.log(`[GachaService] Roll complete. Pulled: ${pulledCollectiblesThisRoll.map(c => `${c.parodyTitle} (${c.rarity})`).join(', ')}.`);
-    return { collectibles: pulledCollectiblesThisRoll, newPityCounter: userId ? currentPityCounter : undefined };
+    return { collectibles: pulledCollectiblesThisRoll /* newPityCounter: userId ? currentPityCounter : undefined */ };
 }
