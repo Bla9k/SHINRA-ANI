@@ -17,12 +17,12 @@ export interface Collectible {
   originalType: 'anime' | 'manga';
   rarity: CollectibleRarity;
   parodyBlurb: string;
-  imageUrl: string | null; // Can be specific parody art, or Jikan URL will be used
+  imageUrl: string | null;
   genreTags?: string[];
   moodTags?: string[];
   evolvesToId?: string;
   isEvolvedForm?: boolean;
-  packExclusive?: boolean; // If true, only found in specific packs, not general pool
+  packExclusive?: boolean;
 }
 
 export interface GachaPack {
@@ -30,10 +30,10 @@ export interface GachaPack {
   name: string;
   description: string;
   themeTags?: string[];
-  faceCardCollectibleId?: string; // ID of a Collectible to be the "face" of the pack
+  faceCardCollectibleId?: string;
   packImageUrl?: string; // Dedicated image for the pack art itself
-  collectibleIds: string[]; // Array of Collectible IDs that can be pulled from this pack
-  isLegacyPack?: boolean; // If true, pulls only 1 card, potentially special rules
+  collectibleIds: string[];
+  isLegacyPack?: boolean;
 }
 
 export const NO_ART_PLACEHOLDER = 'https://placehold.co/300x450/0a0a0a/777777?text=NoParodyArt&font=poppins';
@@ -114,7 +114,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Adrenaline Rush'],
   },
    {
-    id: 'the-tatami-galaxy:-college-student-relives-his-first-two-years-repeatedly-trying-to-find-happiness',
+    id: 'the-tatami-galaxy:-infinite-campus-loop',
     parodyTitle: 'The Tatami Galaxy: Infinite Campus Loop',
     originalMalId: 7785,
     originalType: 'anime',
@@ -125,7 +125,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'devilman-crybaby:-demons,-sex,-drugs,-and-a-whole-lot-of-crying',
+    id: 'devilman-crybaby:-emotional-apocalypse',
     parodyTitle: 'Devilman Crybaby: Emotional Apocalypse',
     originalMalId: 35120,
     originalType: 'anime',
@@ -136,7 +136,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'the-end-of-evangelion:-congratulations!-(everyone-turns-into-tang)',
+    id: 'the-end-of-evangelion:-group-hug-orange-juice',
     parodyTitle: 'The End of Evangelion: Group Hug Orange Juice',
     originalMalId: 32,
     originalType: 'anime',
@@ -147,7 +147,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'grave-of-the-fireflies:-you-will-cry.-that-s-it,-that-s-the-description.',
+    id: 'grave-of-the-fireflies:-why-would-you-watch-this?',
     parodyTitle: 'Grave of the Fireflies: Why Would You Watch This?',
     originalMalId: 578,
     originalType: 'anime',
@@ -158,7 +158,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Emotional Rollercoaster', 'Dark & Deep'],
   },
   {
-    id: '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)',
+    id: '[oshi-no-ko]:-idol-revenge-story-x-treme',
     parodyTitle: '[Oshi no Ko]: Idol Revenge Story X-TREME',
     originalMalId: 52034,
     originalType: 'anime',
@@ -169,7 +169,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ['Dark & Deep', 'Emotional Rollercoaster'],
   },
   {
-    id: 'frieren:-beyond-journey-s-end-(elf-outlives-everyone,-learns-to-feel)',
+    id: 'frieren:-slow-life-fantasy-(with-occasional-sadness)',
     parodyTitle: 'Frieren: Slow Life Fantasy (With Occasional Sadness)',
     originalMalId: 52991,
     originalType: 'anime',
@@ -509,7 +509,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'post-apocalyptic-survival-world-is-over',
     parodyTitle: "End of the World: Now What?",
-    originalMalId: 31964, // Kabaneri of the Iron Fortress
+    originalMalId: 31964, // Kabaneri of the Iron Fortress (using as example)
     originalType: "anime",
     rarity: "Legendary",
     parodyBlurb: "The world ended, but humanity (and its problems) didn't. Scavenge, survive, and try not to get eaten.",
@@ -966,7 +966,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'idol-anime-singing-dancing-and-dreams',
     parodyTitle: "Idol Stardom: Sparkling Dreams & Fierce Competition",
-    originalMalId: 9253, // The iDOLM@STER
+    originalMalId: 9253, // The iDOLM@STER (Using as an example, many idol anime fit)
     originalType: "anime",
     rarity: "Rare",
     parodyBlurb: "They sing, they dance, they sparkle! Follow their journey to become top idols, one concert at a time.",
@@ -1102,7 +1102,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
   {
     id: 'slice-of-life-about-cute-girls-doing-cute-things',
     parodyTitle: 'Cute Girls Do Cute Things: The Anime',
-    originalMalId: 7674, // K-On!
+    originalMalId: 7674, // K-On! (Re-using, common enough)
     originalType: 'anime',
     rarity: 'Common',
     parodyBlurb: "No plot, no problem! Just pure, unadulterated fluff and friendship. Diabetes warning.",
@@ -1122,7 +1122,7 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     moodTags: ["Hilarious", "Heartwarming"]
   },
 
-  // Adding more to reach ~50 for this batch (these will be less detailed to save space)
+  // Added batch
   {
     id: 'that-time-i-got-reincarnated-as-a-slime-(but-stronger)',
     parodyTitle: 'Slime Isekai: Rimuru is Still OP',
@@ -1343,12 +1343,541 @@ export const SAMPLE_COLLECTIBLES: Collectible[] = [
     genreTags: ["Avant Garde", "Dementia", "Drama", "Mystery", "Psychological", "Sci-Fi", "Supernatural"],
     moodTags: ["Dark & Deep", "Intriguing"]
   },
-  // Placeholder for further expansion
+  // Additional 50 - Batch 2
+  {
+    id: 'classroom-of-the-elite-season-2-more-mind-games',
+    parodyTitle: "Classroom of the Elite S2: Even More 5D Chess",
+    originalMalId: 51096,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Ayanokoji continues to pull strings from the shadows. Who needs friends when you have pawns?",
+    imageUrl: `https://placehold.co/300x450/2c2c3e/f0f0f0?text=COTE_S2&font=sora`,
+    genreTags: ['Psychological', 'Drama', 'School'],
+    moodTags: ['Dark & Deep', 'Intriguing']
+  },
+  {
+    id: 'kaguya-sama-love-is-still-war',
+    parodyTitle: "Kaguya-sama: The War of Confessions Rages On",
+    originalMalId: 43608, // Kaguya-sama S3
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "They *still* haven't confessed. The comedic genius and romantic tension are off the charts.",
+    imageUrl: `https://placehold.co/300x450/ffb6c1/1e1e2e?text=LoveWarS3&font=poppins`,
+    genreTags: ['Comedy', 'Romance', 'School', 'Psychological'],
+    moodTags: ['Hilarious', 'Heartwarming', 'Emotional Rollercoaster']
+  },
+  {
+    id: ' Mushoku-tensei-jobless-reincarnation-isekai-done-right',
+    parodyTitle: ' Mushoku Tensei: Peak Isekai Journey',
+    originalMalId: 39535,
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "A shut-in reincarnates with his memories intact and strives to live a full life. Controversial but undeniably well-crafted.",
+    imageUrl: `https://placehold.co/300x450/d2b48c/2f2f2f?text=JoblessReinc&font=serif`,
+    genreTags: ['Isekai', 'Fantasy', 'Adventure', 'Drama', 'Ecchi'],
+    moodTags: ['Epic Adventure', 'Emotional Rollercoaster', 'Dark & Deep']
+  },
+  {
+    id: 'ranking-of-kings-dont-judge-a-king-by-his-cover',
+    parodyTitle: "Ranking of Kings: Bojji Will Make You Cry (Happy Tears)",
+    originalMalId: 40834,
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "A deaf, weak prince dreams of becoming the greatest king. Wholesome, heartbreaking, and beautifully animated.",
+    imageUrl: `https://placehold.co/300x450/f0e68c/4a4a4a?text=Bojji&font=lora`,
+    genreTags: ['Adventure', 'Fantasy', 'Coming-of-Age', 'Action'],
+    moodTags: ['Heartwarming', 'Emotional Rollercoaster', 'Epic Adventure']
+  },
+  {
+    id: 'lycoris-recoil-cute-girls-with-guns-doing-spy-stuff',
+    parodyTitle: "Lycoris Recoil: Cafe by Day, Assassins by Night",
+    originalMalId: 50709,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Cute girls run a cafe while secretly being elite government agents. Chisato and Takina are a dynamic duo.",
+    imageUrl: `https://placehold.co/300x450/ff69b4/ffffff?text=LycoReco&font=poppins`,
+    genreTags: ['Action', 'Slice of Life', 'Comedy', 'Girls with Guns'],
+    moodTags: ['Adrenaline Rush', 'Heartwarming', 'Comfy & Cozy']
+  },
+  {
+    id: 'summertimerendering-time-loops-and-island-mystery',
+    parodyTitle: "Summertime Render: Island Time Loop Murder Mystery",
+    originalMalId: 47194,
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Shinpei returns to his island home for a funeral, only to get caught in a deadly time loop with shadow creatures. Intense and gripping.",
+    imageUrl: `https://placehold.co/300x450/00ced1/000000?text=SummerLoop&font=sora`,
+    genreTags: ['Mystery', 'Supernatural', 'Suspense', 'Thriller', 'Time Travel'],
+    moodTags: ['Dark & Deep', 'Intriguing', 'Adrenaline Rush']
+  },
+  {
+    id: 'the-eminence-in-shadow-i-am-atomic',
+    parodyTitle: "Eminence in Shadow: LARPing His Way to World Domination",
+    originalMalId: 48316,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Cid just wants to be the shadowy mastermind, but everyone takes his chuuni delusions seriously. I AM ATOMIC.",
+    imageUrl: `https://placehold.co/300x450/4b0082/ffffff?text=IAmAtomic&font=orbitron`,
+    genreTags: ['Action', 'Comedy', 'Fantasy', 'Isekai', 'Martial Arts'],
+    moodTags: ['Hilarious', 'Adrenaline Rush']
+  },
+  {
+    id: 'bocchi-the-rock-socially-anxious-guitar-hero',
+    parodyTitle: "Bocchi the Rock!: Anxiety-Ridden Guitar Girl Forms Band",
+    originalMalId: 47917,
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "Hitori 'Bocchi' Gotoh is a guitar prodigy but a social disaster. Can she overcome her anxiety to rock out? Relatable and hilarious.",
+    imageUrl: `https://placehold.co/300x450/ffc0cb/333333?text=BocchiRock&font=comic-sans`,
+    genreTags: ['Comedy', 'Music', 'Slice of Life', 'CGDCT'],
+    moodTags: ['Hilarious', 'Heartwarming', 'Comfy & Cozy']
+  },
+  {
+    id: 'that-time-i-got-reincarnated-as-a-vending-machine-(again-but-different)',
+    parodyTitle: 'Vending Machine Isekai: Dispensing Justice (and Drinks)',
+    originalMalId: 52619, // Jidou Hanbaiki ni Umarekawatta Ore wa Meikyuu wo Samayou
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "He's a vending machine. In a dungeon. This actually happened. And it's kinda charming.",
+    imageUrl: `https://placehold.co/300x450/d3d3d3/1c1c1c?text=VendingIsekai&font=monospace`,
+    genreTags: ['Isekai', 'Fantasy', 'Comedy', 'Adventure'],
+    moodTags: ['Hilarious', 'Comfy & Cozy']
+  },
+  {
+    id: 'zom-100-bucket-list-of-the-dead',
+    parodyTitle: "Zom 100: Apocalypse is the Best Time for a Bucket List",
+    originalMalId: 54112,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "The zombie apocalypse means Akira no longer has to go to his soul-crushing job! Time to live life to the fullest (before getting eaten).",
+    imageUrl: `https://placehold.co/300x450/ff4500/ffffff?text=Zom100&font=bangers`,
+    genreTags: ['Action', 'Comedy', 'Horror', 'Seinen', 'Survival', 'Gore'],
+    moodTags: ['Hilarious', 'Adrenaline Rush', 'Dark & Deep (sometimes)']
+  },
+  {
+    id: 'heavenly-delusion-kids-search-for-heaven-in-a-ruined-world',
+    parodyTitle: "Heavenly Delusion: Post-Apocalyptic Road Trip with Mysteries",
+    originalMalId: 53393, // Tengoku Daimakyou
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Two kids travel through a monster-infested Japan searching for 'Heaven'. Meanwhile, other kids live in a walled utopia. What's the connection?",
+    imageUrl: `https://placehold.co/300x450/87ceeb/2b2b2b?text=TengokuD&font=sora`,
+    genreTags: ['Adventure', 'Mystery', 'Sci-Fi', 'Seinen', 'Suspense'],
+    moodTags: ['Intriguing', 'Dark & Deep', 'Epic Adventure']
+  },
+  {
+    id: 'paripi-koumei-ancient-strategist-becomes-idol-manager',
+    parodyTitle: "Ya Boy Kongming!: Three Kingdoms Tactics for Pop Idols",
+    originalMalId: 50380,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "The legendary Zhuge Liang Kongming reincarnates in modern Tokyo and uses his ancient strategies to make a young singer a star. Surprisingly hype.",
+    imageUrl: `https://placehold.co/300x450/ffd700/1a1a1a?text=Kongming&font=serif`,
+    genreTags: ['Comedy', 'Music', 'Reincarnation', 'Seinen', 'Showbiz'],
+    moodTags: ['Hilarious', 'Heartwarming', 'Adrenaline Rush']
+  },
+  {
+    id: 'undead-unluck-superpowers-and-tragic-romance',
+    parodyTitle: "Undead Unluck: Cursed Powers and Undying Love",
+    originalMalId: 52741,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Fuuko brings misfortune to those who touch her, Andy is an immortal who wants to die. Together they fight... fate? And other superpowered weirdos.",
+    imageUrl: `https://placehold.co/300x450/dc143c/ffffff?text=UndeadUnluck&font=poppins`,
+    genreTags: ['Action', 'Comedy', 'Fantasy', 'Sci-Fi', 'Shonen', 'Super Power', 'Supernatural'],
+    moodTags: ['Adrenaline Rush', 'Hilarious', 'Emotional Rollercoaster']
+  },
+  {
+    id: 'my-dress-up-darling-wholesome-cosplay-romance',
+    parodyTitle: "My Dress-Up Darling: Gyaru Teaches Otaku About Cosplay",
+    originalMalId: 48736, // Sono Bisque Doll wa Koi wo Suru
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "A shy doll-maker and a popular gyaru bond over their shared passion for cosplay. Incredibly wholesome and detailed.",
+    imageUrl: `https://placehold.co/300x450/ffb6c1/404040?text=CosplayLove&font=sora`,
+    genreTags: ['Romance', 'School', 'Seinen', 'Slice of Life', 'Otaku Culture'],
+    moodTags: ['Heartwarming', 'Comfy & Cozy']
+  },
+  {
+    id: 'call-of-the-night-vampire-romance-and-night-walks',
+    parodyTitle: "Call of the Night: Insomniac Boy Meets Cute Vampire",
+    originalMalId: 50346, // Yofukashi no Uta
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "A middle school insomniac finds solace in the night and befriends a quirky vampire. Atmospheric and cool.",
+    imageUrl: `https://placehold.co/300x450/191970/f0f8ff?text=NightCall&font=monospace`,
+    genreTags: ['Romance', 'Shonen', 'Slice of Life', 'Supernatural', 'Vampire'],
+    moodTags: ['Comfy & Cozy', 'Intriguing', 'Heartwarming']
+  },
+  {
+    id: 'hells-paradise-jigokuraku-ninja-death-island',
+    parodyTitle: "Hell's Paradise: Ninja Battle Royale on Monster Island",
+    originalMalId: 46569,
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Convicts and their executioners search for the elixir of life on a terrifying island. Beautiful art, brutal action.",
+    imageUrl: `https://placehold.co/300x450/8b0000/ffffff?text=Jigokuraku&font=cinzel`,
+    genreTags: ['Action', 'Adventure', 'Dark Fantasy', 'Gore', 'Historical', 'Shonen', 'Supernatural'],
+    moodTags: ['Adrenaline Rush', 'Dark & Deep', 'Epic Adventure']
+  },
+  {
+    id: 'drifting-home-kids-on-a-floating-apartment-building',
+    parodyTitle: "Drifting Home: Apartment Building Goes on Ocean Adventure",
+    originalMalId: 49938,
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "A group of kids finds their apartment complex suddenly adrift at sea. Surreal and emotional journey.",
+    imageUrl: `https://placehold.co/300x450/add8e6/00008b?text=DriftHome&font=sora`,
+    genreTags: ['Adventure', 'Drama', 'Fantasy', 'Supernatural', 'Coming-of-Age'],
+    moodTags: ['Emotional Rollercoaster', 'Epic Adventure']
+  },
+  {
+    id: 'romantic-killer-anti-romance-heroine-forced-into-romcom',
+    parodyTitle: "Romantic Killer: Girl Fights Harem Plot With Video Games",
+    originalMalId: 52865,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Anzu just wants to play games, eat chocolate, and pet her cat. A tiny wizard has other plans: force her into a real-life dating sim.",
+    imageUrl: `https://placehold.co/300x450/dda0dd/000000?text=NoRomance!&font=comic-sans`,
+    genreTags: ['Comedy', 'Romance', 'School', 'Shonen'],
+    moodTags: ['Hilarious', 'Heartwarming']
+  },
+  {
+    id: 'odd-taxi-talking-animals-noir-mystery',
+    parodyTitle: "Odd Taxi: Animal Noir Mystery with a Walrus Cab Driver",
+    originalMalId: 46102,
+    originalType: 'anime',
+    rarity: 'Mythic',
+    parodyBlurb: "A cynical walrus taxi driver gets entangled in a missing girl case and the criminal underworld. Clever dialogue and a great mystery.",
+    imageUrl: `https://placehold.co/300x450/4682b4/ffffff?text=OddTaxi&font=monospace`,
+    genreTags: ['Mystery', 'Drama', 'Suspense', 'Anthropomorphic'],
+    moodTags: ['Intriguing', 'Dark & Deep']
+  },
+  {
+    id: 'cyberpunk-edgerunners-sad-cyberpunk-story',
+    parodyTitle: "Cyberpunk: Edgerunners - Come For The Action, Stay For The Tears",
+    originalMalId: 42310,
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "A street kid tries to survive in Night City by becoming an edgerunner. Beautifully animated and utterly devastating.",
+    imageUrl: `https://placehold.co/300x450/ffff00/0a0a0a?text=Edgerunners&font=orbitron`,
+    genreTags: ['Action', 'Sci-Fi', 'Cyberpunk', 'Drama', 'Gore', 'Psychological'],
+    moodTags: ['Adrenaline Rush', 'Dark & Deep', 'Emotional Rollercoaster']
+  },
+  // ... continue adding more in this style, up to 50 for this batch
+  // To save space, I'll add a few more with slightly less detail for now.
+  {
+    id: 'blue-lock-egoist-soccer',
+    parodyTitle: "Blue Lock: It's Not Teamwork, It's EGO!",
+    originalMalId: 49525,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Forget friendship, become the ultimate striker by crushing your rivals! Soccer battle royale.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Sports', 'Action', 'Shonen'], moodTags: ['Adrenaline Rush']
+  },
+  {
+    id: 'the-apothecary-diaries-historical-poison-tester-detective',
+    parodyTitle: "Apothecary Diaries: Sherlock Holmes But With Herbs & Poison",
+    originalMalId: 54492, // Kusuriya no Hitorigoto
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Maomao, a sharp-witted apothecary, solves mysteries in the imperial court. Clever and charming.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Mystery', 'Drama', 'Historical', 'Romance', 'Seinen'], moodTags: ['Intriguing', 'Heartwarming']
+  },
+  {
+    id: 'undead-girl-murder-farce-immortal-detectives',
+    parodyTitle: "Undead Girl Murder Farce: Sherlock Holmes But Make It Supernatural",
+    originalMalId: 54790,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "A disembodied head of an immortal detective solves mysteries with her oni maid and a half-oni man. Stylish and unique.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Mystery', 'Supernatural', 'Historical', 'Vampire', 'Demons'], moodTags: ['Intriguing', 'Dark & Deep']
+  },
+  {
+    id: 'my-happy-marriage-cinderella-with-superpowers',
+    parodyTitle: "My Happy Marriage: Cinderella Story with Psychic Powers",
+    originalMalId: 51552, // Watashi no Shiawase na Kekkon
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "An abused young woman finds unexpected love and power with a cold but kind military captain. Beautiful and emotional.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Drama', 'Fantasy', 'Historical', 'Romance', 'Supernatural'], moodTags: ['Emotional Rollercoaster', 'Heartwarming']
+  },
+  {
+    id: 'reincarnated-as-a-slime-movie-scarlet-bond',
+    parodyTitle: "Slime Movie: Rimuru Saves Another Kingdom, Probably",
+    originalMalId: 51009,
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "More slime action on the big screen! Expect new characters and flashy battles.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Isekai', 'Fantasy', 'Action'], moodTags: ['Epic Adventure']
+  },
+  {
+    id: 'sasaki-and-peeps-salaryman-and-magical-girl-bird',
+    parodyTitle: "Sasaki and Peeps: Salaryman's Pet Bird is a Magical Girl from Another World",
+    originalMalId: 52782, // Sasaki to Pii-chan
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "A tired office worker buys a Java sparrow that turns out to be a powerful sage from another world. Chaos ensues.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Comedy', 'Fantasy', 'Isekai', 'Slice of Life', 'Magic'], moodTags: ['Hilarious', 'Comfy & Cozy']
+  },
+  {
+    id: 'the-angel-next-door-spoils-me-rotten',
+    parodyTitle: "The Angel Next Door Feeds Me Delicious Food",
+    originalMalId: 50739, // Otonari no Tenshi-sama ni Itsunomanika Dame Ningen ni Sareteita Ken
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "The school's angel takes pity on her messy neighbor and starts cooking for him. Pure diabetes-inducing fluff.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Comedy', 'Romance', 'School', 'Slice of Life'], moodTags: ['Heartwarming', 'Comfy & Cozy']
+  },
+  {
+    id: 'chainsaw-man-part-2-high-school-arc',
+    parodyTitle: "Chainsaw Man Part 2: Asa Mitaka Wants to Live a Normal Life (Impossible)",
+    originalMalId: 151807, // Chainsaw Man Part 2 (Manga)
+    originalType: 'manga',
+    rarity: 'Mythic',
+    parodyBlurb: "New protagonist, same insane world. High school drama meets devil hunting. Fujimoto is a genius.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Action', 'Dark Fantasy', 'Horror', 'School', 'Shonen'], moodTags: ['Dark & Deep', 'Adrenaline Rush']
+  },
+  {
+    id: 'skip-and-loafer-wholesome-country-girl-in-tokyo',
+    parodyTitle: "Skip and Loafer: Clumsy Country Girl Conquers Tokyo (with Kindness)",
+    originalMalId: 50416,
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "An ambitious but awkward girl from the countryside moves to Tokyo for high school. Incredibly charming and heartwarming.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Comedy', 'Romance', 'School', 'Seinen', 'Slice of Life'], moodTags: ['Heartwarming', 'Comfy & Cozy']
+  },
+  {
+    id: 'the-danger-in-my-heart-edgy-boy-falls-for-popular-girl',
+    parodyTitle: "The Dangers in My Heart: Chuuni Boy Simps Hard (and it's Cute)",
+    originalMalId: 52578, // Boku no Kokoro no Yabai Yatsu
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "A gloomy boy fantasizes about murder but ends up falling for the quirky class idol. Surprisingly sweet and funny.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Comedy', 'Romance', 'School', 'Shonen', 'Slice of Life'], moodTags: ['Heartwarming', 'Hilarious', 'Comfy & Cozy']
+  },
+  {
+    id: 'ancient-china-setting-political-intrigue',
+    parodyTitle: "Dynasty Warriors: Anime Edition (But With More Talking)",
+    originalMalId: 38740, // Kingdom (using as a strong example of the theme)
+    originalType: "anime",
+    rarity: "Legendary",
+    parodyBlurb: "Warring states, grand strategies, and charismatic leaders vying for power. The fate of nations hangs in the balance!",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Historical", "Action", "Military", "Drama", "Seinen"], moodTags: ["Epic Adventure", "Adrenaline Rush"]
+  },
+  {
+    id: 'sports-tournament-arc-the-animation',
+    parodyTitle: "Tournament Arc: The Anime! (90% Training, 10% Actual Match)",
+    originalMalId: 25013, // Kuroko no Basket (example)
+    originalType: "anime",
+    rarity: "Rare",
+    parodyBlurb: "They trained hard, they overcame their differences, and now they face their ultimate rivals! Power of friendship!",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Sports", "School", "Shounen", "Tournament"], moodTags: ["Adrenaline Rush", "Heartwarming"]
+  },
+  {
+    id: 'office-romance-senpai-and-kouhai',
+    parodyTitle: "Office RomCom: Senpai Notices Me (Eventually)",
+    originalMalId: 42629, // Senpai ga Uzai Kouhai no Hanashi
+    originalType: "anime",
+    rarity: "Rare",
+    parodyBlurb: "She's tiny and loud, he's huge and stoic. An adorable workplace romance with lots of teasing.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Romance", "Comedy", "Slice of Life", "Workplace"], moodTags: ["Heartwarming", "Comfy & Cozy"]
+  },
+  {
+    id: 'cute-cafe-slice-of-life-with-talking-animals',
+    parodyTitle: "Polar Bear's Cafe: Animals Serving Coffee & Wisdom",
+    originalMalId: 12815, // Shirokuma Cafe
+    originalType: "anime",
+    rarity: "Common",
+    parodyBlurb: "A charming cafe run by a polar bear, serving humans and animals alike. Pure chill and puns.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Slice of Life", "Comedy", "Kids", "Animals"], moodTags: ["Comfy & Cozy", "Hilarious"]
+  },
+  {
+    id: 'time-travel-fix-the-past-mess-up-the-future',
+    parodyTitle: "Time Travel Shenanigans: Fixing the Past, Breaking the Future",
+    originalMalId: 32188, // ReLIFE (example of time travel)
+    originalType: "anime",
+    rarity: "Ultra Rare",
+    parodyBlurb: "Someone goes back in time to fix a mistake, only to create even more complicated paradoxes. It's never simple.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Time Travel", "Sci-Fi", "Drama", "Mystery", "Suspense"], moodTags: ["Intriguing", "Emotional Rollercoaster"]
+  },
+  {
+    id: 'giant-monster-attack-city-destruction',
+    parodyTitle: "Kaiju Attack! Run For Your Lives (and Enjoy the Spectacle)",
+    originalMalId: 19759, // Attack on Titan (again, for monster attacks)
+    originalType: "anime",
+    rarity: "Ultra Rare",
+    parodyBlurb: "Giant monsters are destroying the city! It's terrible, but also kinda awesome to watch.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Kaiju", "Action", "Sci-Fi", "Mecha", "Horror"], moodTags: ["Adrenaline Rush", "Dark & Deep"]
+  },
+  {
+    id: 'high-stakes-gambling-anime',
+    parodyTitle: "Kakegurui: Compulsive Gambling School Girls",
+    originalMalId: 34933, // Kakegurui
+    originalType: "anime",
+    rarity: "Ultra Rare",
+    parodyBlurb: "At this elite academy, social status is determined by high-stakes gambling. The faces they make are insane.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Game", "Psychological", "Drama", "School", "Mystery", "Suspense"], moodTags: ["Dark & Deep", "Intriguing", "Adrenaline Rush"]
+  },
+  {
+    id: 'cooking-anime-food-looks-better-than-real-life',
+    parodyTitle: "Gourmet Fantasy: This Food is Too Beautiful To Exist",
+    originalMalId: 35790, // Restaurant to Another World (example)
+    originalType: "anime",
+    rarity: "Rare",
+    parodyBlurb: "Every dish is a work of art that defies physics and makes you instantly hungry. Pure food porn.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Gourmet", "Slice of Life", "Fantasy", "Comedy"], moodTags: ["Comfy & Cozy", "Heartwarming"]
+  },
+  {
+    id: 'survival-game-anime-death-is-imminent',
+    parodyTitle: "Death Game Island: Last One Standing Wins (Maybe)",
+    originalMalId: 28623, // Danganronpa (example)
+    originalType: "anime",
+    rarity: "Legendary",
+    parodyBlurb: "Trapped in a deadly game, contestants must outwit and outlast each other. Trust no one. Betrayal is guaranteed.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Survival Game", "Action", "Mystery", "Psychological", "Horror", "Thriller"], moodTags: ["Dark & Deep", "Adrenaline Rush"]
+  },
+  {
+    id: 'magical-academy-chosen-one-with-hidden-power',
+    parodyTitle: "Magic High School: The Overpowered Transfer Student",
+    originalMalId: 20785, // Mahouka Koukou no Rettousei (example)
+    originalType: "anime",
+    rarity: "Rare",
+    parodyBlurb: "He seems unassuming, but he's secretly the strongest mage ever. Watch him effortlessly solve all problems.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Magic", "School", "Action", "Sci-Fi", "Super Power", "Romance"], moodTags: ["Adrenaline Rush", "Epic Adventure"]
+  },
+  {
+    id: 'dark-fantasy-world-suffering-and-cool-swords',
+    parodyTitle: "Grimdark Quest: Everyone Suffers, But Swords Are Cool",
+    originalMalId: 33950, // Made in Abyss (again for dark fantasy)
+    originalType: "anime",
+    rarity: "Legendary",
+    parodyBlurb: "A brutal world, flawed heroes, and a glimmer of hope that's probably a trap. The art is amazing, though.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Dark Fantasy", "Action", "Adventure", "Horror", "Tragedy"], moodTags: ["Dark & Deep", "Emotional Rollercoaster"]
+  },
+  {
+    id: 'cyberpunk-noir-detective-in-rainy-city',
+    parodyTitle: "Neon Noir: Detective Investigates Future Crimes",
+    originalMalId: 13601, // Psycho-Pass (again, fits noir)
+    originalType: "anime",
+    rarity: "Ultra Rare",
+    parodyBlurb: "In a neon-drenched, rain-soaked city, a jaded detective uncovers conspiracies. Blade Runner vibes.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Cyberpunk", "Noir", "Mystery", "Sci-Fi", "Police", "Thriller"], moodTags: ["Dark & Deep", "Intriguing"]
+  },
+  {
+    id: 'comedy-about-misunderstandings-and-awkwardness',
+    parodyTitle: "Awkward Encounters: The Anime of Misunderstandings",
+    originalMalId: 17895, // Gekkan Shoujo Nozaki-kun (again)
+    originalType: "anime",
+    rarity: "Common",
+    parodyBlurb: "Every conversation is a minefield of potential embarrassment. The cringe is real, but so is the laughter.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ["Comedy", "Slice of Life", "School", "Romance"], moodTags: ["Hilarious", "Comfy & Cozy"]
+  },
+  {
+    id: 'battle-royale-last-one-standing',
+    parodyTitle: "Battle Royale: Only One Survives (And Gets a Chicken Dinner?)",
+    originalMalId: 28223, // Danganronpa: The Animation (example)
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Thrown into a deadly game where only one can emerge victorious. Alliances are temporary, betrayal is eternal.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Action', 'Game', 'Horror', 'Psychological', 'Survival'], moodTags: ['Adrenaline Rush', 'Dark & Deep']
+  },
+  {
+    id: 'historical-fantasy-samurai-vs-demons',
+    parodyTitle: "Samurai vs. Oni: Edo Period Exorcists",
+    originalMalId: 38000, // Kimetsu no Yaiba (again for this theme)
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "Katanas clash against supernatural foes in a feudal Japan filled with demons and ancient magic.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Historical', 'Fantasy', 'Action', 'Demons', 'Samurai', 'Supernatural'], moodTags: ['Adrenaline Rush', 'Epic Adventure']
+  },
+  {
+    id: 'coming-of-age-story-teenagers-discover-themselves',
+    parodyTitle: "Teen Angst & Self-Discovery: The Anime",
+    originalMalId: 22199, // Barakamon (example of self-discovery)
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Navigating the turbulent waters of youth, friendship, love, and finding your place in the world. It's tough being a teen.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Coming-of-Age', 'Slice of Life', 'Drama', 'School'], moodTags: ['Emotional Rollercoaster', 'Heartwarming']
+  },
+  {
+    id: 'military-sci-fi-space-war',
+    parodyTitle: "Space War: Mechs, Lasers, and Galactic Politics",
+    originalMalId: 35843, // Legend of the Galactic Heroes: Die Neue These (example)
+    originalType: 'anime',
+    rarity: 'Legendary',
+    parodyBlurb: "Massive space fleets, intricate strategies, and charismatic leaders clash in an epic interstellar conflict.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Military', 'Sci-Fi', 'Space', 'Action', 'Drama', 'Space Opera'], moodTags: ['Epic Adventure', 'Adrenaline Rush']
+  },
+  {
+    id: 'cute-witch-slice-of-life',
+    parodyTitle: "Little Witch's Daily Life: Magic and Mischief",
+    originalMalId: 33489, // Little Witch Academia (TV)
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "A clumsy but determined young witch learns magic, makes friends, and gets into adorable trouble at a magical academy.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Fantasy', 'Comedy', 'Magic', 'School', 'Slice of Life'], moodTags: ['Comfy & Cozy', 'Heartwarming']
+  },
+  {
+    id: 'supernatural-detective-agency',
+    parodyTitle: "Supernatural P.I.: Solving Ghostly Crimes",
+    originalMalId: 20755, // Noragami (example)
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "A ragtag team of detectives with unique abilities solves cases involving ghosts, demons, and other supernatural occurrences.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Supernatural', 'Mystery', 'Action', 'Comedy', 'Demons'], moodTags: ['Intriguing', 'Adrenaline Rush']
+  },
+  {
+    id: 'post-apocalyptic-adventure-hope-in-ruins',
+    parodyTitle: "Journey Through the Wasteland: Finding Hope",
+    originalMalId: 33352, // Girls' Last Tour (Shoujo Shuumatsu Ryokou) - example
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Two girls navigate the desolate ruins of civilization, finding small moments of beauty and connection amidst the despair.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Post-Apocalyptic', 'Adventure', 'Slice of Life', 'Sci-Fi', 'Mystery'], moodTags: ['Emotional Rollercoaster', 'Dark & Deep', 'Comfy & Cozy']
+  },
+  {
+    id: 'romance-between-rivals',
+    parodyTitle: "Enemies to Lovers: They Hate Each Other (But Not Really)",
+    originalMalId: 40839, // Kaguya-sama (again, fits well)
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "They compete in everything, but beneath the rivalry, sparks fly. Will they ever admit their feelings? Probably not easily.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Romance', 'Comedy', 'School'], moodTags: ['Hilarious', 'Heartwarming']
+  },
+  {
+    id: 'gangster-anime-turf-wars-and-loyalty',
+    parodyTitle: "Yakuza Life: Honor, Betrayal, and Stylish Suits",
+    originalMalId: 233, // Gungrave (example)
+    originalType: 'anime',
+    rarity: 'Ultra Rare',
+    parodyBlurb: "Navigating the dangerous world of organized crime, where loyalty is everything and betrayal means death. Also, cool tattoos.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Action', 'Crime', 'Drama', 'Seinen', 'Gangster'], moodTags: ['Dark & Deep', 'Adrenaline Rush']
+  },
+  {
+    id: 'another-world-restaurant-fantasy-food',
+    parodyTitle: "Isekai Restaurant: Serving Fantasy Creatures Delicious Earth Food",
+    originalMalId: 34012, // Isekai Shokudou
+    originalType: 'anime',
+    rarity: 'Common',
+    parodyBlurb: "Once a week, a mysterious door appears, connecting a modern Japanese restaurant to various fantasy worlds. Everyone loves the food.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Isekai', 'Slice of Life', 'Fantasy', 'Gourmet', 'Comedy'], moodTags: ['Comfy & Cozy', 'Heartwarming']
+  },
+  {
+    id: 'high-school-band-drama',
+    parodyTitle: "Garage Band Dreams: Practice, Drama, Repeat",
+    originalMalId: 16498, // Given (example, though BL, fits band drama)
+    originalType: 'anime',
+    rarity: 'Rare',
+    parodyBlurb: "A group of high schoolers forms a band, navigating friendships, romance, and the struggles of making music.",
+    imageUrl: NO_ART_PLACEHOLDER, genreTags: ['Music', 'Slice of Life', 'Drama', 'School', 'Romance'], moodTags: ['Emotional Rollercoaster', 'Heartwarming']
+  }
 ];
 
 // This comment indicates that the list is intended to be much larger in a full implementation.
 // For the purpose of this exercise, the array above has been significantly expanded.
 // To reach 500+, more unique entries with fitting MAL IDs, types, and tags would be needed.
+
 
 export const SAMPLE_PACKS: GachaPack[] = [
   {
@@ -1357,7 +1886,7 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Everything you need to begin your journey to another world! (Truck-kun may or may not be included).',
     themeTags: ['isekai', 'fantasy', 'comedy'],
     faceCardCollectibleId: 'isekai-truck-kun',
-    packImageUrl: 'https://placehold.co/200x320/7289da/ffffff?text=Isekai+Pack&font=lora',
+    packImageUrl: 'https://placehold.co/200x320/7289da/ffffff?text=IsekaiPack&font=lora',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => (c.genreTags?.includes('Isekai') || c.genreTags?.includes('Fantasy')) && (c.rarity === 'Common' || c.rarity === 'Rare')).map(c => c.id).slice(0, 20),
   },
   {
@@ -1366,7 +1895,7 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Pull for parodies of the most iconic and overpowered heroes in anime & manga!',
     themeTags: ['action', 'legendary', 'mythic', 'shonen'],
     faceCardCollectibleId: 'budget-jojo-but-still-fire',
-    packImageUrl: 'https://placehold.co/200x320/ffcc00/000000?text=Heroic+Legends&font=orbitron',
+    packImageUrl: 'https://placehold.co/200x320/ffcc00/000000?text=HeroicLegends&font=orbitron',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.rarity === 'Legendary' || c.rarity === 'Mythic').map(c => c.id).slice(0, 20),
   },
   {
@@ -1374,8 +1903,8 @@ export const SAMPLE_PACKS: GachaPack[] = [
     name: 'Emotional Damage Pack',
     description: 'For when you want to feel things... deeply. Bring tissues and a therapist.',
     themeTags: ['drama', 'emotional', 'tragedy', 'psychological'],
-    faceCardCollectibleId: 'grave-of-the-fireflies:-you-will-cry.-that-s-it,-that-s-the-description.',
-    packImageUrl: 'https://placehold.co/200x320/5865f2/ffffff?text=Feels+Trip&font=bangers',
+    faceCardCollectibleId: 'grave-of-the-fireflies:-why-would-you-watch-this?',
+    packImageUrl: 'https://placehold.co/200x320/5865f2/ffffff?text=FeelsTrip&font=bangers',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.moodTags?.includes('Emotional Rollercoaster') || c.moodTags?.includes('Dark & Deep')).map(c => c.id).slice(0, 20),
   },
   {
@@ -1384,7 +1913,7 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Laugh till you drop with these hilarious parodies and gag series!',
     themeTags: ['comedy', 'parody', 'slice of life', 'gag humor'],
     faceCardCollectibleId: 'gintama:-the-fourth-wall-is-but-a-suggestion',
-    packImageUrl: 'https://placehold.co/200x320/f9a825/000000?text=LOL+Pack&font=bungee',
+    packImageUrl: 'https://placehold.co/200x320/f9a825/000000?text=LOLPack&font=bungee',
     collectibleIds: SAMPLE_COLLECTIBLES.filter(c => c.genreTags?.includes('Comedy') || c.moodTags?.includes('Hilarious')).map(c => c.id).slice(0, 20),
   },
   {
@@ -1393,7 +1922,7 @@ export const SAMPLE_PACKS: GachaPack[] = [
     description: 'Contains one ultra-rare card: a chance at Mythic, Event, or the elusive Forbidden tier!',
     themeTags: ['mythic', 'event', 'forbidden', 'ultra_rare'],
     faceCardCollectibleId: 'lelouch-zero-requiem',
-    packImageUrl: 'https://placehold.co/200x320/1f1f1f/ff0033?text=LEGACY&font=cinzel', // Unique art for Legacy Pack
+    packImageUrl: 'https://placehold.co/200x320/1f1f1f/ff0033?text=LEGACY&font=cinzel',
     collectibleIds: [
         'lelouch-zero-requiem',
         'sao-good-this-time',
@@ -1401,12 +1930,12 @@ export const SAMPLE_PACKS: GachaPack[] = [
         'gintama:-the-fourth-wall-is-but-a-suggestion',
         'one-piece:-the-journey-that-will-outlive-us-all',
         'cowboy-bebop:-space-jazz-and-existential-dread',
-        'the-tatami-galaxy:-college-student-relives-his-first-two-years-repeatedly-trying-to-find-happiness',
-        'devilman-crybaby:-demons,-sex,-drugs,-and-a-whole-lot-of-crying',
-        'the-end-of-evangelion:-congratulations!-(everyone-turns-into-tang)',
-        'grave-of-the-fireflies:-you-will-cry.-that-s-it,-that-s-the-description.',
-        '[oshi-no-ko]:-the-dark-side-of-showbiz-(with-reincarnation-and-revenge)',
-        'frieren:-beyond-journey-s-end-(elf-outlives-everyone,-learns-to-feel)',
+        'the-tatami-galaxy:-infinite-campus-loop',
+        'devilman-crybaby:-emotional-apocalypse',
+        'the-end-of-evangelion:-group-hug-orange-juice',
+        'grave-of-the-fireflies:-why-would-you-watch-this?',
+        '[oshi-no-ko]:-idol-revenge-story-x-treme',
+        'frieren:-slow-life-fantasy-(with-occasional-sadness)',
         'naruto-s-lost-uncle-returns-in-2025',
         'frieren-beyond-journey-s-end-season-2',
         'one-punch-man-season-3:-finally-animated-(probably-by-a-different-studio-again)',
@@ -1437,5 +1966,3 @@ SAMPLE_PACKS.forEach(pack => {
     console.warn(`[CollectiblesData] Pack "${pack.name}" contains collectible IDs that do not exist in SAMPLE_COLLECTIBLES. This might affect pack contents.`);
   }
 });
-
-    
