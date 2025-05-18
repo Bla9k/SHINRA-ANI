@@ -1,4 +1,3 @@
-
 // src/components/layout/AppLayout.tsx
 'use client';
 
@@ -6,9 +5,9 @@ import React, { useState, type ReactNode, useCallback, useEffect, useRef } from 
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from "next-themes";
 import TopBar from './TopBar';
-// import BottomNavigationBar from './BottomNavigationBar'; // Commented out - RadialMenu is primary
-import RadialMenu from './RadialMenu'; // Import RadialMenu
-import CustomizeModal from './CustomizeModal'; // Import CustomizeModal
+import BottomNavigationBar from './BottomNavigationBar';
+import RadialMenu from './RadialMenu';
+import CustomizeModal from './CustomizeModal';
 import SearchPopup from '@/components/search/SearchPopup';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
@@ -20,16 +19,21 @@ import { useAuth } from '@/hooks/useAuth';
 import { UserProfileData, updateUserProfileDocument } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Plus, X, Home, Search as SearchIconOriginal, Users, User as UserIconOriginal, Settings as SettingsIconOriginal, Tv, BookText, Moon, Sun, Palette, Flame, Zap, Rocket, Star, ShieldCheck, Gift } from 'lucide-react';
+import {
+  Plus, X, Home as HomeIcon, Search as SearchIconLucide, Users as UsersIcon,
+  User as UserIconLucide, Settings as SettingsIconOriginal, Tv, BookText, Moon, Sun,
+  Palette, Flame, Zap, Rocket, Star, ShieldCheck, Gift, Menu as MenuIcon,
+  LogOut, PlusCircle, Sparkles // Added Sparkles and other potentially used icons
+} from 'lucide-react';
 import anime from 'animejs';
 
-// Moved TIER_DATA_RAW here as it's used by AppLayout for SubscriptionModal prop
+// TIER_DATA_RAW definition - ensure all icons used here are imported
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
         name: 'Spark Tier',
         slogan: 'You’re just lighting the fuse.',
-        icon: Sparkles,
+        icon: Sparkles, // Used here
         features: [
             { text: 'Basic browsing of anime & manga', included: true },
             { text: 'Limited search results (e.g., top 10)', included: true },
@@ -45,7 +49,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'ignition',
         name: 'Ignition Tier',
         slogan: 'First burst of power.',
-        icon: Flame,
+        icon: Flame, // Used here
         features: [
             { text: 'All Spark features', included: true },
             { text: 'Unlimited search results', included: true },
@@ -64,7 +68,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'hellfire',
         name: 'Hellfire Tier',
         slogan: 'Shinra-style blazing speed.',
-        icon: Zap,
+        icon: Zap, // Used here
         features: [
             { text: 'All Ignition features', included: true },
             { text: 'Unlimited indie reading/watching', included: true },
@@ -82,7 +86,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'burstdrive',
         name: 'Burst Drive Tier',
         slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket,
+        icon: Rocket, // Used here
         features: [
             { text: 'All Hellfire features', included: true },
             { text: 'Exclusive profile badges & themes', included: true },
@@ -97,7 +101,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     },
 ];
 
-// Define NavSection and NavSubItem types here or import from a shared types file
+
 export interface NavSubItem {
   label: string;
   icon: React.ElementType;
@@ -136,7 +140,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isRadialMenuOpen, setIsRadialMenuOpen] = useState(false);
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
 
-
   const pathname = usePathname();
   const router = useRouter();
   const { playAnimation } = useAnimation();
@@ -144,6 +147,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const appContainerRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
+
+  // IMPORTANT: Declare mainContentPaddingBottom AFTER all relevant state variables
+  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : (isPanelOpen && expandedSectionId ? 'pb-[calc(var(--bottom-nav-panel-max-height,16rem)+4rem)]' : 'pb-20');
+
 
   const handleLogout = async () => {
     try {
@@ -153,7 +164,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
          description: "You have been successfully logged out.",
          variant: "default",
       });
-      router.push('/login'); // Redirect to login after logout
+      router.push('/login');
     } catch (error) {
       console.error("Logout failed in AppLayout:", error);
       toast({
@@ -169,25 +180,49 @@ export default function AppLayout({ children }: AppLayoutProps) {
         toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
         return;
     }
+     if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
+      toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default" });
+      setShowSubscriptionModal(true);
+      return;
+    }
     setIsCreateCommunityModalOpen(true);
-  }, [user, toast]);
+  }, [user, userProfile, toast]);
 
-  // Define navSections here now
   const navSections: NavSection[] = [
-    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
-    { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
-    { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
-    { id: 'search', label: 'Search', icon: SearchIconOriginal, isDirectAction: true, directAction: () => setIsSearchOpen(true) },
-    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
-    { id: 'gacha', label: 'Gacha', icon: Gift, mainHref: '/gacha'},
+    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/', isToggleButton: true, subItems: [
+        { label: 'Anime', icon: Tv, href: '/anime' },
+        { label: 'Manga', icon: BookText, href: '/manga' },
+        { label: 'Gacha Game', icon: Gift, href: '/gacha'},
+    ]},
+    { id: 'search', label: 'Search', icon: SearchIconLucide, isDirectAction: true, directAction: () => setIsSearchOpen(true) },
+    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community', isToggleButton: true, subItems: [
+        { label: 'Explore Hubs', icon: UsersIcon, href: '/community' },
+        { label: 'Create Hub', icon: PlusCircle, onClick: handleOpenCreateCommunityModal },
+    ]},
     { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
-    { id: 'profile', label: 'Profile', icon: UserIconOriginal, mainHref: '/profile' },
+    { id: 'profile', label: 'Profile', icon: UserIconLucide, mainHref: '/profile', isToggleButton: true, subItems: [
+        { label: 'View Profile', icon: UserIconLucide, href: '/profile' },
+        { label: 'Settings', icon: SettingsIconOriginal, href: '/settings' },
+        { label: 'Logout', icon: LogOut, onClick: handleLogout },
+    ]},
     {
       id: 'customize',
       label: 'Customize',
       icon: Palette,
-      isDirectAction: true, // It will trigger the modal directly
-      directAction: () => setIsCustomizeModalOpen(true),
+      isToggleButton: true,
+      subItems: [
+        { label: 'Light Theme', icon: Sun, onClick: () => { setTheme('light'); setIsPanelOpen(false); } },
+        { label: 'Dark Theme', icon: Moon, onClick: () => { setTheme('dark'); setIsPanelOpen(false); } },
+        { label: 'Shinra Fire Theme', icon: Flame, onClick: () => {
+            setTheme('shinra-fire');
+            toast({ title: "Shinra Fire Activated!", description: "Feel the burn!", variant: "default" });
+            setIsPanelOpen(false);
+          }
+        },
+        { label: 'Modern Shinra Theme', icon: Zap, onClick: () => { setTheme('modern-shinra'); setIsPanelOpen(false); } },
+        { label: 'Hypercharge (Netflix)', icon: Tv, onClick: () => { setTheme('hypercharge-netflix'); setIsPanelOpen(false); } },
+        { label: 'Subscription Tiers', icon: Star, onClick: () => { setShowSubscriptionModal(true); setIsPanelOpen(false); } },
+      ],
     },
   ];
 
@@ -204,10 +239,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
           if (!localStorage.getItem('hasSeenSubModalOnce')) {
             appLaunchCount = 1;
-            localStorage.setItem('hasSeenSubModalOnce', 'true');
+            try { localStorage.setItem('hasSeenSubModalOnce', 'true'); } catch {}
           }
         }
-        if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount - 1) % 5 === 0)) {
+        if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0)) {
           setShowSubscriptionModal(true);
         }
       }
@@ -219,7 +254,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     setTimeout(() => {
       setShowApp(true);
       if (appContainerRef.current && playAnimation && typeof anime !== 'undefined') {
-        anime.remove(appContainerRef.current); // Ensure no prior animations are running on this target
+        anime.remove(appContainerRef.current);
         playAnimation(appContainerRef.current, {
           opacity: [0, 1],
           translateY: [10, 0],
@@ -280,7 +315,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : 'pb-16'; // Simplified
 
   return (
     <>
@@ -298,26 +332,41 @@ export default function AppLayout({ children }: AppLayoutProps) {
               "flex flex-col min-h-screen h-screen overflow-hidden relative bg-background text-foreground",
             )}
           >
-            <TopBar
+            <TopBar onSearchIconClick={handleSearchToggle} />
+            <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)} ref={mainContentRef}>
+              <AnimatePresence mode="wait">
+                <motion.main
+                  key={pathname}
+                  initial={{ opacity: 0, x: -15 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 15 }}
+                  transition={{ duration: 0.3, ease: 'easeInOut' }}
+                  className="transition-smooth"
+                >
+                  {children}
+                </motion.main>
+              </AnimatePresence>
+            </div>
+
+            {theme !== 'hypercharge-netflix' && !isRadialMenuOpen && (
+              <BottomNavigationBar
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
-                onOpenCustomizeModal={() => setIsCustomizeModalOpen(true)}
                 handleLogout={handleLogout}
-            />
-            <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)}>
-              <main className="transition-smooth">
-                {children}
-              </main>
-            </div>
-
-            {/* FAB for Radial Menu - Rendered if not Netflix theme */}
-            {theme !== 'hypercharge-netflix' && (
+                isPanelOpen={isPanelOpen}
+                setIsPanelOpen={setIsPanelOpen}
+                expandedSectionId={expandedSectionId}
+                setExpandedSectionId={setExpandedSectionId}
+                navSections={navSections}
+              />
+            )}
+             {theme !== 'hypercharge-netflix' && (
                  <Button
                     variant="default"
                     size="icon"
                     className={cn(
-                        "fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-xl z-50 transition-all duration-300 ease-in-out",
+                        "fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-xl z-[60] transition-all duration-300 ease-in-out",
                         "bg-primary/80 hover:bg-primary text-primary-foreground fiery-glow-hover",
                         isRadialMenuOpen && "rotate-45 bg-destructive/80 hover:bg-destructive"
                     )}
@@ -334,7 +383,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 navSections={navSections}
                 router={router}
                 theme={theme || 'dark'}
-                openCustomizeModal={() => setIsCustomizeModalOpen(true)}
+                openCustomizeModal={() => { setIsCustomizeModalOpen(true); setIsRadialMenuOpen(false); }}
             />
 
             <SearchPopup
@@ -356,7 +405,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 isOpen={isCreateCommunityModalOpen}
                 onClose={() => setIsCreateCommunityModalOpen(false)}
                 onCreate={(newCommunity) => {
-                    console.log("Community created in AppLayout:", newCommunity);
                     setIsCreateCommunityModalOpen(false);
                     router.push(`/community/${newCommunity.id}`);
                 }}
@@ -369,4 +417,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
             />
             <Toaster />
-          </
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}

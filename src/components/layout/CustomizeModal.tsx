@@ -10,12 +10,12 @@ import {
   DialogTitle,
   DialogDescription,
   DialogClose,
-} from '@/components/ui/dialog';
+} from '@/components/ui/dialog'; // Added this import
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Sun, Moon, Flame, Tv as NetflixIcon, Star, Palette, XCircle } from 'lucide-react'; // Using Tv as Netflix for now
+import { Sun, Moon, Flame, Tv as NetflixIcon, Star, Palette, XCircle, Zap, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useTheme } from 'next-themes'; // Ensure this is imported
+import { useTheme } from 'next-themes';
 
 interface CustomizeModalProps {
   isOpen: boolean;
@@ -36,6 +36,7 @@ const CustomizeModal: React.FC<CustomizeModalProps> = ({
     { name: 'Light', value: 'light', icon: Sun },
     { name: 'Dark (Default)', value: 'dark', icon: Moon },
     { name: 'Shinra Fire', value: 'shinra-fire', icon: Flame },
+    { name: 'Modern Shinra', value: 'modern-shinra', icon: Zap },
     { name: 'Hypercharge (Netflix)', value: 'hypercharge-netflix', icon: NetflixIcon },
   ];
 
@@ -68,10 +69,17 @@ const CustomizeModal: React.FC<CustomizeModalProps> = ({
                     onClick={() => setTheme(opt.value)}
                     className={cn(
                       "w-full justify-start h-auto py-2.5 px-3 text-sm glass",
-                      theme === opt.value ? (opt.value === 'shinra-fire' || opt.value === 'hypercharge-netflix' ? 'fiery-glow' : 'neon-glow') : 'neon-glow-hover',
+                      theme === opt.value ? 
+                        (opt.value === 'shinra-fire' || opt.value === 'hypercharge-netflix' || opt.value === 'modern-shinra' ? 
+                          (opt.value === 'shinra-fire' ? 'fiery-glow' : 
+                           opt.value === 'hypercharge-netflix' ? 'ring-2 ring-primary' : 'neon-glow' // Modern Shinra active
+                          ) 
+                          : 'neon-glow' // Light/Dark active
+                        ) 
+                        : 'neon-glow-hover', // Hover for non-active
                       opt.value === 'shinra-fire' && theme !== opt.value && "border-accent/50 text-accent hover:bg-accent/10",
-                      opt.value === 'hypercharge-netflix' && theme !== opt.value && "border-red-500/50 text-red-500 hover:bg-red-500/10"
-
+                      opt.value === 'hypercharge-netflix' && theme !== opt.value && "border-red-500/50 text-red-500 hover:bg-red-500/10",
+                      opt.value === 'modern-shinra' && theme !== opt.value && "border-blue-500/50 text-blue-500 hover:bg-blue-500/10"
                     )}
                   >
                     <opt.icon size={16} className="mr-2" />
@@ -97,4 +105,10 @@ const CustomizeModal: React.FC<CustomizeModalProps> = ({
             </div>
           </div>
         </ScrollArea>
-        {/* Footer might not be needed if all actions are in content or header close
+        {/* Footer might not be needed if all actions are in content or header close button */}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+export default CustomizeModal;
