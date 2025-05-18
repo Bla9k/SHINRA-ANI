@@ -591,6 +591,23 @@ export default function GachaPage() {
       await handleRoll(undefined);
   };
 
+  const handleSelectForFusion = useCallback((collectible: Collectible) => {
+    setSelectedForFusion(prevSelected => {
+      const isAlreadySelected = prevSelected.some(c => c.id === collectible.id);
+
+      if (isAlreadySelected) {
+        // Remove if already selected
+        return prevSelected.filter(c => c.id !== collectible.id);
+      } else {
+        // Add if not selected and limit to 2
+        if (prevSelected.length < 2) {
+          return [...prevSelected, collectible];
+        }
+        return prevSelected; // Do not add if already 2 selected
+      }
+    });
+  }, []); // No dependencies needed as it operates on state updater
+
   const handleAttemptFusion = () => {
     console.log("[FusionAttempt] Starting fusion. Selected:", selectedForFusion.map(c => `${c.parodyTitle} (${c.rarity})`));
     if (selectedForFusion.length !== 2) {
