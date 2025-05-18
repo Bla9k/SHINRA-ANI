@@ -5,8 +5,7 @@ import React, { useState, type ReactNode, useCallback, useEffect, useRef } from 
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from "next-themes";
 import TopBar from './TopBar';
-import BottomNavigationBar, { type NavSection } from './BottomNavigationBar';
-import CustomizeModal from './CustomizeModal';
+import BottomNavigationBar from './BottomNavigationBar';
 import SearchPopup from '@/components/search/SearchPopup';
 import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
@@ -15,26 +14,47 @@ import BootAnimation from './BootAnimation';
 import SubscriptionModal, { type Tier } from '@/components/subscription/SubscriptionModal';
 import CreateCommunityModal from '@/components/community/CreateCommunityModal';
 import { useAuth } from '@/hooks/useAuth';
-import { UserProfileData, updateUserProfileDocument } from '@/services/profile.ts';
+import { UserProfileData, updateUserProfileDocument } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
 import {
-  Home as HomeIcon, Search as SearchIconLucide, Users as UsersIcon,
-  User as UserIconLucide, Settings, Tv, BookText, Moon, Sun,
-  Palette, Flame, Zap, Rocket, Star, ShieldCheck, Gift, Menu as MenuIcon,
-  LogOut, PlusCircle, XCircle, MessageCircle, ChevronDown, ChevronUp, ExternalLink, Package, List // Added Package and List
+  Home as HomeIcon,
+  Search as SearchIconLucide,
+  Users as UsersIcon,
+  User as UserIconLucideOriginal, // Aliased to avoid conflict with 'user' state
+  Settings as SettingsIconOriginal, // Aliased to avoid conflict
+  Tv,
+  BookText,
+  Moon,
+  Sun,
+  Palette,
+  Flame,
+  Zap,
+  Rocket,
+  Star,
+  ShieldCheck,
+  Gift,
+  Menu as MenuIcon,
+  LogOut,
+  PlusCircle,
+  XCircle,
+  MessageCircle,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Package,
+  List,
+  Sparkles // Added Sparkles explicitly here
 } from 'lucide-react';
 import anime from 'animejs';
 
-
-// TIER_DATA_RAW definition - ensure all icons used here are imported
+// Define TIER_DATA_RAW within AppLayout or import if defined elsewhere and accessible
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
         name: 'Spark Tier',
         slogan: 'You’re just lighting the fuse.',
-        icon: Sparkles,
+        icon: Sparkles, // Icon for Spark Tier
         features: [
             { text: 'Basic browsing of anime & manga', included: true },
             { text: 'Limited search results (e.g., top 10)', included: true },
@@ -43,14 +63,14 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Standard Nami AI search', included: true },
         ],
         buttonText: 'Select Spark',
-        tierColorClass: 'text-primary', // Uses current theme's primary
-        iconGlowClass: 'neon-glow-icon', // Uses current theme's primary for glow
+        tierColorClass: 'text-primary',
+        iconGlowClass: 'neon-glow-icon',
     },
     {
         id: 'ignition',
         name: 'Ignition Tier',
         slogan: 'First burst of power.',
-        icon: Flame,
+        icon: Flame, // Icon for Ignition Tier
         features: [
             { text: 'All Spark features', included: true },
             { text: 'Unlimited search results', included: true },
@@ -62,14 +82,14 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Select Ignition',
         isPopular: true,
-        tierColorClass: 'text-accent', // Uses current theme's accent
-        iconGlowClass: 'fiery-glow-icon', // Specific to fire themes or themed accent
+        tierColorClass: 'text-accent',
+        iconGlowClass: 'fiery-glow-icon',
     },
     {
         id: 'hellfire',
         name: 'Hellfire Tier',
         slogan: 'Shinra-style blazing speed.',
-        icon: Zap,
+        icon: Zap, // Icon for Hellfire Tier
         features: [
             { text: 'All Ignition features', included: true },
             { text: 'Unlimited indie reading/watching', included: true },
@@ -87,7 +107,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'burstdrive',
         name: 'Burst Drive Tier',
         slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket,
+        icon: Rocket, // Icon for Burst Drive Tier
         features: [
             { text: 'All Hellfire features', included: true },
             { text: 'Exclusive profile badges & themes', included: true },
@@ -102,6 +122,9 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     },
 ];
 
+// Alias icons if needed to avoid naming conflicts
+const UserIcon = UserIconLucideOriginal;
+const SettingsIcon = SettingsIconOriginal;
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -111,23 +134,18 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isBooting, setIsBooting] = useState(true);
   const [showApp, setShowApp] = useState(false);
 
-  // Search Popup State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiSearchActive, setIsAiSearchActive] = useState(false);
   const [initialSearchTerm, setInitialSearchTerm] = useState('');
   const [openWithFilters, setOpenWithFilters] = useState(false);
 
-  // Subscription Modal State
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
   const [isLoadingTier, setIsLoadingTier] = useState(false);
 
-  // Community Modal State
   const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
 
-  // Central Menu Panel State (now managed by BottomNavigationBar itself)
-  // const [isPanelOpen, setIsPanelOpen] = useState(false);
-  // const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
-
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
 
   const pathname = usePathname();
   const router = useRouter();
@@ -136,8 +154,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const { toast } = useToast();
   const { theme, setTheme } = useTheme();
   const appContainerRef = useRef<HTMLDivElement>(null);
-  const mainContentRef = useRef<HTMLDivElement>(null);
-
 
   const TIER_DATA = TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}));
 
@@ -214,7 +230,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         await fetchUserProfile(user.uid);
       }
       toast({
-        title: `Welcome to the ${tierName}!`,
+        title: `Welcome to ${tierName}!`,
         description: "Thank you for supporting Shinra-Ani and unlocking new features!",
         variant: "default",
       });
@@ -272,12 +288,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
     {
       id: 'profile',
       label: 'Profile & Account',
-      icon: UserIconLucide,
+      icon: UserIcon, // Use aliased icon
       mainHref: '/profile',
       requiresAuth: true,
       subItems: [
-        { id: 'profile-view', label: 'View Profile', icon: UserIconLucide, href: '/profile' },
-        { id: 'profile-settings', label: 'Account Settings', icon: Settings, href: '/settings' },
+        { id: 'profile-view', label: 'View Profile', icon: UserIcon, href: '/profile' },
+        { id: 'profile-settings', label: 'Account Settings', icon: SettingsIcon, href: '/settings' },
         { id: 'profile-logout', label: 'Logout', icon: LogOut, action: handleLogout },
       ],
     },
@@ -311,8 +327,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   ];
 
-
   const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : 'pb-20';
+
 
   return (
     <>
@@ -332,20 +348,19 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <TopBar
                 onSearchIconClick={handleSearchToggle}
-                navSections={navSections} // Pass navSections to TopBar
-                // Pass other necessary handlers if TopBar's Netflix menu uses them
+                navSections={navSections}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
              />
-            <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)} ref={mainContentRef}>
+            <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)}>
               <motion.main
-                key={pathname} // This enables page transition animations
+                key={pathname}
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 15 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="transition-smooth" // Existing class for other potential CSS transitions
+                className="transition-smooth"
               >
                 {children}
               </motion.main>
@@ -356,12 +371,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 navSections={navSections}
                 theme={theme || 'dark'}
                 setTheme={setTheme}
-                // Pass all action handlers needed by the panel
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
-                // Remove panel state from here, it's managed internally by BottomNav
+                isPanelOpen={isPanelOpen}
+                setIsPanelOpen={setIsPanelOpen}
+                expandedSectionId={expandedSectionId}
+                setExpandedSectionId={setExpandedSectionId}
               />
             )}
 
@@ -378,8 +395,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onClose={() => setShowSubscriptionModal(false)}
                 currentTier={userProfile?.subscriptionTier || null}
                 onSelectTier={handleSelectTier}
-                TIER_DATA={TIER_DATA}
-                isLoading={isLoadingTier}
+                TIER_DATA={TIER_DATA} // Use TIER_DATA which has isCurrent mapped
             />
             <CreateCommunityModal
                 isOpen={isCreateCommunityModalOpen}
