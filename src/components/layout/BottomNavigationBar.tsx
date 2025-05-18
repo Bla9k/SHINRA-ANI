@@ -7,34 +7,43 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   Home as HomeIcon, Search as SearchIconLucide, Users as UsersIcon,
   User as UserIconLucide, Settings, Palette, Star, PlusCircle, LogOut,
-  Tv, BookText, Moon, Sun, Flame, ShieldCheck, Zap, Rocket, // Added Zap here
-  Menu as MenuIcon, X, XCircle, Gift, List // Added List
+  Tv, BookText, Moon, Sun, Flame, ShieldCheck, Zap, Rocket, Menu as MenuIcon, X, XCircle, Gift, List
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
+import {
+  DialogHeader, // Only DialogHeader, Title, Description, Close are needed for the panel
+  DialogTitle,
+  DialogDescription,
+  DialogClose,
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area'; // Import ScrollArea
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/useAuth'; // Corrected import path
 import anime from 'animejs';
-
-interface NavSubItem {
-  label: string;
-  icon: React.ElementType;
-  href?: string;
-  onClick?: () => void;
-  premium?: boolean;
-}
 
 export interface NavSection {
   id: string;
   label: string;
   icon: React.ElementType;
-  href?: string; // For direct navigation from the panel
-  action?: () => void; // For direct actions from the panel
-  // subItems are no longer directly used by the main trigger, but by the panel content
+  href?: string;
+  mainHref?: string; // For direct navigation from top-level icon
+  action?: () => void;
+  isDirectAction?: boolean; // If true, clicking main icon performs action directly
+  subItems?: NavSubItem[];
+  isBottomBarIcon?: boolean; // True if it should be a main icon on the bar
+  isPanelOnly?: boolean; // True if it should only appear in the expanded panel
+}
+
+export interface NavSubItem {
+  label: string;
+  icon: React.ElementType;
+  href?: string;
+  action?: () => void;
+  disabled?: boolean;
+  title?: string;
 }
 
 interface BottomNavigationBarProps {
@@ -43,7 +52,6 @@ interface BottomNavigationBarProps {
   onOpenSubscriptionModal: () => void;
   onOpenCreateCommunityModal: () => void;
   handleLogout: () => void;
-  // No longer needs panel state from AppLayout
 }
 
 const DOUBLE_CLICK_THRESHOLD = 300;
@@ -66,75 +74,52 @@ export default function BottomNavigationBar({
   const triggerButtonRef = useRef<HTMLButtonElement>(null);
 
   const navSections: NavSection[] = [
-    { id: 'home', label: 'Home', icon: HomeIcon, href: '/' },
-    { id: 'anime', label: 'Anime', icon: Tv, href: '/anime' },
-    { id: 'manga', label: 'Manga', icon: BookText, href: '/manga' },
-    { id: 'community', label: 'Community', icon: UsersIcon, href: '/community' },
-    { id: 'gacha', label: 'Gacha Game', icon: Gift, href: '/gacha'},
-    { id: 'system', label: 'System', icon: ShieldCheck, href: '/system' },
-    { id: 'profile', label: 'Profile', icon: UserIconLucide, href: '/profile' },
-    { id: 'search', label: 'Search', icon: SearchIconLucide, action: onSearchIconClick },
+    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
+    { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
+    { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
+    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
+    { id: 'gacha', label: 'Gacha Game', icon: Gift, mainHref: '/gacha' },
+    { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
+    { id: 'search', label: 'Search', icon: SearchIconLucide, isDirectAction: true, action: onSearchIconClick },
     {
-      id: 'theme-light',
-      label: 'Light Theme',
-      icon: Sun,
-      action: () => setTheme('light'),
+      id: 'profileGroup', label: 'Profile', icon: UserIconLucide, isPanelOnly: true,
+      subItems: [
+        { label: 'View Profile', icon: UserIconLucide, href: '/profile' },
+        { label: 'Account Settings', icon: Settings, href: '/settings' },
+      ]
     },
     {
-      id: 'theme-dark',
-      label: 'Dark Theme',
-      icon: Moon,
-      action: () => setTheme('dark'),
+      id: 'customizeGroup', label: 'Customize', icon: Palette, isPanelOnly: true,
+      subItems: [
+        { label: 'Light Theme', icon: Sun, action: () => setTheme('light') },
+        { label: 'Dark Theme', icon: Moon, action: () => setTheme('dark') },
+        { label: 'Shinra Fire Theme', icon: Flame, action: () => setTheme('shinra-fire') },
+        { label: 'Modern Shinra Theme', icon: Zap, action: () => setTheme('modern-shinra') },
+        { label: 'Hypercharge (Netflix)', icon: Tv, action: () => setTheme('hypercharge-netflix') },
+        { label: 'Subscription Tiers', icon: Star, action: onOpenSubscriptionModal },
+      ]
     },
     {
-      id: 'theme-shinra-fire',
-      label: 'Shinra Fire Theme',
-      icon: Flame,
-      action: () => {
-        setTheme('shinra-fire');
-        toast({ title: "Shinra Fire Activated!", description: "Feel the burn!", variant: "default" });
-      },
+      id: 'actionsGroup', label: 'Actions', icon: PlusCircle, isPanelOnly: true,
+      subItems: [
+        {
+          label: 'Create Hub', icon: PlusCircle, action: () => {
+            if (!user) {
+              toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" }); return;
+            }
+            if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
+              toast({ title: "Upgrade Required", description: "Creating communities requires at least Ignition tier.", variant: "default" });
+              onOpenSubscriptionModal(); return;
+            }
+            onOpenCreateCommunityModal();
+          },
+          disabled: !user || (!!userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive'),
+          title: !user ? "Login to create" : (!!userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') ? "Upgrade to Ignition Tier or higher" : "Create a new community"
+        },
+      ]
     },
-    {
-      id: 'theme-modern-shinra',
-      label: 'Modern Shinra Theme',
-      icon: Zap, // Zap is now imported
-      action: () => setTheme('modern-shinra'),
-    },
-    {
-      id: 'theme-hypercharge-netflix',
-      label: 'Hypercharge (Netflix)',
-      icon: Tv, // Using Tv for Netflix theme
-      action: () => setTheme('hypercharge-netflix'),
-    },
-    { id: 'subscriptions', label: 'Subscription Tiers', icon: Star, action: onOpenSubscriptionModal },
-    { id: 'settings', label: 'App Settings', icon: Settings, href: '/settings' },
+    // Logout will be handled separately if user is logged in
   ];
-
-  const createCommunitySection: NavSection = {
-    id: 'create-community',
-    label: 'Create Hub',
-    icon: PlusCircle,
-    action: () => {
-      if (!user) {
-        toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
-        return;
-      }
-      if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
-        toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default"});
-        onOpenSubscriptionModal();
-        return;
-      }
-      onOpenCreateCommunityModal();
-    }
-  };
-
-  const logoutSection: NavSection = {
-    id: 'logout',
-    label: 'Logout',
-    icon: LogOut,
-    action: handleLogout,
-  };
 
 
   const closePanel = useCallback(() => {
@@ -152,27 +137,33 @@ export default function BottomNavigationBar({
     };
 
     if (isMenuPanelOpen) {
+      document.body.style.overflow = 'hidden'; // Prevent background scroll when panel is open
       document.addEventListener('mousedown', handleClickOutside);
     } else {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.body.style.overflow = 'auto';
     }
     return () => {
+      document.body.style.overflow = 'auto';
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [isMenuPanelOpen, closePanel]);
 
+
   const allPanelItems = [...navSections];
   if (user) {
-    allPanelItems.push(createCommunitySection);
-    allPanelItems.push(logoutSection);
-  } else {
-    allPanelItems.push({ id: 'login', label: 'Login/Sign Up', icon: UserIconLucide, href: '/login' });
+    const actionsGroup = allPanelItems.find(s => s.id === 'actionsGroup');
+    if (actionsGroup && actionsGroup.subItems) {
+      // Logout added to actions group if user is logged in
+    }
   }
 
 
+  if (theme === 'hypercharge-netflix') {
+    return null; // Bottom nav is hidden for Netflix theme
+  }
+
   return (
     <>
-      {/* Central Menu Trigger Button */}
       <Button
         ref={triggerButtonRef}
         variant="default"
@@ -180,7 +171,7 @@ export default function BottomNavigationBar({
         className={cn(
           "fixed bottom-6 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl z-[60] flex items-center justify-center transition-all duration-300 ease-in-out",
           "bg-primary/90 hover:bg-primary text-primary-foreground",
-          theme === 'shinra-fire' && 'sf-bansho-button', // Apply bansho button style for Shinra Fire
+          theme === 'shinra-fire' && 'sf-bansho-button',
           theme !== 'shinra-fire' && 'neon-glow-hover',
           isMenuPanelOpen && "rotate-45 bg-destructive/90 hover:bg-destructive"
         )}
@@ -191,7 +182,6 @@ export default function BottomNavigationBar({
         {isMenuPanelOpen ? <X size={28} /> : <MenuIcon size={28} />}
       </Button>
 
-      {/* Menu Panel */}
       <AnimatePresence>
         {isMenuPanelOpen && (
           <motion.div
@@ -203,71 +193,131 @@ export default function BottomNavigationBar({
           >
             <motion.div
               ref={menuPanelRef}
-              className="glass-deep w-full max-w-sm shadow-2xl border-primary/30 rounded-xl overflow-hidden flex flex-col max-h-[70vh]"
+              className="glass-deep w-full max-w-xs shadow-2xl border-primary/30 rounded-xl overflow-hidden flex flex-col max-h-[calc(var(--bottom-nav-panel-max-height)*2.5)] sm:max-h-[calc(var(--bottom-nav-panel-max-height)*2)] md:max-h-[calc(var(--bottom-nav-panel-max-height)*1.8)]"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20, transition: { duration: 0.2 } }}
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside panel
+              onClick={(e) => e.stopPropagation()}
             >
-              <CardHeader className="p-4 border-b border-border/50 flex-shrink-0">
-                <CardTitle className="text-lg font-semibold text-primary text-center">Navigation</CardTitle>
-                 <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-muted-foreground hover:text-foreground h-8 w-8" onClick={closePanel}>
+              <DialogHeader className="p-4 border-b border-border/50 flex-shrink-0">
+                <DialogTitle className="text-lg font-semibold text-primary text-center">Navigation</DialogTitle>
+                <DialogClose asChild>
+                  <Button variant="ghost" size="icon" className="absolute top-2 right-2 text-muted-foreground hover:text-foreground h-8 w-8" onClick={closePanel}>
                     <XCircle size={20}/>
                     <span className="sr-only">Close menu</span>
-                </Button>
-              </CardHeader>
-              <ScrollArea className="flex-grow p-3">
+                  </Button>
+                </DialogClose>
+              </DialogHeader>
+              <ScrollArea className="flex-grow p-3 min-h-0"> {/* Added min-h-0 */}
                 <div className="space-y-1.5">
-                  {allPanelItems.map((item) => {
-                    const Icon = item.icon;
-                     const isCreateCommunityDisabled = item.id === 'create-community' && userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive';
+                  {allPanelItems.filter(s => !s.isPanelOnly || s.subItems).map((section) => {
+                    const Icon = section.icon;
+                    const isGroup = !!section.subItems && section.isPanelOnly;
 
-                    if (item.href) {
+                    if (isGroup) {
                       return (
-                        <Link key={item.id} href={item.href} passHref legacyBehavior>
+                        <div key={section.id} className="pt-2">
+                          <h4 className="px-2 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                            <Icon size={14} /> {section.label}
+                          </h4>
+                          {section.subItems?.map(subItem => {
+                            const SubIcon = subItem.icon;
+                            if (subItem.href) {
+                              return (
+                                <Link key={subItem.label} href={subItem.href} passHref legacyBehavior>
+                                  <a
+                                    className={cn(
+                                      "w-full justify-start text-sm h-auto py-2 px-3 flex items-center gap-3 rounded-md transition-colors text-foreground",
+                                      "hover:bg-primary/10 hover:text-primary",
+                                      pathname === subItem.href && "bg-primary/15 text-primary font-medium"
+                                    )}
+                                    onClick={closePanel}
+                                  >
+                                    <SubIcon size={16} className="text-primary/80" />
+                                    {subItem.label}
+                                  </a>
+                                </Link>
+                              );
+                            }
+                            return (
+                              <Button
+                                key={subItem.label}
+                                variant="ghost"
+                                className={cn(
+                                  "w-full justify-start text-sm h-auto py-2 px-3 flex items-center gap-3 text-foreground",
+                                  "hover:bg-primary/10 hover:text-primary",
+                                   subItem.disabled && "opacity-60 cursor-not-allowed"
+                                )}
+                                onClick={() => {
+                                  if (subItem.action) subItem.action();
+                                  closePanel();
+                                }}
+                                disabled={subItem.disabled}
+                                title={subItem.title}
+                              >
+                                <SubIcon size={16} className="text-primary/80" />
+                                {subItem.label}
+                              </Button>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+
+                    // Direct navigation items
+                    if (section.mainHref) {
+                      return (
+                        <Link key={section.id} href={section.mainHref} passHref legacyBehavior>
                           <a
                             className={cn(
-                              "w-full justify-start text-sm h-auto py-2.5 px-3 flex items-center gap-3 rounded-md transition-colors",
-                              theme === 'shinra-fire' ? 'sf-bansho-button' : 'hover:bg-primary/10 hover:text-primary',
-                              pathname === item.href && "bg-primary/15 text-primary font-medium"
+                              "w-full justify-start text-sm h-auto py-2 px-3 flex items-center gap-3 rounded-md transition-colors text-foreground",
+                              "hover:bg-primary/10 hover:text-primary",
+                              pathname === section.mainHref && "bg-primary/15 text-primary font-medium"
                             )}
                             onClick={closePanel}
                           >
-                            <Icon size={18} className="text-primary/90" />
-                            <span className="text-foreground">{item.label}</span>
+                            <Icon size={16} className="text-primary/80" />
+                            {section.label}
                           </a>
                         </Link>
                       );
                     }
-                    return (
-                      <Button
-                        key={item.id}
-                        variant="ghost"
-                        className={cn(
-                          "w-full justify-start text-sm h-auto py-2.5 px-3 flex items-center gap-3 transition-colors",
-                          theme === 'shinra-fire' ? 'sf-bansho-button' : 'hover:bg-primary/10 hover:text-primary',
-                          isCreateCommunityDisabled && "opacity-60 cursor-not-allowed"
-                        )}
-                        onClick={() => {
-                          if (item.action) {
-                            if (item.id === 'create-community' && isCreateCommunityDisabled) {
-                                toast({ title: "Upgrade Required", description: "Creating communities requires at least Ignition tier.", variant: "default"});
-                                onOpenSubscriptionModal();
-                            } else {
-                                item.action();
-                            }
-                          }
-                          closePanel();
-                        }}
-                        disabled={item.id === 'logout' && !user}
-                        title={isCreateCommunityDisabled ? "Upgrade to Ignition Tier or higher" : item.label}
-                      >
-                        <Icon size={18} className={cn(item.id === 'logout' && user ? "text-destructive" : "text-primary/90")} />
-                        <span className={cn(item.id === 'logout' && user ? "text-destructive" : "text-foreground")}>{item.label}</span>
-                      </Button>
-                    );
+                    // Direct action items
+                    if (section.isDirectAction && section.action) {
+                      return (
+                        <Button
+                          key={section.id}
+                          variant="ghost"
+                          className={cn(
+                            "w-full justify-start text-sm h-auto py-2 px-3 flex items-center gap-3 text-foreground",
+                            "hover:bg-primary/10 hover:text-primary"
+                          )}
+                          onClick={() => {
+                            if (section.action) section.action();
+                            closePanel();
+                          }}
+                        >
+                          <Icon size={16} className="text-primary/80" />
+                          {section.label}
+                        </Button>
+                      );
+                    }
+                    return null;
                   })}
+                  {/* Logout Button */}
+                  {user && (
+                    <div className="pt-2 mt-2 border-t border-border/30">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-sm h-auto py-2 px-3 flex items-center gap-3 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        onClick={() => { handleLogout(); closePanel(); }}
+                      >
+                        <LogOut size={16} />
+                        Logout
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </motion.div>
