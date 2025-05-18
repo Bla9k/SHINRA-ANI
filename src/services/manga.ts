@@ -187,7 +187,7 @@ export async function getMangas(
   limit: number = DEFAULT_JIKAN_LIMIT,
   sortDirection?: 'asc' | 'desc'
 ): Promise<MangaResponse> {
-   const effectiveLimit = Math.min(limit, 25);
+  const effectiveLimit = Math.min(limit, 25);
   const params = new URLSearchParams({ page: page.toString(), limit: effectiveLimit.toString() });
 
   if (search) params.append('q', search);
@@ -216,7 +216,7 @@ export async function getMangas(
 
   if (orderBy) {
      params.append('order_by', orderBy);
-     params.append('sort', effectiveSortDirection);
+     if (effectiveSortDirection) params.append('sort', effectiveSortDirection);
   }
 
   const url = `${JIKAN_API_URL}/manga?${params.toString()}`;
@@ -235,20 +235,35 @@ export async function getMangas(
         console.error(`[getMangas] Jikan API response not OK: ${response.status} "${response.statusText}"`);
         console.error('[getMangas] Jikan Error Body:', responseBodyText.substring(0, 500));
         console.error('[getMangas] Jikan Request URL:', url);
+        // Attempt to parse error body for more specific messages
+        let parsedError: any = {};
+        try {
+            parsedError = JSON.parse(errorBody);
+            console.error('[getMangas] Parsed Jikan Error Body:', parsedError);
+        } catch {}
+        // Return an empty response to allow the UI to handle it gracefully
         return { mangas: [], hasNextPage: false, currentPage: page, lastPage: page };
     }
 
     const jsonResponse: JikanMangaListResponse = JSON.parse(responseBodyText);
 
+    // Check if Jikan returned an error structure within a 200 OK response
     if ((jsonResponse.status && jsonResponse.status !== 200 && (jsonResponse.message || jsonResponse.error)) || (response.status !== 200 && (jsonResponse.message || jsonResponse.error))) {
         console.warn(`[getMangas] Jikan API returned an error message: Status ${jsonResponse.status || response.status}, Message: ${jsonResponse.message || jsonResponse.error}. URL: ${url}`);
         return { mangas: [], hasNextPage: false, currentPage: page, lastPage: page };
     }
-    if (!jsonResponse || !jsonResponse.data || !Array.isArray(jsonResponse.data)) {
-         console.warn(`[getMangas] Jikan API error: Response OK but missing or invalid "data" field. URL: ${url}`);
-         console.warn('[getMangas] Jikan Response Body:', JSON.stringify(jsonResponse).substring(0, 500));
+
+    // Check if the data field is missing or not an array AFTER confirming response.ok
+     if (!jsonResponse.data || !Array.isArray(jsonResponse.data)) {
+         console.error('[getMangas] Jikan API error: Response OK but missing or invalid "data" field.');
+         console.error('[getMangas] Jikan Response:', JSON.stringify(jsonResponse)); // Log the problematic response
+         console.error('[getMangas] Jikan Request URL:', url);
+         // Check if it looks like a Jikan error structure even with 2xx status (unlikely but possible)
+         if (jsonResponse.status && jsonResponse.message) {
+             console.error(`[getMangas] Jikan specific error in response: ${jsonResponse.message}`);
+         }
          return { mangas: [], hasNextPage: false, currentPage: page, lastPage: jsonResponse?.pagination?.last_visible_page ?? page };
-    }
+     }
 
     const pagination = jsonResponse.pagination;
     const mangas = jsonResponse.data
@@ -280,6 +295,7 @@ export async function getMangaDetails(mal_id?: number, title?: string, noDelay: 
       url = `${JIKAN_API_URL}/manga/${mal_id}`;
       queryType = `ID ${mal_id}`;
     } else if (title) {
+      // Use a more specific sort for finding by title, rank or title itself
       const searchResult = await getMangas(undefined, undefined, title, undefined, 1, 'rank', 1, 'asc');
       if (searchResult.mangas.length > 0) {
         url = `${JIKAN_API_URL}/manga/${searchResult.mangas[0].mal_id}`;
@@ -364,4 +380,13 @@ export async function getMangaRecommendations(mal_id: number): Promise<Manga[]> 
         console.error(`[getMangaRecommendations] Failed for MAL ID ${mal_id}, URL: ${url}. Error: ${error.message}`);
         return [];
     }
+}
+
+// Helper function to get a manga by its MAL ID, typically for internal use or when ID is known.
+export async function getMangaById(malId: number, noDelay: boolean = false): Promise<Manga | null> {
+    if (!malId) {
+        console.warn('[getMangaById] MAL ID is required.');
+        return null;
+    }
+    return getMangaDetails(malId, undefined, noDelay);
 }
