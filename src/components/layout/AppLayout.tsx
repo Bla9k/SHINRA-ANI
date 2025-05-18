@@ -5,8 +5,7 @@ import React, { useState, type ReactNode, useCallback, useEffect, useRef } from 
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from "next-themes";
 import TopBar from './TopBar';
-import BottomNavigationBar, { type NavSection } from './BottomNavigationBar';
-import RadialMenu from './RadialMenu';
+import BottomNavigationBar, { type NavSection } from './BottomNavigationBar'; // Will be refactored
 import CustomizeModal from './CustomizeModal';
 import SearchPopup from '@/components/search/SearchPopup';
 import { Toaster } from '@/components/ui/toaster';
@@ -19,12 +18,12 @@ import { useAuth } from '@/hooks/useAuth';
 import { UserProfileData, updateUserProfileDocument } from '@/services/profile';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Button } from '@/components/ui/button'; // Added Button import
+import { Button } from '@/components/ui/button';
 import {
-  Plus, X, Home as HomeIcon, Search as SearchIconLucide, Users as UsersIcon,
+  Home as HomeIcon, Search as SearchIconLucide, Users as UsersIcon,
   User as UserIconLucide, Settings as SettingsIconOriginal, Tv, BookText, Moon, Sun,
   Palette, Flame, Zap, Rocket, Star, ShieldCheck, Gift, Menu as MenuIcon,
-  LogOut, PlusCircle, Sparkles, MessageCircle // Added MessageCircle as it's used
+  LogOut, PlusCircle, Sparkles, MessageCircle, X // Added X for the new menu button
 } from 'lucide-react';
 import anime from 'animejs';
 
@@ -62,14 +61,14 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Select Ignition',
         isPopular: true,
-        tierColorClass: 'text-accent', // Use theme's accent
-        iconGlowClass: 'fiery-glow-icon', // Use specific fire glow for this theme
+        tierColorClass: 'text-accent',
+        iconGlowClass: 'fiery-glow-icon',
     },
     {
         id: 'hellfire',
         name: 'Hellfire Tier',
         slogan: 'Shinra-style blazing speed.',
-        icon: Zap, // Changed from FlameKindling to Zap for more "hellfire" feel
+        icon: Zap,
         features: [
             { text: 'All Ignition features', included: true },
             { text: 'Unlimited indie reading/watching', included: true },
@@ -87,7 +86,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         id: 'burstdrive',
         name: 'Burst Drive Tier',
         slogan: 'Power, speed, hero-level impact.',
-        icon: Rocket, // Changed from Tornado to Rocket
+        icon: Rocket,
         features: [
             { text: 'All Hellfire features', included: true },
             { text: 'Exclusive profile badges & themes', included: true },
@@ -118,7 +117,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
   const [isLoadingTier, setIsLoadingTier] = useState(false);
 
-  const [isRadialMenuOpen, setIsRadialMenuOpen] = useState(false);
   const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
 
   const pathname = usePathname();
@@ -131,12 +129,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const mainContentRef = useRef<HTMLDivElement>(null);
 
 
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
-  // Declare mainContentPaddingBottom AFTER isPanelOpen and expandedSectionId are initialized
-  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : (isPanelOpen && expandedSectionId ? 'pb-[calc(var(--bottom-nav-panel-max-height,16rem)+4rem)]' : 'pb-20');
-
-
   const handleLogout = async () => {
     try {
       await signOutUser();
@@ -146,8 +138,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
          variant: "default",
       });
       router.push('/login');
-      setIsPanelOpen(false); // Close panel on logout
-      setIsRadialMenuOpen(false); // Close radial menu on logout
     } catch (error) {
       console.error("Logout failed in AppLayout:", error);
       toast({
@@ -168,73 +158,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       setShowSubscriptionModal(true);
       return;
     }
-    setIsPanelOpen(false); // Close panel if open
-    setIsRadialMenuOpen(false); // Close radial menu if open
     setIsCreateCommunityModalOpen(true);
   }, [user, userProfile, toast]);
 
-  const navSections: NavSection[] = [
-    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/', isToggleButton: true, subItems: [
-        { label: 'Anime', icon: Tv, href: '/anime' },
-        { label: 'Manga', icon: BookText, href: '/manga' },
-        { label: 'Gacha Game', icon: Gift, href: '/gacha'},
-    ]},
-    { id: 'search', label: 'Search', icon: SearchIconLucide, isDirectAction: true, directAction: () => { setIsSearchOpen(true); setIsPanelOpen(false); setIsRadialMenuOpen(false); } },
-    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community', isToggleButton: true, subItems: [
-        { label: 'Explore Hubs', icon: UsersIcon, href: '/community' },
-        { label: 'Create Community', icon: PlusCircle, onClick: handleOpenCreateCommunityModal },
-    ]},
-    { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
-    { id: 'profile', label: 'Profile', icon: UserIconLucide, mainHref: '/profile', isToggleButton: true, subItems: [
-        { label: 'View Profile', icon: UserIconLucide, href: '/profile' },
-        { label: 'Settings', icon: SettingsIconOriginal, href: '/settings' },
-        { label: 'Logout', icon: LogOut, onClick: handleLogout },
-    ]},
-    {
-      id: 'customize',
-      label: 'Customize',
-      icon: Palette,
-      isToggleButton: true,
-      subItems: [
-        { label: 'Light Theme', icon: Sun, onClick: () => { setTheme('light'); setIsPanelOpen(false); } },
-        { label: 'Dark Theme', icon: Moon, onClick: () => { setTheme('dark'); setIsPanelOpen(false); } },
-        {
-          label: 'Shinra Fire Theme',
-          icon: Flame,
-          onClick: () => {
-            setTheme('shinra-fire');
-            toast({ title: "Shinra Fire Activated!", description: "Feel the burn!", variant: "default" });
-            setIsPanelOpen(false);
-          },
-        },
-        { label: 'Modern Shinra Theme', icon: Zap, onClick: () => { setTheme('modern-shinra'); setIsPanelOpen(false); } },
-        { label: 'Hypercharge (Netflix)', icon: Tv, onClick: () => { setTheme('hypercharge-netflix'); setIsPanelOpen(false); } },
-        { label: 'Subscription Tiers', icon: Star, onClick: () => { setShowSubscriptionModal(true); setIsPanelOpen(false); } },
-        {
-          label: 'Community Theme',
-          icon: Palette,
-          onClick: () => {
-            if (pathname.startsWith('/community/') && !pathname.includes('/settings/theme')) {
-              const communityId = pathname.split('/')[2];
-              if (communityId) {
-                router.push(`/community/${communityId}/settings/theme`);
-              } else {
-                toast({ title: "Error", description: "Could not determine community ID.", variant: "destructive"});
-              }
-            } else if (pathname.startsWith('/community/') && pathname.includes('/settings/theme')) {
-                toast({ title: "Already Here", description: "You are already on the theme settings page.", variant: "default"});
-            } else {
-                 toast({ title: "Navigate to a Community", description: "Please go to a specific community page to edit its theme.", variant: "default"});
-            }
-            setIsPanelOpen(false);
-          },
-        }
-      ],
-    },
-  ];
-
   const TIER_DATA = TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}));
-
 
   useEffect(() => {
     if (!authLoading && user && userProfile) {
@@ -246,13 +173,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           localStorage.setItem('appLaunchCount', appLaunchCount.toString());
         } catch (error) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
-           // Fallback if localStorage is blocked - show modal once per session for new users.
           if (!sessionStorage.getItem('hasSeenSubModalOnceThisSession')) {
             appLaunchCount = 1;
             try { sessionStorage.setItem('hasSeenSubModalOnceThisSession', 'true'); } catch {}
           }
         }
-        // Show every 5 launches for testing, adjust to 31 for production
         if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0)) {
           setShowSubscriptionModal(true);
         }
@@ -289,8 +214,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   }, []);
 
   const handleOpenSubscriptionModal = useCallback(() => {
-    setIsPanelOpen(false); // Close panel if open
-    setIsRadialMenuOpen(false); // Close radial menu if open
     setShowSubscriptionModal(true);
   }, []);
 
@@ -304,14 +227,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         return;
     }
     setIsLoadingTier(true);
+    const currentTierDetails = TIER_DATA_RAW.find(t => t.id === tierId);
+    const tierName = currentTierDetails?.name || 'your new tier';
+
     try {
       await updateUserProfileDocument(user.uid, { subscriptionTier: tierId });
-      if (fetchUserProfile) { // fetchUserProfile is part of useAuth()
-        await fetchUserProfile(user.uid); // Refresh userProfile state
+      if (fetchUserProfile) {
+        await fetchUserProfile(user.uid);
       }
-      const selectedTierInfo = TIER_DATA_RAW.find(t => t.id === tierId);
-      const tierName = selectedTierInfo?.name || 'your new tier';
-
       toast({
         title: `Welcome to the ${tierName}!`,
         description: "Thank you for supporting Shinra-Ani and unlocking new features!",
@@ -329,6 +252,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
+  // State variables for the new central menu
+  const [isMenuPanelOpen, setIsMenuPanelOpen] = useState(false);
+  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : (isMenuPanelOpen ? 'pb-20' : 'pb-20'); // Adjust if panel overlays
 
   return (
     <>
@@ -336,7 +262,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       <AnimatePresence>
         {showApp && (
           <motion.div
-            ref={appContainerRef} // Use this ref for the main app container animation
+            ref={appContainerRef}
             key="appContent"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -348,66 +274,35 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <TopBar
                 onSearchIconClick={handleSearchToggle}
-                onSearchSubmit={(term) => { setInitialSearchTerm(term); setIsSearchOpen(true); setOpenWithFilters(false); }}
-                onAiToggle={() => setIsAiSearchActive(prev => !prev)}
-                isAiSearchActive={isAiSearchActive}
-                onOpenAiSearch={(term) => { setInitialSearchTerm(term); setIsAiSearchActive(true); setIsSearchOpen(true); setOpenWithFilters(false); }}
-                onOpenAdvancedSearch={(term) => { setInitialSearchTerm(term); setIsAiSearchActive(false); setIsSearchOpen(true); setOpenWithFilters(true); }}
+                isAiSearchActive={isAiSearchActive} // Pass this if TopBar uses it
+                onAiToggle={() => setIsAiSearchActive(prev => !prev)} // Pass handler
+                onOpenSubscriptionModal={handleOpenSubscriptionModal}
+                onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
+                handleLogout={handleLogout}
              />
             <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)} ref={mainContentRef}>
-              <AnimatePresence mode="wait">
-                <motion.main
-                  key={pathname} // Keyed by pathname for route transitions
-                  initial={{ opacity: 0, x: -15 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 15 }}
-                  transition={{ duration: 0.3, ease: 'easeInOut' }}
-                  className="transition-smooth" // General transition smoothness for other properties
-                >
-                  {children}
-                </motion.main>
-              </AnimatePresence>
+              <motion.main
+                key={pathname}
+                initial={{ opacity: 0, x: -15 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 15 }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                className="transition-smooth"
+              >
+                {children}
+              </motion.main>
             </div>
 
-            {theme !== 'hypercharge-netflix' && !isRadialMenuOpen && (
+            {theme !== 'hypercharge-netflix' && (
               <BottomNavigationBar
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
-                isPanelOpen={isPanelOpen}
-                setIsPanelOpen={setIsPanelOpen}
-                expandedSectionId={expandedSectionId}
-                setExpandedSectionId={setExpandedSectionId}
-                navSections={navSections}
+                isMenuPanelOpen={isMenuPanelOpen}
+                setIsMenuPanelOpen={setIsMenuPanelOpen}
               />
             )}
-             {theme !== 'hypercharge-netflix' && (
-                 <Button
-                    variant="default"
-                    size="icon"
-                    className={cn(
-                        "fixed bottom-4 right-4 h-14 w-14 rounded-full shadow-xl z-[60] transition-all duration-300 ease-in-out",
-                        "bg-primary/80 hover:bg-primary text-primary-foreground",
-                        theme === 'shinra-fire' && 'fiery-glow-hover',
-                        theme !== 'shinra-fire' && 'neon-glow-hover',
-                        isRadialMenuOpen && "rotate-45 bg-destructive/80 hover:bg-destructive"
-                    )}
-                    onClick={() => setIsRadialMenuOpen(!isRadialMenuOpen)}
-                    aria-label={isRadialMenuOpen ? "Close Menu" : "Open Menu"}
-                >
-                    {isRadialMenuOpen ? <X size={28} /> : <Plus size={28} />}
-                </Button>
-            )}
-
-            <RadialMenu
-                isOpen={isRadialMenuOpen}
-                onClose={() => setIsRadialMenuOpen(false)}
-                navSections={navSections}
-                router={router}
-                theme={theme || 'dark'}
-                openCustomizeModal={() => { setIsCustomizeModalOpen(true); setIsRadialMenuOpen(false); }}
-            />
 
             <SearchPopup
               isOpen={isSearchOpen}
@@ -423,23 +318,17 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 currentTier={userProfile?.subscriptionTier || null}
                 onSelectTier={handleSelectTier}
                 TIER_DATA={TIER_DATA}
-                isLoading={isLoadingTier} // Pass loading state for buttons
+                isLoading={isLoadingTier}
             />
             <CreateCommunityModal
                 isOpen={isCreateCommunityModalOpen}
                 onClose={() => setIsCreateCommunityModalOpen(false)}
                 onCreate={(newCommunity) => {
                     setIsCreateCommunityModalOpen(false);
-                    router.push(`/community/${newCommunity.id}`); // Navigate to new community
+                    router.push(`/community/${newCommunity.id}`);
                 }}
             />
-            <CustomizeModal
-                isOpen={isCustomizeModalOpen}
-                onClose={() => setIsCustomizeModalOpen(false)}
-                theme={theme}
-                setTheme={setTheme}
-                onOpenSubscriptionModal={handleOpenSubscriptionModal}
-            />
+            {/* CustomizeModal is likely opened from within the new BottomNavigationBar's panel */}
             <Toaster />
           </motion.div>
         )}

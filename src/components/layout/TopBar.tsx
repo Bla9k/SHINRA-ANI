@@ -1,35 +1,31 @@
-
 // src/components/layout/TopBar.tsx
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { Sparkles, Search as SearchIcon, Settings, X, Menu, LogOut, User as UserIcon } from 'lucide-react'; // User imported as UserIcon
+import {
+    Search as SearchIcon, Settings as SettingsIconOriginal, X, Menu as MenuIcon, LogOut, User as UserIconLucide,
+    Home as HomeIcon, Tv, BookText, Users as UsersIcon, Palette, Star, PlusCircle, ShieldCheck, Flame, Zap, Rocket, Moon, Sun
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { useDebounce } from '@/hooks/use-debounce';
 import { useAuth } from '@/hooks/useAuth';
-import { useAnimation } from '@/context/AnimationContext';
 import { useToast } from '@/hooks/use-toast';
-import { Skeleton } from '@/components/ui/skeleton'; // Import Skeleton
+import { Skeleton } from '@/components/ui/skeleton';
+import { useTheme } from 'next-themes'; // Import useTheme
 
 interface TopBarProps {
   onSearchIconClick: () => void;
-  onSearchSubmit: (term: string) => void;
-  onAiToggle: () => void;
   isAiSearchActive: boolean;
-  onOpenAiSearch: (term: string) => void;
-  onOpenAdvancedSearch: (term: string) => void;
+  onAiToggle: () => void;
+  onOpenSubscriptionModal: () => void;
+  onOpenCreateCommunityModal: () => void;
+  handleLogout: () => void;
   className?: string;
 }
 
@@ -42,15 +38,6 @@ const ShinraAniLogo = () => (
     xmlns="http://www.w3.org/2000/svg"
     className="text-primary transition-transform duration-300 hover:scale-110 group-hover:rotate-[15deg]"
   >
-    <defs>
-        <filter id="neon-glow-filter" x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur" />
-            <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-            </feMerge>
-        </filter>
-    </defs>
     <path
       d="M50 0 L65 20 L85 15 L75 40 L95 50 L75 60 L85 85 L65 80 L50 100 L35 80 L15 85 L25 60 L5 50 L25 40 L15 15 L35 20 Z"
       fill="currentColor"
@@ -67,113 +54,100 @@ const ShinraAniLogo = () => (
 
 export default function TopBar({
   onSearchIconClick,
-  onSearchSubmit,
-  onAiToggle,
-  isAiSearchActive,
-  onOpenAiSearch,
-  onOpenAdvancedSearch,
+  isAiSearchActive, // Kept for potential future use within TopBar itself
+  onAiToggle,       // Kept for potential future use
+  onOpenSubscriptionModal,
+  onOpenCreateCommunityModal,
+  handleLogout,
   className,
 }: TopBarProps) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const { user, signOutUser, loading: authLoading } = useAuth();
-  const suggestionsRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const { playAnimation } = useAnimation();
+  const { user, loading: authLoading, userProfile } = useAuth();
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
 
-  const handleSearchInputChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const term = event.target.value;
-    setSearchTerm(term);
-    setShowSuggestions(!!term.trim());
-  };
+  const themeOptions = [
+    { name: 'Light', value: 'light', icon: Sun },
+    { name: 'Dark', value: 'dark', icon: Moon },
+    { name: 'Shinra Fire', value: 'shinra-fire', icon: Flame },
+    { name: 'Modern Shinra', value: 'modern-shinra', icon: Zap },
+    { name: 'Hypercharge (Netflix)', value: 'hypercharge-netflix', icon: Tv },
+  ];
 
-  const handleSearchFormSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const term = searchTerm.trim();
-    setShowSuggestions(false);
-    if (term) {
-      onSearchSubmit(term);
-    } else {
-      onSearchIconClick();
-    }
-    setSearchTerm('');
-    inputRef.current?.blur();
-  };
+  const NetflixThemeMenuContent = () => (
+    <>
+      <DropdownMenuItem asChild><Link href="/" className="flex items-center gap-2"><HomeIcon size={16}/>Home</Link></DropdownMenuItem>
+      <DropdownMenuItem asChild><Link href="/anime" className="flex items-center gap-2"><Tv size={16}/>Anime</Link></DropdownMenuItem>
+      <DropdownMenuItem asChild><Link href="/manga" className="flex items-center gap-2"><BookText size={16}/>Manga</Link></DropdownMenuItem>
+      <DropdownMenuItem asChild><Link href="/community" className="flex items-center gap-2"><UsersIcon size={16}/>Community</Link></DropdownMenuItem>
+      <DropdownMenuItem asChild><Link href="/system" className="flex items-center gap-2"><ShieldCheck size={16}/>System</Link></DropdownMenuItem>
+      <DropdownMenuSeparator />
+      {user && (
+        <>
+          <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><UserIconLucide size={16}/>Profile</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><SettingsIconOriginal size={16}/>Settings</Link></DropdownMenuItem>
+        </>
+      )}
+      <DropdownMenuSub>
+        <DropdownMenuSubTrigger className="flex items-center gap-2"><Palette size={16}/>Theme</DropdownMenuSubTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent className="glass-deep">
+            {themeOptions.map(opt => (
+              <DropdownMenuItem key={opt.value} onClick={() => setTheme(opt.value)} className="flex items-center gap-2">
+                <opt.icon size={16} className={theme === opt.value ? 'text-primary' : ''}/> {opt.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      </DropdownMenuSub>
+      <DropdownMenuItem onClick={onOpenSubscriptionModal} className="flex items-center gap-2"><Star size={16}/>Subscription Tiers</DropdownMenuItem>
+      {user && (userProfile?.subscriptionTier === 'ignition' || userProfile?.subscriptionTier === 'hellfire' || userProfile?.subscriptionTier === 'burstdrive') && (
+          <DropdownMenuItem onClick={onOpenCreateCommunityModal} className="flex items-center gap-2"><PlusCircle size={16}/>Create Community</DropdownMenuItem>
+      )}
+      <DropdownMenuSeparator />
+      {user ? (
+        <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-destructive focus:text-destructive-foreground focus:bg-destructive/90">
+          <LogOut size={16}/> Logout
+        </DropdownMenuItem>
+      ) : (
+        <DropdownMenuItem asChild><Link href="/login" className="flex items-center gap-2">Login / Sign Up</Link></DropdownMenuItem>
+      )}
+    </>
+  );
 
-  const handleSuggestionClick = (handler: () => void) => (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      handler();
-      setShowSuggestions(false);
-      setSearchTerm('');
-      inputRef.current?.blur();
-  };
+  if (theme === 'hypercharge-netflix') {
+    return (
+      <header className={cn(
+        'sticky top-0 z-30 flex h-16 items-center justify-between gap-2 md:gap-4 border-b px-4 transition-smooth shadow-md',
+        'bg-card text-card-foreground border-border/50', // Netflix theme specific background
+        className
+      )}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="flex items-center gap-2 p-2 -ml-2 group">
+              <ShinraAniLogo />
+              <span className="font-bold text-lg text-primary group-hover:text-primary/80 transition-colors">Shinra-Ani</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="glass-deep w-56">
+            <NetflixThemeMenuContent />
+          </DropdownMenuContent>
+        </DropdownMenu>
 
-  const handleAiSuggestion = handleSuggestionClick(() => {
-      const term = searchTerm.trim();
-      if (term) onOpenAiSearch(term);
-  });
+        <Button variant="ghost" size="icon" className="rounded-full" onClick={onSearchIconClick}>
+          <SearchIcon className="h-5 w-5 text-foreground/80 hover:text-foreground" />
+          <span className="sr-only">Search</span>
+        </Button>
+      </header>
+    );
+  }
 
-  const handleAdvancedSuggestion = handleSuggestionClick(() => {
-      const term = searchTerm.trim();
-      if (term) onOpenAdvancedSearch(term);
-  });
-
-  const handleFocus = () => {
-    if (searchTerm.trim()) setShowSuggestions(true);
-  };
-
-   useEffect(() => {
-     const handleClickOutside = (event: MouseEvent) => {
-       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node) &&
-           inputRef.current && !inputRef.current.contains(event.target as Node)) {
-         setShowSuggestions(false);
-       }
-     };
-     document.addEventListener('mousedown', handleClickOutside);
-     return () => document.removeEventListener('mousedown', handleClickOutside);
-   }, []);
-
-   useEffect(() => {
-     if (suggestionsRef.current && typeof anime !== 'undefined') {
-       anime({
-         targets: suggestionsRef.current,
-         opacity: showSuggestions ? [0, 1] : [1, 0],
-         translateY: showSuggestions ? [-5, 0] : [0, -5],
-         duration: 200,
-         easing: 'easeOutQuad',
-         begin: () => { if (showSuggestions && suggestionsRef.current) suggestionsRef.current.style.display = 'block'; },
-         complete: () => { if (!showSuggestions && suggestionsRef.current) suggestionsRef.current.style.display = 'none'; },
-       });
-     }
-   }, [showSuggestions]);
-
-  const handleLogout = async () => {
-     try {
-       await signOutUser();
-       toast({
-          title: "Logged Out",
-          description: "You have been successfully logged out.",
-          variant: "default",
-       });
-     } catch (error) {
-       console.error("Logout failed in TopBar:", error);
-       toast({
-          title: "Logout Failed",
-          description: "Could not log you out. Please try again.",
-          variant: "destructive",
-       });
-     }
-   };
-
+  // Default TopBar for other themes (mobile-only)
   return (
     <header
       className={cn(
-        'sticky top-0 z-40 flex h-16 items-center gap-2 md:gap-4 border-b px-4 backdrop-blur-lg transition-smooth shadow-md',
-        'bg-background/90 border-border/70 glass-deep',
-        'md:hidden', // This class hides the TopBar on medium screens and up
+        'sticky top-0 z-30 flex h-16 items-center gap-2 md:gap-4 border-b px-4 backdrop-blur-lg transition-smooth shadow-md',
+        'bg-background/80 border-border/50 glass-deep',
+        'md:hidden', // Hide on medium screens and up for non-Netflix themes
         className
       )}
     >
@@ -203,8 +177,8 @@ export default function TopBar({
           <DropdownMenuContent align="end" className="glass-deep animate-fade-in w-48">
             <DropdownMenuLabel className="truncate">{user.displayName || user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><UserIcon size={14}/> Profile</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><Settings size={14}/> Settings</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><UserIconLucide size={14}/> Profile</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><SettingsIconOriginal size={14}/> Settings</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-destructive focus:text-destructive-foreground focus:bg-destructive/90">
                 <LogOut size={14}/> Logout

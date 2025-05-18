@@ -5,33 +5,16 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Home,
-  Search as SearchIcon,
-  Users,
-  User as UserIcon,
-  Settings as SettingsIcon,
-  Tv,
-  BookText,
-  PlusCircle,
-  LogOut,
-  Sun,
-  Moon,
-  Star,
-  ChevronUp,
-  Palette,
-  Flame,
-  ShieldCheck,
+  Home as HomeIcon, Search as SearchIcon, Users as UsersIcon, User as UserIconLucide,
+  Settings as SettingsIconOriginal, Tv, BookText, PlusCircle, LogOut, Sun, Moon,
+  Star, Palette, Flame, ShieldCheck, Gift, Menu as MenuIcon, X, ChevronDown, ChevronUp
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardHeader, CardContent, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
+  Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useAnimation } from '@/context/AnimationContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -44,10 +27,10 @@ interface NavSubItem {
   icon: React.ElementType;
   href?: string;
   onClick?: () => void;
-  premium?: boolean; // For indicating premium features in sub-menu
+  premium?: boolean;
 }
 
-interface NavSection {
+export interface NavSection {
   id: string;
   label: string;
   icon: React.ElementType;
@@ -55,306 +38,6 @@ interface NavSection {
   isDirectAction?: boolean;
   directAction?: () => void;
   mainHref?: string;
-  isToggleButton?: boolean; // Indicates if the main icon acts as a toggle for the panel
-}
-
-const DOUBLE_CLICK_THRESHOLD = 300; // milliseconds
-
-export default function BottomNavigationBar({
-  className,
-  onSearchIconClick,
-  onOpenSubscriptionModal,
-  onOpenCreateCommunityModal,
-  handleLogout,
-}: BottomNavigationBarProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { playAnimation } = useAnimation();
-  const { theme, setTheme } = useTheme();
-  const { toast } = useToast();
-  const { user, userProfile } = useAuth();
-
-  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const navBarRef = useRef<HTMLElement>(null);
-  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastClickTimestampRef = useRef<{ [key: string]: number }>({});
-
-  const navSections: NavSection[] = [
-    { id: 'home', label: 'Home', icon: Home, mainHref: '/', isToggleButton: true, subItems: [
-        { label: 'Anime', icon: Tv, href: '/anime' },
-        { label: 'Manga', icon: BookText, href: '/manga' },
-    ]},
-    { id: 'search', label: 'Search', icon: SearchIcon, isDirectAction: true, directAction: onSearchIconClick },
-    { id: 'community', label: 'Community', icon: Users, mainHref: '/community', isToggleButton: true, subItems: [
-        { label: 'Explore Hubs', icon: Users, href: '/community' },
-        { label: 'Create Community', icon: PlusCircle, onClick: onOpenCreateCommunityModal },
-    ]},
-    { id: 'profile', label: 'Profile', icon: UserIcon, mainHref: '/profile', isToggleButton: true, subItems: [
-        { label: 'View Profile', icon: UserIcon, href: '/profile' },
-        { label: 'Settings', icon: SettingsIcon, href: '/settings' },
-        { label: 'Logout', icon: LogOut, onClick: handleLogout },
-    ]},
-    { id: 'customize', label: 'Customize', icon: Palette, isToggleButton: true, subItems: [
-        { label: 'Light Theme', icon: Sun, onClick: () => { setTheme('light'); closePanel(); } },
-        { label: 'Dark Theme', icon: Moon, onClick: () => { setTheme('dark'); closePanel(); } },
-        { label: 'Shinra Fire Theme', icon: Flame, onClick: () => {
-            setTheme('shinra-fire');
-            toast({ title: "Shinra Fire Activated!", description: "Feel the burn!", variant: "default" });
-            closePanel();
-          }
-        },
-        { label: 'Subscription Tiers', icon: Star, onClick: onOpenSubscriptionModal },
-        { label: 'Community Theme', icon: Palette, onClick: () => {
-            if (pathname.startsWith('/community/') && !pathname.includes('/settings/theme')) {
-              const communityId = pathname.split('/')[2];
-              if (communityId) router.push(`/community/${communityId}/settings/theme`);
-              else toast({ title: "Error", description: "Could not determine community ID.", variant: "destructive"});
-            } else if (pathname.startsWith('/community/') && pathname.includes('/settings/theme')) {
-                toast({ title: "Already Here", description: "You are already on the theme settings page.", variant: "default"});
-            } else {
-                 toast({ title: "Navigate to a Community", description: "Please go to a specific community page to edit its theme.", variant: "default"});
-            }
-            closePanel();
-          },
-        }
-    ]},
-  ];
-
-  const closePanel = useCallback(() => {
-    setIsPanelOpen(false);
-    setTimeout(() => setExpandedSectionId(null), 300);
-  }, []);
-
-  const handleMainIconClickInternal = (section: NavSection, targetElement: HTMLElement | null) => {
-    const now = Date.now();
-    const lastClickTime = lastClickTimestampRef.current[section.id] || 0;
-
-    if (clickTimeoutRef.current) {
-      clearTimeout(clickTimeoutRef.current);
-      clickTimeoutRef.current = null;
-    }
-
-    if (targetElement && playAnimation) {
-      const svgIcon = targetElement.querySelector('svg');
-      if (svgIcon && typeof anime === 'function') {
-        anime.remove(svgIcon); // Remove previous animations on this target
-        anime({ targets: svgIcon, scale: [1, 0.8, 1.1, 1], duration: 300, easing: 'easeInOutQuad' });
-      }
-    }
-
-    if (section.isDirectAction && section.directAction) {
-      section.directAction();
-      closePanel();
-      return;
-    }
-
-    if (section.mainHref && (now - lastClickTime < DOUBLE_CLICK_THRESHOLD)) {
-      router.push(section.mainHref);
-      closePanel();
-      lastClickTimestampRef.current[section.id] = 0; // Reset for next interaction
-    } else {
-      lastClickTimestampRef.current[section.id] = now;
-      if (section.isToggleButton) { // Only set timeout for panel toggling for toggle buttons
-        clickTimeoutRef.current = setTimeout(() => {
-          if (expandedSectionId === section.id && isPanelOpen) {
-            closePanel();
-          } else if (section.subItems && section.subItems.length > 0) {
-            setExpandedSectionId(section.id);
-            setIsPanelOpen(true);
-          } else if (section.mainHref) { // If it's a toggle button with mainHref but no subItems (unlikely for current setup)
-            router.push(section.mainHref);
-            closePanel();
-          }
-        }, DOUBLE_CLICK_THRESHOLD);
-      } else if (section.mainHref) { // If not a toggle button but has a mainHref (e.g. was a simple link icon)
-         router.push(section.mainHref); // Navigate directly on single click
-         closePanel();
-      }
-    }
-  };
-
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as Node) &&
-          navBarRef.current && !navBarRef.current.contains(event.target as Node)) {
-        closePanel();
-      }
-    };
-    if (isPanelOpen) document.addEventListener('mousedown', handleClickOutside);
-    else document.removeEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
-    };
-  }, [isPanelOpen, closePanel]);
-
-  const activeSectionDetails = navSections.find(s => s.id === expandedSectionId);
-
-  const NavItem = React.forwardRef<HTMLButtonElement, { section: NavSection }>(
-    ({ section }, ref) => {
-    const { label, icon: Icon, mainHref, isToggleButton } = section;
-    const isActivePanel = expandedSectionId === section.id && isPanelOpen;
-    const isLinkActive = mainHref ? (pathname === mainHref || (mainHref !== '/' && pathname.startsWith(mainHref))) : false;
-    const effectiveIsActive = (isToggleButton || mainHref) ? (isActivePanel || isLinkActive) : false;
-    const isShinraFire = theme === 'shinra-fire';
-
-    const commonClasses = cn(
-      'flex flex-col items-center justify-center flex-1 h-full px-1 py-2 text-xs sm:text-sm relative focus:outline-none rounded-md nav-item-base transition-colors duration-150',
-      effectiveIsActive ? 'active-nav-item text-primary' : 'text-muted-foreground'
-    );
-
-    const interactionClasses = isShinraFire
-      ? 'sf-bansho-button' // This class defines its own hover/active/focus via globals.css
-      : 'hover:text-primary hover:bg-transparent'; // Simpler hover for non-Shinra themes
-
-    const itemRef = useRef<HTMLButtonElement>(null); // Ref for the button itself
-
-    const iconAndLabel = (
-      <>
-        <Icon className={cn("w-5 h-5 mb-0.5", effectiveIsActive && isShinraFire && 'neon-glow-icon-shinra')} />
-        <span className="truncate max-w-full text-xs sm:text-sm">{label}</span>
-      </>
-    );
-
-    return (
-      <TooltipProvider key={section.id} delayDuration={100}>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              ref={itemRef}
-              variant="ghost"
-              className={cn(commonClasses, interactionClasses)}
-              onClick={(e) => handleMainIconClickInternal(section, e.currentTarget)}
-              aria-pressed={isToggleButton ? isActivePanel : undefined}
-              aria-label={label}
-            >
-              {iconAndLabel}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="hidden sm:block bg-popover text-popover-foreground glass-deep text-xs">
-            <p>{section.label}</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  });
-  NavItem.displayName = 'NavItem';
-
-
-  return (
-    <>
-      <AnimatePresence>
-        {isPanelOpen && activeSectionDetails && activeSectionDetails.subItems && (
-          <motion.div
-            ref={panelRef}
-            initial={{ opacity: 0, y: "100%", height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "var(--bottom-nav-panel-max-height, 16rem)" }}
-            exit={{ opacity: 0, y: "100%", height: 0 }}
-            transition={{ duration: 0.3, ease: 'easeInOut' }}
-            className="fixed bottom-16 left-0 right-0 z-40 mx-auto w-full max-w-md"
-            style={{ maxHeight: 'var(--bottom-nav-panel-max-height, 16rem)' }}
-          >
-            <div className="p-2">
-              <Card className="glass-deep shadow-xl border-primary/30 overflow-hidden max-h-[calc(var(--bottom-nav-panel-max-height)-0.5rem)] flex flex-col">
-                <div className="p-3 flex items-center justify-between border-b border-border/50 flex-shrink-0">
-                  <h3 className="text-sm font-semibold text-primary">
-                    {activeSectionDetails.label}
-                  </h3>
-                  <Button variant="ghost" size="icon" onClick={closePanel} className="h-7 w-7 text-muted-foreground hover:text-foreground">
-                    <ChevronUp size={18} />
-                    <span className="sr-only">Close Panel</span>
-                  </Button>
-                </div>
-                <ScrollArea className="flex-grow p-2">
-                  <div className="space-y-1">
-                    {activeSectionDetails.subItems.map((item) => {
-                       const isPremium = item.premium && (!userProfile || userProfile.subscriptionTier === 'spark' || userProfile.subscriptionTier === null);
-                       const subItemClasses = cn(
-                        "flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-md text-muted-foreground hover:text-primary transition-colors",
-                        theme === 'shinra-fire' ? 'sf-bansho-button hover:bg-transparent' : 'hover:bg-primary/10',
-                        isPremium && "opacity-50 cursor-not-allowed"
-                       );
-
-                       return (
-                        <TooltipProvider key={item.label} delayDuration={100}>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              {item.href ? (
-                                 <Link href={item.href} legacyBehavior passHref>
-                                  <a
-                                    className={subItemClasses}
-                                    onClick={() => {
-                                        if (isPremium) {
-                                            onOpenSubscriptionModal();
-                                            toast({ title: "Premium Feature", description: "Upgrade your tier to access this feature.", variant: "default" });
-                                        }
-                                        closePanel();
-                                    }}
-                                    aria-disabled={isPremium}
-                                  >
-                                    <item.icon size={16} />
-                                    <span>{item.label}</span>
-                                    {item.premium && <ShieldCheck size={14} className="ml-auto text-yellow-500" />}
-                                  </a>
-                                </Link>
-                              ) : (
-                                <Button
-                                  variant="ghost" // base styling
-                                  className={subItemClasses} // apply dynamic classes
-                                  onClick={() => {
-                                    if (isPremium) {
-                                        onOpenSubscriptionModal();
-                                        toast({ title: "Premium Feature", description: "Upgrade your tier to access this feature.", variant: "default" });
-                                    } else if (item.onClick) {
-                                        item.onClick(); // This already calls closePanel() within its definition for theme switches
-                                    }
-                                    // No, closePanel() is generally not called by item.onClick for theme switches, call it here for actions
-                                    if (!item.label.includes("Theme")) { // Avoid double-closing for theme switches
-                                        closePanel();
-                                    }
-                                  }}
-                                  disabled={isPremium}
-                                >
-                                  <item.icon size={16} />
-                                  <span>{item.label}</span>
-                                  {item.premium && <ShieldCheck size={14} className="ml-auto text-yellow-500" />}
-                                </Button>
-                              )}
-                            </TooltipTrigger>
-                            <TooltipContent side="right" className="glass-deep text-xs">
-                              <p>{isPremium ? `${item.label} (Premium)` : item.label}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                       );
-                    })}
-                  </div>
-                </ScrollArea>
-              </Card>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <nav
-        ref={navBarRef}
-        className={cn(
-          'fixed bottom-0 left-0 right-0 z-50 h-16 border-t transition-smooth',
-          'bg-background/90 border-border/70 glass-deep shadow-top-md',
-          className
-        )}
-      >
-        <div className="flex justify-around items-stretch h-full max-w-md mx-auto px-1 relative">
-          {navSections.map((section) => (
-            <NavItem key={section.id} section={section} />
-          ))}
-        </div>
-      </nav>
-    </>
-  );
 }
 
 interface BottomNavigationBarProps {
@@ -363,4 +46,198 @@ interface BottomNavigationBarProps {
   onOpenSubscriptionModal: () => void;
   onOpenCreateCommunityModal: () => void;
   handleLogout: () => void;
+  isMenuPanelOpen: boolean; // Controlled by AppLayout
+  setIsMenuPanelOpen: (isOpen: boolean) => void; // Controlled by AppLayout
+}
+
+const DOUBLE_CLICK_THRESHOLD = 300;
+
+export default function BottomNavigationBar({
+  className,
+  onSearchIconClick,
+  onOpenSubscriptionModal,
+  onOpenCreateCommunityModal,
+  handleLogout,
+  isMenuPanelOpen,
+  setIsMenuPanelOpen,
+}: BottomNavigationBarProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const { toast } = useToast();
+  const { user, userProfile } = useAuth();
+  const menuPanelRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+
+  const navSections: NavSection[] = [
+    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
+    { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
+    { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
+    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
+    { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
+    { id: 'profile', label: 'Profile', icon: UserIconLucide, mainHref: '/profile' },
+    // Add more direct links or sections that trigger specific actions from the panel
+  ];
+
+  const actionSections: NavSection[] = [
+    { id: 'search', label: 'Search', icon: SearchIcon, isDirectAction: true, directAction: onSearchIconClick },
+    { id: 'create-community', label: 'Create Hub', icon: PlusCircle, isDirectAction: true, directAction: onOpenCreateCommunityModal },
+    { id: 'subscriptions', label: 'Subscription Tiers', icon: Star, isDirectAction: true, directAction: onOpenSubscriptionModal },
+    {
+      id: 'theme-light',
+      label: 'Light Theme',
+      icon: Sun,
+      isDirectAction: true,
+      directAction: () => setTheme('light'),
+    },
+    {
+      id: 'theme-dark',
+      label: 'Dark Theme',
+      icon: Moon,
+      isDirectAction: true,
+      directAction: () => setTheme('dark'),
+    },
+    {
+      id: 'theme-shinra-fire',
+      label: 'Shinra Fire Theme',
+      icon: Flame,
+      isDirectAction: true,
+      directAction: () => {
+        setTheme('shinra-fire');
+        toast({ title: "Shinra Fire Activated!", description: "Feel the burn!", variant: "default" });
+      },
+    },
+    {
+      id: 'theme-modern-shinra',
+      label: 'Modern Shinra Theme',
+      icon: Zap,
+      isDirectAction: true,
+      directAction: () => setTheme('modern-shinra'),
+    },
+    {
+      id: 'theme-hypercharge-netflix',
+      label: 'Hypercharge (Netflix)',
+      icon: Tv,
+      isDirectAction: true,
+      directAction: () => setTheme('hypercharge-netflix'),
+    },
+    { id: 'settings', label: 'App Settings', icon: SettingsIconOriginal, mainHref: '/settings' },
+    { id: 'logout', label: 'Logout', icon: LogOut, isDirectAction: true, directAction: handleLogout },
+  ];
+
+  const handleTriggerClick = () => {
+    setIsMenuPanelOpen(!isMenuPanelOpen);
+  };
+
+  const handleItemClick = (item: NavSection) => {
+    if (item.isDirectAction && item.directAction) {
+      item.directAction();
+    } else if (item.mainHref) {
+      router.push(item.mainHref);
+    }
+    setIsMenuPanelOpen(false); // Close panel after action/navigation
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        menuPanelRef.current && !menuPanelRef.current.contains(event.target as Node) &&
+        triggerButtonRef.current && !triggerButtonRef.current.contains(event.target as Node)
+      ) {
+        setIsMenuPanelOpen(false);
+      }
+    };
+
+    if (isMenuPanelOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuPanelOpen, setIsMenuPanelOpen]);
+
+
+  return (
+    <>
+      {/* Central Menu Trigger Button */}
+      <Button
+        ref={triggerButtonRef}
+        variant="default"
+        size="icon"
+        className={cn(
+          "fixed bottom-6 left-1/2 -translate-x-1/2 h-14 w-14 rounded-full shadow-xl z-50 flex items-center justify-center transition-all duration-300 ease-in-out",
+          "bg-primary/90 hover:bg-primary text-primary-foreground",
+          theme === 'shinra-fire' && 'fiery-glow-hover',
+          theme !== 'shinra-fire' && 'neon-glow-hover',
+          isMenuPanelOpen && "rotate-45 bg-destructive/90 hover:bg-destructive"
+        )}
+        onClick={handleTriggerClick}
+        aria-expanded={isMenuPanelOpen}
+        aria-label={isMenuPanelOpen ? "Close Menu" : "Open Menu"}
+      >
+        {isMenuPanelOpen ? <X size={28} /> : <MenuIcon size={28} />}
+      </Button>
+
+      {/* Menu Panel */}
+      <AnimatePresence>
+        {isMenuPanelOpen && (
+          <motion.div
+            ref={menuPanelRef}
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95, transition: { duration: 0.2 } }}
+            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 backdrop-blur-md p-4"
+            onClick={() => setIsMenuPanelOpen(false)} // Close on backdrop click
+          >
+            <Card
+              className="glass-deep w-full max-w-sm shadow-2xl border-primary/30 overflow-hidden flex flex-col max-h-[70vh]"
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside panel
+            >
+              <CardHeader className="p-4 border-b border-border/50 flex-shrink-0">
+                <CardTitle className="text-lg font-semibold text-primary text-center">Navigation</CardTitle>
+              </CardHeader>
+              <ScrollArea className="flex-grow p-3">
+                <div className="space-y-1.5">
+                  {[...navSections, ...actionSections].map((item) => {
+                    const Icon = item.icon;
+                    const isActionDisabled = item.id === 'logout' && !user; // Disable logout if not logged in
+                    const isCreateCommunityDisabled = item.id === 'create-community' && (!user || (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive'));
+
+                    return (
+                      <Button
+                        key={item.id}
+                        variant="ghost"
+                        className={cn(
+                          "w-full justify-start text-sm h-auto py-2.5 px-3 flex items-center gap-3 transition-colors",
+                          theme === 'shinra-fire' ? 'sf-bansho-button' : 'hover:bg-primary/10 hover:text-primary',
+                          (isActionDisabled || (item.id === 'create-community' && isCreateCommunityDisabled)) && "opacity-50 cursor-not-allowed"
+                        )}
+                        onClick={() => {
+                          if (item.id === 'create-community' && isCreateCommunityDisabled) {
+                            toast({ title: "Upgrade Required", description: "Creating communities requires at least Ignition tier.", variant: "default"});
+                            onOpenSubscriptionModal();
+                            setIsMenuPanelOpen(false);
+                            return;
+                          }
+                          handleItemClick(item);
+                        }}
+                        disabled={isActionDisabled}
+                        title={(item.id === 'create-community' && isCreateCommunityDisabled) ? "Upgrade to Ignition Tier or higher" : item.label}
+                      >
+                        <Icon size={18} className={cn(item.id === 'logout' && user ? "text-destructive" : "text-primary/80")} />
+                        <span className={cn(item.id === 'logout' && user ? "text-destructive" : "text-foreground")}>{item.label}</span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
