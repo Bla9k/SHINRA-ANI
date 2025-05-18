@@ -5,7 +5,7 @@ import React, { useState, type ReactNode, useCallback, useEffect, useRef } from 
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from "next-themes";
 import TopBar from './TopBar';
-import BottomNavigationBar, { type NavSection } from './BottomNavigationBar'; // Will be refactored
+import BottomNavigationBar, { type NavSection } from './BottomNavigationBar';
 import CustomizeModal from './CustomizeModal';
 import SearchPopup from '@/components/search/SearchPopup';
 import { Toaster } from '@/components/ui/toaster';
@@ -15,17 +15,18 @@ import BootAnimation from './BootAnimation';
 import SubscriptionModal, { type Tier } from '@/components/subscription/SubscriptionModal';
 import CreateCommunityModal from '@/components/community/CreateCommunityModal';
 import { useAuth } from '@/hooks/useAuth';
-import { UserProfileData, updateUserProfileDocument } from '@/services/profile';
+import { UserProfileData, updateUserProfileDocument } from '@/services/profile.ts';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   Home as HomeIcon, Search as SearchIconLucide, Users as UsersIcon,
-  User as UserIconLucide, Settings as SettingsIconOriginal, Tv, BookText, Moon, Sun,
+  User as UserIconLucide, Settings, Tv, BookText, Moon, Sun,
   Palette, Flame, Zap, Rocket, Star, ShieldCheck, Gift, Menu as MenuIcon,
-  LogOut, PlusCircle, Sparkles, MessageCircle, X // Added X for the new menu button
+  LogOut, PlusCircle, XCircle, MessageCircle, ChevronDown, ChevronUp, ExternalLink, Package, List // Added Package and List
 } from 'lucide-react';
 import anime from 'animejs';
+
 
 // TIER_DATA_RAW definition - ensure all icons used here are imported
 const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
@@ -42,8 +43,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Standard Nami AI search', included: true },
         ],
         buttonText: 'Select Spark',
-        tierColorClass: 'text-primary',
-        iconGlowClass: 'neon-glow-icon',
+        tierColorClass: 'text-primary', // Uses current theme's primary
+        iconGlowClass: 'neon-glow-icon', // Uses current theme's primary for glow
     },
     {
         id: 'ignition',
@@ -61,8 +62,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Select Ignition',
         isPopular: true,
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
+        tierColorClass: 'text-accent', // Uses current theme's accent
+        iconGlowClass: 'fiery-glow-icon', // Specific to fire themes or themed accent
     },
     {
         id: 'hellfire',
@@ -109,15 +110,24 @@ interface AppLayoutProps {
 export default function AppLayout({ children }: AppLayoutProps) {
   const [isBooting, setIsBooting] = useState(true);
   const [showApp, setShowApp] = useState(false);
+
+  // Search Popup State
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAiSearchActive, setIsAiSearchActive] = useState(false);
   const [initialSearchTerm, setInitialSearchTerm] = useState('');
   const [openWithFilters, setOpenWithFilters] = useState(false);
+
+  // Subscription Modal State
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
   const [isLoadingTier, setIsLoadingTier] = useState(false);
 
-  const [isCustomizeModalOpen, setIsCustomizeModalOpen] = useState(false);
+  // Community Modal State
+  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
+
+  // Central Menu Panel State (now managed by BottomNavigationBar itself)
+  // const [isPanelOpen, setIsPanelOpen] = useState(false);
+  // const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
+
 
   const pathname = usePathname();
   const router = useRouter();
@@ -128,38 +138,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const appContainerRef = useRef<HTMLDivElement>(null);
   const mainContentRef = useRef<HTMLDivElement>(null);
 
-
-  const handleLogout = async () => {
-    try {
-      await signOutUser();
-      toast({
-         title: "Logged Out",
-         description: "You have been successfully logged out.",
-         variant: "default",
-      });
-      router.push('/login');
-    } catch (error) {
-      console.error("Logout failed in AppLayout:", error);
-      toast({
-         title: "Logout Failed",
-         description: "Could not log you out. Please try again.",
-         variant: "destructive",
-      });
-    }
-  };
-
-  const handleOpenCreateCommunityModal = useCallback(() => {
-    if (!user) {
-        toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
-        return;
-    }
-     if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
-      toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default" });
-      setShowSubscriptionModal(true);
-      return;
-    }
-    setIsCreateCommunityModalOpen(true);
-  }, [user, userProfile, toast]);
 
   const TIER_DATA = TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}));
 
@@ -173,7 +151,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           localStorage.setItem('appLaunchCount', appLaunchCount.toString());
         } catch (error) {
           console.warn("Could not access localStorage for appLaunchCount:", error);
-          if (!sessionStorage.getItem('hasSeenSubModalOnceThisSession')) {
+          if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('hasSeenSubModalOnceThisSession')) {
             appLaunchCount = 1;
             try { sessionStorage.setItem('hasSeenSubModalOnceThisSession', 'true'); } catch {}
           }
@@ -252,9 +230,89 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
   };
 
-  // State variables for the new central menu
-  const [isMenuPanelOpen, setIsMenuPanelOpen] = useState(false);
-  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : (isMenuPanelOpen ? 'pb-20' : 'pb-20'); // Adjust if panel overlays
+  const handleLogout = async () => {
+    try {
+      await signOutUser();
+      toast({
+         title: "Logged Out",
+         description: "You have been successfully logged out.",
+         variant: "default",
+      });
+      router.push('/login');
+    } catch (error: any) {
+      console.error("Logout failed in AppLayout:", error);
+      toast({
+         title: "Logout Failed",
+         description: error.message || "Could not log you out. Please try again.",
+         variant: "destructive",
+      });
+    }
+  };
+
+  const handleOpenCreateCommunityModal = useCallback(() => {
+    if (!user) {
+        toast({ title: "Login Required", description: "Please log in to create a community.", variant: "destructive" });
+        return;
+    }
+     if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
+      toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default" });
+      setShowSubscriptionModal(true);
+      return;
+    }
+    setIsCreateCommunityModalOpen(true);
+  }, [user, userProfile, toast]);
+
+  const navSections: NavSection[] = [
+    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
+    { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
+    { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
+    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
+    { id: 'gacha', label: 'Gacha', icon: Gift, mainHref: '/gacha' },
+    { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
+    {
+      id: 'profile',
+      label: 'Profile & Account',
+      icon: UserIconLucide,
+      mainHref: '/profile',
+      requiresAuth: true,
+      subItems: [
+        { id: 'profile-view', label: 'View Profile', icon: UserIconLucide, href: '/profile' },
+        { id: 'profile-settings', label: 'Account Settings', icon: Settings, href: '/settings' },
+        { id: 'profile-logout', label: 'Logout', icon: LogOut, action: handleLogout },
+      ],
+    },
+    {
+      id: 'customize',
+      label: 'Customize',
+      icon: Palette,
+      subItems: [
+        { id: 'theme-light', label: 'Light Theme', icon: Sun, action: () => setTheme('light') },
+        { id: 'theme-dark', label: 'Dark Theme', icon: Moon, action: () => setTheme('dark') },
+        { id: 'theme-shinra-fire', label: 'Shinra Fire Theme', icon: Flame, action: () => setTheme('shinra-fire') },
+        { id: 'theme-modern-shinra', label: 'Modern Shinra', icon: Zap, action: () => setTheme('modern-shinra') },
+        { id: 'theme-hypercharge-netflix', label: 'Hypercharge (Netflix)', icon: Tv, action: () => setTheme('hypercharge-netflix')},
+        { id: 'subscription-tiers', label: 'Subscription Tiers', icon: Star, action: handleOpenSubscriptionModal },
+      ],
+    },
+     {
+      id: 'search-action',
+      label: 'Search',
+      icon: SearchIconLucide,
+      isDirectAction: true,
+      directAction: handleSearchToggle,
+    },
+     {
+      id: 'create-community-action',
+      label: 'Create Community',
+      icon: PlusCircle,
+      isDirectAction: true,
+      directAction: handleOpenCreateCommunityModal,
+      requiresAuth: true,
+    }
+  ];
+
+
+  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : 'pb-20';
 
   return (
     <>
@@ -274,20 +332,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <TopBar
                 onSearchIconClick={handleSearchToggle}
-                isAiSearchActive={isAiSearchActive} // Pass this if TopBar uses it
-                onAiToggle={() => setIsAiSearchActive(prev => !prev)} // Pass handler
+                navSections={navSections} // Pass navSections to TopBar
+                // Pass other necessary handlers if TopBar's Netflix menu uses them
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
              />
             <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)} ref={mainContentRef}>
               <motion.main
-                key={pathname}
+                key={pathname} // This enables page transition animations
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 15 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="transition-smooth"
+                className="transition-smooth" // Existing class for other potential CSS transitions
               >
                 {children}
               </motion.main>
@@ -295,12 +353,15 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {theme !== 'hypercharge-netflix' && (
               <BottomNavigationBar
+                navSections={navSections}
+                theme={theme || 'dark'}
+                setTheme={setTheme}
+                // Pass all action handlers needed by the panel
                 onSearchIconClick={handleSearchToggle}
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
-                isMenuPanelOpen={isMenuPanelOpen}
-                setIsMenuPanelOpen={setIsMenuPanelOpen}
+                // Remove panel state from here, it's managed internally by BottomNav
               />
             )}
 
@@ -328,7 +389,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
                     router.push(`/community/${newCommunity.id}`);
                 }}
             />
-            {/* CustomizeModal is likely opened from within the new BottomNavigationBar's panel */}
             <Toaster />
           </motion.div>
         )}

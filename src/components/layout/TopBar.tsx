@@ -4,9 +4,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
-    Search as SearchIcon, Settings as SettingsIconOriginal, X, Menu as MenuIcon, LogOut, User as UserIconLucide,
-    Home as HomeIcon, Tv, BookText, Users as UsersIcon, Palette, Star, PlusCircle, ShieldCheck, Flame, Zap, Rocket, Moon, Sun
-} from 'lucide-react';
+    Search as SearchIcon, Settings, X, Menu as MenuIcon, LogOut, User as UserIconLucide,
+    Home as HomeIcon, Tv, BookText, Users as UsersIcon, Palette, Star, PlusCircle, ShieldCheck,
+    Flame, Zap, Rocket, Moon, Sun, Gift, ChevronRight
+} from 'lucide-react'; // Added Gift and ChevronRight
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -17,12 +18,13 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useTheme } from 'next-themes'; // Import useTheme
+import { useTheme } from 'next-themes';
+import type { NavSection } from './BottomNavigationBar'; // Import NavSection type
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 interface TopBarProps {
   onSearchIconClick: () => void;
-  isAiSearchActive: boolean;
-  onAiToggle: () => void;
+  navSections: NavSection[]; // Add this prop
   onOpenSubscriptionModal: () => void;
   onOpenCreateCommunityModal: () => void;
   handleLogout: () => void;
@@ -54,89 +56,140 @@ const ShinraAniLogo = () => (
 
 export default function TopBar({
   onSearchIconClick,
-  isAiSearchActive, // Kept for potential future use within TopBar itself
-  onAiToggle,       // Kept for potential future use
+  navSections,
   onOpenSubscriptionModal,
   onOpenCreateCommunityModal,
   handleLogout,
   className,
 }: TopBarProps) {
   const { user, loading: authLoading, userProfile } = useAuth();
-  const { toast } = useToast();
   const { theme, setTheme } = useTheme();
+  const router = useRouter(); // For navigation from dropdown
 
-  const themeOptions = [
-    { name: 'Light', value: 'light', icon: Sun },
-    { name: 'Dark', value: 'dark', icon: Moon },
-    { name: 'Shinra Fire', value: 'shinra-fire', icon: Flame },
-    { name: 'Modern Shinra', value: 'modern-shinra', icon: Zap },
-    { name: 'Hypercharge (Netflix)', value: 'hypercharge-netflix', icon: Tv },
-  ];
+  const renderDropdownMenuItems = (isMobileMenu: boolean = false) => {
+    const mainNavItems = navSections.filter(s => s.mainHref && !s.subItems && !s.isDirectAction && s.id !== 'profile' && s.id !== 'customize' && s.id !== 'search-action' && s.id !== 'create-community-action');
+    const profileSection = navSections.find(s => s.id === 'profile');
+    const customizeSection = navSections.find(s => s.id === 'customize');
+    const createCommunitySection = navSections.find(s => s.id === 'create-community-action');
 
-  const NetflixThemeMenuContent = () => (
-    <>
-      <DropdownMenuItem asChild><Link href="/" className="flex items-center gap-2"><HomeIcon size={16}/>Home</Link></DropdownMenuItem>
-      <DropdownMenuItem asChild><Link href="/anime" className="flex items-center gap-2"><Tv size={16}/>Anime</Link></DropdownMenuItem>
-      <DropdownMenuItem asChild><Link href="/manga" className="flex items-center gap-2"><BookText size={16}/>Manga</Link></DropdownMenuItem>
-      <DropdownMenuItem asChild><Link href="/community" className="flex items-center gap-2"><UsersIcon size={16}/>Community</Link></DropdownMenuItem>
-      <DropdownMenuItem asChild><Link href="/system" className="flex items-center gap-2"><ShieldCheck size={16}/>System</Link></DropdownMenuItem>
-      <DropdownMenuSeparator />
-      {user && (
-        <>
-          <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><UserIconLucide size={16}/>Profile</Link></DropdownMenuItem>
-          <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><SettingsIconOriginal size={16}/>Settings</Link></DropdownMenuItem>
-        </>
-      )}
-      <DropdownMenuSub>
-        <DropdownMenuSubTrigger className="flex items-center gap-2"><Palette size={16}/>Theme</DropdownMenuSubTrigger>
-        <DropdownMenuPortal>
-          <DropdownMenuSubContent className="glass-deep">
-            {themeOptions.map(opt => (
-              <DropdownMenuItem key={opt.value} onClick={() => setTheme(opt.value)} className="flex items-center gap-2">
-                <opt.icon size={16} className={theme === opt.value ? 'text-primary' : ''}/> {opt.name}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuPortal>
-      </DropdownMenuSub>
-      <DropdownMenuItem onClick={onOpenSubscriptionModal} className="flex items-center gap-2"><Star size={16}/>Subscription Tiers</DropdownMenuItem>
-      {user && (userProfile?.subscriptionTier === 'ignition' || userProfile?.subscriptionTier === 'hellfire' || userProfile?.subscriptionTier === 'burstdrive') && (
-          <DropdownMenuItem onClick={onOpenCreateCommunityModal} className="flex items-center gap-2"><PlusCircle size={16}/>Create Community</DropdownMenuItem>
-      )}
-      <DropdownMenuSeparator />
-      {user ? (
-        <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-destructive focus:text-destructive-foreground focus:bg-destructive/90">
-          <LogOut size={16}/> Logout
-        </DropdownMenuItem>
-      ) : (
-        <DropdownMenuItem asChild><Link href="/login" className="flex items-center gap-2">Login / Sign Up</Link></DropdownMenuItem>
-      )}
-    </>
-  );
+    return (
+      <>
+        {isMobileMenu && mainNavItems.map(section => (
+          <DropdownMenuItem key={`mobile-${section.id}`} asChild>
+            <Link href={section.mainHref!} className="flex items-center gap-2 w-full">
+              <section.icon size={16}/>{section.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+        {isMobileMenu && mainNavItems.length > 0 && <DropdownMenuSeparator />}
+
+        {user && profileSection && profileSection.subItems && (
+          profileSection.subItems.map(subItem => {
+            if (subItem.href) {
+              return (
+                <DropdownMenuItem key={subItem.id} asChild>
+                  <Link href={subItem.href} className="flex items-center gap-2 w-full">
+                    <subItem.icon size={16} /> {subItem.label}
+                  </Link>
+                </DropdownMenuItem>
+              );
+            } else if (subItem.action) {
+              return (
+                <DropdownMenuItem key={subItem.id} onClick={subItem.action} className={cn("flex items-center gap-2 w-full", subItem.id === 'profile-logout' && "text-destructive focus:text-destructive-foreground focus:bg-destructive/90")}>
+                  <subItem.icon size={16} /> {subItem.label}
+                </DropdownMenuItem>
+              );
+            }
+            return null;
+          })
+        )}
+
+        {customizeSection && customizeSection.subItems && (
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger className="flex items-center gap-2 w-full">
+              <customizeSection.icon size={16} />{customizeSection.label}
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent className="glass-deep">
+                {customizeSection.subItems.map(subItem => (
+                  <DropdownMenuItem key={subItem.id} onClick={subItem.action} className="flex items-center gap-2">
+                    <subItem.icon size={16} className={theme === subItem.id.replace('theme-', '') ? 'text-primary' : ''}/> {subItem.label}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        )}
+        
+        {user && createCommunitySection && (
+          <DropdownMenuItem onClick={createCommunitySection.directAction} className="flex items-center gap-2 w-full">
+            <createCommunitySection.icon size={16} />{createCommunitySection.label}
+          </DropdownMenuItem>
+        )}
+
+        <DropdownMenuSeparator />
+        {user ? null : ( // Logout is in profileSection, this is for Login
+          <DropdownMenuItem asChild>
+            <Link href="/login" className="flex items-center gap-2 w-full">Login / Sign Up</Link>
+          </DropdownMenuItem>
+        )}
+      </>
+    );
+  };
+
 
   if (theme === 'hypercharge-netflix') {
     return (
       <header className={cn(
         'sticky top-0 z-30 flex h-16 items-center justify-between gap-2 md:gap-4 border-b px-4 transition-smooth shadow-md',
-        'bg-card text-card-foreground border-border/50', // Netflix theme specific background
+        'bg-card text-card-foreground border-border/50',
         className
       )}>
+        {/* Left side: Logo/Name as Dropdown Trigger */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-2 p-2 -ml-2 group">
               <ShinraAniLogo />
-              <span className="font-bold text-lg text-primary group-hover:text-primary/80 transition-colors">Shinra-Ani</span>
+              <span className="font-bold text-lg text-primary group-hover:text-primary/80 transition-colors hidden sm:inline">Shinra-Ani</span>
+              <MenuIcon size={20} className="sm:hidden text-primary"/>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="glass-deep w-56">
-            <NetflixThemeMenuContent />
+          <DropdownMenuContent align="start" className="glass-deep w-64" sideOffset={10}>
+            {renderDropdownMenuItems(true)}
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <Button variant="ghost" size="icon" className="rounded-full" onClick={onSearchIconClick}>
-          <SearchIcon className="h-5 w-5 text-foreground/80 hover:text-foreground" />
-          <span className="sr-only">Search</span>
-        </Button>
+        {/* Right side: Search and Profile */}
+        <div className="flex items-center gap-1 sm:gap-2">
+          <Button variant="ghost" size="icon" className="rounded-full h-10 w-10" onClick={onSearchIconClick}>
+            <SearchIcon className="h-5 w-5 text-foreground/80 hover:text-foreground" />
+            <span className="sr-only">Search</span>
+          </Button>
+           {/* Profile Avatar for desktop, moved into hamburger on mobile within Netflix theme */}
+           {authLoading ? (
+            <Skeleton className="h-9 w-9 rounded-full" />
+          ) : user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="rounded-full h-10 w-10 hidden sm:flex">
+                  <Avatar className="h-8 w-8 border border-primary/30">
+                     <AvatarImage src={userProfile?.avatarUrl || user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
+                     <AvatarFallback>{(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="glass-deep w-64">
+                <DropdownMenuLabel className="truncate">{userProfile?.username || user.displayName || user.email}</DropdownMenuLabel>
+                <DropdownMenuSeparator/>
+                {renderDropdownMenuItems(false)}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+             <Link href="/login" passHref legacyBehavior>
+                <a className="hidden sm:inline-block"><Button variant="outline" className="text-sm h-9 px-3">Login</Button></a>
+             </Link>
+          )}
+        </div>
       </header>
     );
   }
@@ -147,7 +200,7 @@ export default function TopBar({
       className={cn(
         'sticky top-0 z-30 flex h-16 items-center gap-2 md:gap-4 border-b px-4 backdrop-blur-lg transition-smooth shadow-md',
         'bg-background/80 border-border/50 glass-deep',
-        'md:hidden', // Hide on medium screens and up for non-Netflix themes
+        'md:hidden',
         className
       )}
     >
@@ -156,29 +209,29 @@ export default function TopBar({
         <span className="font-bold text-lg hidden sm:inline text-foreground group-hover:text-primary transition-colors">Shinra-Ani</span>
       </Link>
 
-      <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover" onClick={onSearchIconClick}>
+      <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover h-10 w-10" onClick={onSearchIconClick}>
         <SearchIcon className="h-5 w-5" />
         <span className="sr-only">Open Search</span>
       </Button>
 
       {authLoading ? (
-        <Skeleton className="h-8 w-8 rounded-full" />
+        <Skeleton className="h-9 w-9 rounded-full" />
       ) : user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover">
+            <Button variant="ghost" size="icon" className="rounded-full transition-smooth neon-glow-hover h-10 w-10">
               <Avatar className="h-8 w-8 border border-primary/50">
-                 <AvatarImage src={user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
+                 <AvatarImage src={userProfile?.avatarUrl || user.photoURL || undefined} alt={user.displayName || user.email || 'User'} />
                  <AvatarFallback>{(user.displayName || user.email || 'U').slice(0, 1).toUpperCase()}</AvatarFallback>
               </Avatar>
               <span className="sr-only">Toggle user menu</span>
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="glass-deep animate-fade-in w-48">
-            <DropdownMenuLabel className="truncate">{user.displayName || user.email}</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="glass-deep w-56 animate-fade-in">
+            <DropdownMenuLabel className="truncate">{userProfile?.username || user.displayName || user.email}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild><Link href="/profile" className="flex items-center gap-2"><UserIconLucide size={14}/> Profile</Link></DropdownMenuItem>
-            <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><SettingsIconOriginal size={14}/> Settings</Link></DropdownMenuItem>
+            <DropdownMenuItem asChild><Link href="/settings" className="flex items-center gap-2"><Settings size={14}/> Settings</Link></DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2 text-destructive focus:text-destructive-foreground focus:bg-destructive/90">
                 <LogOut size={14}/> Logout
