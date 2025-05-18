@@ -1,19 +1,17 @@
-
 // src/config/gachaConfig.ts
-import type { CollectibleRarity } from '@/types/collectibles';
+import type { CollectibleRarity } from '@/types/collectibles.ts';
 
-export const GACHA_ROLL_SIZE = 4;
-export const GACHA_COST = 0; // Still free for beta
+export const GACHA_ROLL_SIZE = 4; // How many cards from a general or standard pack roll
+export const GACHA_COST = 0; // For beta, Gacha is free
 
 // Base Drop Rates (should sum to 1.0 for general pool)
-// Note: These won't directly apply to Legacy Pack, which has its own pull logic.
 export const GACHA_RARITY_RATES: Record<CollectibleRarity, number> = {
-  Common: 0.58,      // 58%
-  Rare: 0.25,        // 25%
-  'Ultra Rare': 0.09,// 9%
+  Common: 0.55,      // 55%
+  Rare: 0.28,        // 28%
+  'Ultra Rare': 0.10,// 10%
   Legendary: 0.04,   // 4%
   Mythic: 0.02,      // 2%
-  Event: 0.02,       // 2% chance for an event card in general pool (if any are not packExclusive)
+  Event: 0.01,       // 1% chance for an event card in general pool (if any are not packExclusive)
   Forbidden: 0,      // 0% in general pool, only from Legacy Pack or specific events
 };
 
@@ -21,20 +19,23 @@ export const GACHA_RARITY_RATES: Record<CollectibleRarity, number> = {
 // Rarity tiers that trigger pity reset and are guaranteed by hard pity
 export const PITY_TARGET_RARITIES: CollectibleRarity[] = ['Legendary', 'Mythic', 'Event', 'Forbidden'];
 
-export const HARD_PITY_COUNT = 90;
-export const SOFT_PITY_START_COUNT = 75;
-export const SOFT_PITY_INCREASE_RATE = 0.06;
+export const HARD_PITY_COUNT = 90; // Guarantees a pity target card by this many INDIVIDUAL card pulls
+export const SOFT_PITY_START_COUNT = 70; // Chance for pity target cards starts increasing significantly
+export const SOFT_PITY_INCREASE_RATE = 0.06; // Additional 6% chance for a pity target PER PULL into soft pity
 
-// Distribution for pity pulls (if a pity target is hit)
+// Distribution for *hard pity* pulls (if a hard pity target is hit)
+// This sums to 1.0 for the PITY_TARGET_RARITIES
 export const PITY_DISTRIBUTION: Partial<Record<CollectibleRarity, number>> = {
-  Legendary: 0.60,
-  Mythic: 0.25,
-  Event: 0.10,
-  Forbidden: 0.05, // Small chance even on general pity if we decide Forbidden can drop rarely outside Legacy. For now, Legacy pack is main source.
+  Legendary: 0.60,   // 60% chance of Legendary on hard pity
+  Mythic: 0.30,      // 30% chance of Mythic on hard pity
+  Event: 0.08,       // 8% chance of Event card on hard pity (if available)
+  Forbidden: 0.02,   // 2% chance of Forbidden on hard pity (if available and not pack-exclusive)
 };
 
-// Order for fusion logic and display
+// Order for fusion logic and display, from lowest to highest
 export const RARITY_ORDER: CollectibleRarity[] = ['Common', 'Rare', 'Ultra Rare', 'Legendary', 'Mythic', 'Event', 'Forbidden'];
+
+// Numerical value for rarity comparison and fusion logic
 export const RARITY_NUMERICAL_VALUE: Record<CollectibleRarity, number> = {
     Common: 0,
     Rare: 1,
@@ -46,6 +47,7 @@ export const RARITY_NUMERICAL_VALUE: Record<CollectibleRarity, number> = {
 };
 
 
+// --- Validations for Gacha Config ---
 // Validate that PITY_DISTRIBUTION sums to 1.0 for the PITY_TARGET_RARITIES it covers
 const activePityDistributionSum = PITY_TARGET_RARITIES.reduce((sum, rarity) => {
     // Only include rarities explicitly defined in PITY_DISTRIBUTION for the sum check
@@ -70,5 +72,3 @@ if (Math.abs(baseRateSum - 1.0) > 0.001) {
         `GACHA WARNING: GACHA_RARITY_RATES do not sum to 1.0 (Current sum: ${baseRateSum}). Drop rates will be normalized if this is not corrected.`
     );
 }
-
-    
