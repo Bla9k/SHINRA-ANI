@@ -21,8 +21,8 @@ import {
   Home as HomeIcon,
   Search as SearchIconLucide,
   Users as UsersIcon,
-  User as UserIconLucideOriginal, // Aliased to avoid conflict with 'user' state
-  Settings as SettingsIconOriginal, // Aliased to avoid conflict
+  User as UserIconLucide, // Aliased to avoid conflict with 'user' state
+  Settings as SettingsIcon, // Aliased to avoid conflict
   Tv,
   BookText,
   Moon,
@@ -44,12 +44,71 @@ import {
   ExternalLink,
   Package,
   List,
-  Sparkles // Added Sparkles explicitly here
+  Sparkles, // Ensure Sparkles is imported
+  HelpCircle, // Added for "What's Next?"
+  RefreshCw, // Added for reroll
+  Combine, // Added for Fusion
+  Info, // Added for DNA Modal and other info
+  Trophy, // For Achievements tab
+  Image as ImageIcon, // For upload/image related UI
+  Camera, // For image uploads
+  X, // For close buttons
+  type LucideIcon
 } from 'lucide-react';
 import anime from 'animejs';
 
-// Define TIER_DATA_RAW within AppLayout or import if defined elsewhere and accessible
-const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
+interface AppLayoutProps {
+  children: ReactNode;
+}
+
+export interface NavSubItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  href?: string;
+  action?: () => void;
+  disabled?: boolean;
+  title?: string;
+}
+
+export interface NavSection {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  mainHref?: string;
+  isDirectAction?: boolean;
+  directAction?: () => void;
+  subItems?: NavSubItem[];
+  requiresAuth?: boolean;
+  requiresTier?: UserProfileData['subscriptionTier'][];
+}
+
+
+export default function AppLayout({ children }: AppLayoutProps) {
+  const [isBooting, setIsBooting] = useState(true);
+  const [showApp, setShowApp] = useState(false);
+
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isAiSearchActive, setIsAiSearchActive] = useState(false);
+  const [initialSearchTerm, setInitialSearchTerm] = useState('');
+  const [openWithFilters, setOpenWithFilters] = useState(false);
+
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [isLoadingTier, setIsLoadingTier] = useState(false);
+
+  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
+
+  const pathname = usePathname();
+  const router = useRouter();
+  const { playAnimation } = useAnimation();
+  const { user, userProfile, loading: authLoading, fetchUserProfile, signOutUser } = useAuth();
+  const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
+  const appContainerRef = useRef<HTMLDivElement>(null);
+  const mainContentRef = useRef<HTMLDivElement>(null);
+
+  // Define TIER_DATA_RAW inside the component
+  const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
     {
         id: 'spark',
         name: 'Spark Tier',
@@ -63,8 +122,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
             { text: 'Standard Nami AI search', included: true },
         ],
         buttonText: 'Select Spark',
-        tierColorClass: 'text-primary',
-        iconGlowClass: 'neon-glow-icon',
+        tierColorClass: 'text-primary', // Will adapt to theme's primary
+        iconGlowClass: theme === 'shinra-fire' ? 'fiery-glow-icon' : 'neon-glow-icon',
     },
     {
         id: 'ignition',
@@ -82,8 +141,8 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Select Ignition',
         isPopular: true,
-        tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
+        tierColorClass: 'text-accent', // Will adapt to theme's accent
+        iconGlowClass: theme === 'shinra-fire' ? 'fiery-glow-icon' : 'neon-glow-icon',
     },
     {
         id: 'hellfire',
@@ -101,7 +160,7 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Select Hellfire',
         tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
+        iconGlowClass: theme === 'shinra-fire' ? 'fiery-glow-icon' : 'neon-glow-icon',
     },
     {
         id: 'burstdrive',
@@ -118,44 +177,62 @@ const TIER_DATA_RAW: Omit<Tier, 'isCurrent'>[] = [
         ],
         buttonText: 'Select Burst Drive',
         tierColorClass: 'text-accent',
-        iconGlowClass: 'fiery-glow-icon',
+        iconGlowClass: theme === 'shinra-fire' ? 'fiery-glow-icon' : 'neon-glow-icon',
     },
-];
+  ];
 
-// Alias icons if needed to avoid naming conflicts
-const UserIcon = UserIconLucideOriginal;
-const SettingsIcon = SettingsIconOriginal;
+  const TIER_DATA = TIER_DATA_RAW.map(t => ({ ...t, isCurrent: userProfile?.subscriptionTier === t.id }));
 
-interface AppLayoutProps {
-  children: ReactNode;
-}
+  // Define navSections inside the component
+  const navSections: NavSection[] = [
+    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
+    { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
+    { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
+    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
+    { id: 'gacha', label: 'Gacha', icon: Gift, mainHref: '/gacha' },
+    { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
+    {
+      id: 'profile',
+      label: 'Profile & Account',
+      icon: UserIconLucide,
+      mainHref: '/profile',
+      requiresAuth: true,
+      subItems: [
+        { id: 'profile-view', label: 'View Profile', icon: UserIconLucide, href: '/profile' },
+        { id: 'profile-settings', label: 'Account Settings', icon: SettingsIcon, href: '/settings' },
+        { id: 'profile-logout', label: 'Logout', icon: LogOut, action: handleLogout },
+      ],
+    },
+    {
+      id: 'customize',
+      label: 'Customize',
+      icon: Palette,
+      subItems: [
+        { id: 'theme-light', label: 'Light Theme', icon: Sun, action: () => setTheme('light') },
+        { id: 'theme-dark', label: 'Dark Theme', icon: Moon, action: () => setTheme('dark') },
+        { id: 'theme-shinra-fire', label: 'Shinra Fire Theme', icon: Flame, action: () => setTheme('shinra-fire') },
+        { id: 'theme-modern-shinra', label: 'Modern Shinra', icon: Zap, action: () => setTheme('modern-shinra') },
+        { id: 'theme-hypercharge-netflix', label: 'Hypercharge (Netflix)', icon: Tv, action: () => setTheme('hypercharge-netflix') },
+        { id: 'subscription-tiers', label: 'Subscription Tiers', icon: Star, action: handleOpenSubscriptionModal },
+      ],
+    },
+     {
+      id: 'search-action',
+      label: 'Search',
+      icon: SearchIconLucide,
+      isDirectAction: true,
+      directAction: handleSearchToggle,
+    },
+     {
+      id: 'create-community-action',
+      label: 'Create Community',
+      icon: PlusCircle,
+      isDirectAction: true,
+      directAction: handleOpenCreateCommunityModal,
+      requiresAuth: true,
+    }
+  ];
 
-export default function AppLayout({ children }: AppLayoutProps) {
-  const [isBooting, setIsBooting] = useState(true);
-  const [showApp, setShowApp] = useState(false);
-
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [isAiSearchActive, setIsAiSearchActive] = useState(false);
-  const [initialSearchTerm, setInitialSearchTerm] = useState('');
-  const [openWithFilters, setOpenWithFilters] = useState(false);
-
-  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [isLoadingTier, setIsLoadingTier] = useState(false);
-
-  const [isCreateCommunityModalOpen, setIsCreateCommunityModalOpen] = useState(false);
-
-  const [isPanelOpen, setIsPanelOpen] = useState(false);
-  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
-
-  const pathname = usePathname();
-  const router = useRouter();
-  const { playAnimation } = useAnimation();
-  const { user, userProfile, loading: authLoading, fetchUserProfile, signOutUser } = useAuth();
-  const { toast } = useToast();
-  const { theme, setTheme } = useTheme();
-  const appContainerRef = useRef<HTMLDivElement>(null);
-
-  const TIER_DATA = TIER_DATA_RAW.map(t => ({...t, isCurrent: userProfile?.subscriptionTier === t.id}));
 
   useEffect(() => {
     if (!authLoading && user && userProfile) {
@@ -173,7 +250,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           }
         }
         if (appLaunchCount === 1 || (appLaunchCount > 1 && (appLaunchCount -1) % 5 === 0)) {
-          setShowSubscriptionModal(true);
+        //   setShowSubscriptionModal(true); // Temporarily disable auto-popup for testing
         }
       }
     }
@@ -227,10 +304,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     try {
       await updateUserProfileDocument(user.uid, { subscriptionTier: tierId });
       if (fetchUserProfile) {
-        await fetchUserProfile(user.uid);
+        await fetchUserProfile(user.uid); // Refresh profile data
       }
       toast({
-        title: `Welcome to ${tierName}!`,
+        title: `Welcome to the ${tierName}!`,
         description: "Thank you for supporting Shinra-Ani and unlocking new features!",
         variant: "default",
       });
@@ -272,62 +349,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
     }
      if (userProfile && userProfile.subscriptionTier !== 'ignition' && userProfile.subscriptionTier !== 'hellfire' && userProfile.subscriptionTier !== 'burstdrive') {
       toast({ title: "Upgrade Required", description: "Creating communities requires at least the Ignition tier.", variant: "default" });
-      setShowSubscriptionModal(true);
+      setShowSubscriptionModal(true); // Open subscription modal if tier is too low
       return;
     }
     setIsCreateCommunityModalOpen(true);
   }, [user, userProfile, toast]);
 
-  const navSections: NavSection[] = [
-    { id: 'home', label: 'Home', icon: HomeIcon, mainHref: '/' },
-    { id: 'anime', label: 'Anime', icon: Tv, mainHref: '/anime' },
-    { id: 'manga', label: 'Manga', icon: BookText, mainHref: '/manga' },
-    { id: 'community', label: 'Community', icon: UsersIcon, mainHref: '/community' },
-    { id: 'gacha', label: 'Gacha', icon: Gift, mainHref: '/gacha' },
-    { id: 'system', label: 'System', icon: ShieldCheck, mainHref: '/system' },
-    {
-      id: 'profile',
-      label: 'Profile & Account',
-      icon: UserIcon, // Use aliased icon
-      mainHref: '/profile',
-      requiresAuth: true,
-      subItems: [
-        { id: 'profile-view', label: 'View Profile', icon: UserIcon, href: '/profile' },
-        { id: 'profile-settings', label: 'Account Settings', icon: SettingsIcon, href: '/settings' },
-        { id: 'profile-logout', label: 'Logout', icon: LogOut, action: handleLogout },
-      ],
-    },
-    {
-      id: 'customize',
-      label: 'Customize',
-      icon: Palette,
-      subItems: [
-        { id: 'theme-light', label: 'Light Theme', icon: Sun, action: () => setTheme('light') },
-        { id: 'theme-dark', label: 'Dark Theme', icon: Moon, action: () => setTheme('dark') },
-        { id: 'theme-shinra-fire', label: 'Shinra Fire Theme', icon: Flame, action: () => setTheme('shinra-fire') },
-        { id: 'theme-modern-shinra', label: 'Modern Shinra', icon: Zap, action: () => setTheme('modern-shinra') },
-        { id: 'theme-hypercharge-netflix', label: 'Hypercharge (Netflix)', icon: Tv, action: () => setTheme('hypercharge-netflix')},
-        { id: 'subscription-tiers', label: 'Subscription Tiers', icon: Star, action: handleOpenSubscriptionModal },
-      ],
-    },
-     {
-      id: 'search-action',
-      label: 'Search',
-      icon: SearchIconLucide,
-      isDirectAction: true,
-      directAction: handleSearchToggle,
-    },
-     {
-      id: 'create-community-action',
-      label: 'Create Community',
-      icon: PlusCircle,
-      isDirectAction: true,
-      directAction: handleOpenCreateCommunityModal,
-      requiresAuth: true,
-    }
-  ];
 
-  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : 'pb-20';
+  const [isPanelOpen, setIsPanelOpen] = useState(false);
+  const [expandedSectionId, setExpandedSectionId] = useState<string | null>(null);
+  const mainContentPaddingBottom = theme === 'hypercharge-netflix' ? 'pb-8' : (isPanelOpen && expandedSectionId ? 'pb-[var(--bottom-nav-panel-max-height)]' : 'pb-20');
 
 
   return (
@@ -348,19 +379,21 @@ export default function AppLayout({ children }: AppLayoutProps) {
           >
             <TopBar
                 onSearchIconClick={handleSearchToggle}
-                navSections={navSections}
+                navSections={navSections} // Pass navSections to TopBar
                 onOpenSubscriptionModal={handleOpenSubscriptionModal}
                 onOpenCreateCommunityModal={handleOpenCreateCommunityModal}
                 handleLogout={handleLogout}
+                theme={theme}
+                setTheme={setTheme}
              />
-            <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)}>
+            <div className={cn("flex-1 overflow-y-auto scrollbar-thin", mainContentPaddingBottom)} ref={mainContentRef}>
               <motion.main
-                key={pathname}
+                key={pathname} // Ensure this key changes on route change
                 initial={{ opacity: 0, x: -15 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 15 }}
                 transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="transition-smooth"
+                className="transition-smooth" // Keep existing class for other transitions if any
               >
                 {children}
               </motion.main>
@@ -368,6 +401,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
             {theme !== 'hypercharge-netflix' && (
               <BottomNavigationBar
+                className="md:hidden" // Keep hidden on medium and up as TopBar handles it
                 navSections={navSections}
                 theme={theme || 'dark'}
                 setTheme={setTheme}
@@ -395,13 +429,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 onClose={() => setShowSubscriptionModal(false)}
                 currentTier={userProfile?.subscriptionTier || null}
                 onSelectTier={handleSelectTier}
-                TIER_DATA={TIER_DATA} // Use TIER_DATA which has isCurrent mapped
+                TIER_DATA={TIER_DATA}
             />
             <CreateCommunityModal
                 isOpen={isCreateCommunityModalOpen}
                 onClose={() => setIsCreateCommunityModalOpen(false)}
                 onCreate={(newCommunity) => {
                     setIsCreateCommunityModalOpen(false);
+                    // Optionally navigate to the new community page
                     router.push(`/community/${newCommunity.id}`);
                 }}
             />
